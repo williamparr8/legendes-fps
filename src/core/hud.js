@@ -48,7 +48,11 @@ export class Hud {
     const w = cb.weapons, d = w.def;
     this.set(this.ammo, 'a', !d ? '—' : w.reload > 0 ? 'RECHARGE…' : w.mag + ' / ' + w.reserve);
     this.set(this.wep, 'w', d ? d.name : 'Aucune arme (ramassez-en une)');
-    this.cross.style.opacity = 0.8 * (1 - w.ads);
+    // viseur : toujours visible (point rouge en ADS) sauf lunette sniper
+    const snip = w.id === 'sniper';
+    this.cross.style.opacity = snip ? 0.8 * (1 - w.ads) : 0.85;
+    const dot = w.ads > 0.5;
+    if (this.last.dot !== dot) { this.last.dot = dot; this.cross.style.background = dot ? '#ff3030' : 'transparent'; this.cross.style.width = this.cross.style.height = dot ? '5px' : '6px'; this.cross.style.margin = dot ? '-2.5px' : '-3px'; }
     const sc = w.id === 'sniper' ? Math.max(0, (w.ads - 0.8) / 0.2) : 0;
     if (sc !== this.last.sc) { this.last.sc = sc; this.scope.style.opacity = sc; this.scope.style.display = sc > 0 ? 'block' : 'none'; }
     this.set(this.inv, 'i', HEAL_NAMES.map(([k, n, key]) => `${n} ${inv.heal[k]} [${key}]`).join(' · ') + ' — ' + `Lég. ${inv.ammo.light} · Cart. ${inv.ammo.shells} · Snip. ${inv.ammo.sniper} · Roq. ${inv.ammo.rocket}`);

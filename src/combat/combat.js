@@ -119,7 +119,8 @@ export class Combat {
     const rx = cy, rz = -sy;
     const ux = sy * sp, uy = cp, uz = cy * sp;
     const ox = p.x, oy = p.y + p.eye, oz = p.z;
-    const mx = ox + fx * 0.8 + rx * 0.25 - ux * 0.2, my = oy + fy * 0.8 - uy * 0.2, mz = oz + fz * 0.8 + rz * 0.25 - uz * 0.2;
+    const a = p.ads || 0, sx = 0.25 * (1 - a), sd = 0.2 * (1 - a) + 0.07 * a; // en ADS l'arme est centrée : la traçante part du canon
+    const mx = ox + fx * 0.8 + rx * sx - ux * sd, my = oy + fy * 0.8 - uy * sd, mz = oz + fz * 0.8 + rz * sx - uz * sd;
     const n = d.pellets || 1;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.2832, rad = Math.sqrt(Math.random()) * spread;
