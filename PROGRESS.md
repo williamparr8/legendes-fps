@@ -13,7 +13,7 @@
 | G Interface | ✅ Menus et HUD chargés dans le navigateur ; pointer lock / ressenti non testés |
 | H Multijoueur et salons | ✅ Testé : 2 onglets (BroadcastChannel) + vrai WebRTC/PeerJS (salon créé, rejoint, tirs, dégâts, butin, mort, résultats, retour au salon). Pas testé à plusieurs machines/NAT, ni à 3+ joueurs |
 | I-a Visuel et relief (armes, munitions, terrain, bâtiments à étages) | ✅ Testé par simulation (escaliers, relief, partie solo, multi à 2 onglets, entraînement) ; rendu vérifié sur captures ; **pas testé sur GPU réel ni à la souris** |
-| I-b Modèles 3D humanoïdes (bots et joueurs) | 🔄 Écrit : `src/combat/humanoid.js` (Rig), branché sur Target/Bot/RemotePlayer/ProxyActor. Vérifié : build, partie solo simulée sans erreur, capture d'un bot. **Non testé** : multi en ligne avec le nouveau modèle, FPS, animation vue en mouvement, accroupi/glissade (non animés) |
+| I-b Modèles 3D humanoïdes (bots et joueurs) | 🔄 Écrit : `src/combat/humanoid.js` (Rig), branché sur Target/Bot/RemotePlayer/ProxyActor. Testé (simulation) : build, solo 60 s sans erreur, jambes qui oscillent, hitboxes tête/torse/jambes OK, à terre (échelle 0,5), tick 0,28 ms avec 11 bots, multi 2 onglets (client voit 17 acteurs animés, 0 erreur). **Non testé** : FPS réel, Bob vu marcher côté hôte (inconclusif), accroupi/glissade (non animés) |
 | I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | ⏳ |
 
 ## Réalisé (fichiers)
