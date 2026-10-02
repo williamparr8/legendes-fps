@@ -18,6 +18,7 @@ import { applySettings, settings, saveSettings } from './ui/settings.js';
 import { HostSession, ClientSession } from './net/session.js';
 import { ClientMatch } from './net/clientMatch.js';
 import { cleanCode } from './net/transport.js';
+import { InventoryPanel } from './ui/inventory.js';
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
@@ -45,14 +46,19 @@ export class Game {
     this.session = null; this.chatting = false;
     this.input.onLock = (l) => this.onLock(l);
     this.initChat();
+    this.inv = new InventoryPanel(this);
+    addEventListener('keydown', (e) => {
+      if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat && this.state === 'playing') this.inv.toggle(); }
+      else if (e.code === 'Escape' && this.inv.open) { this.inv.close(); this.ui.show('pause'); }
+    });
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
     if (invite) this.ui.show('online', { code: invite }); else this.ui.show('main');
     startLoop((dt) => this.update(dt), (a, dt) => this.render(a, dt), () => !!this.m && !!this.m.net);
   }
 
   onLock(locked) {
-    if (locked) { this.ui.hide(); this.hud.show(true); return; }
-    if (this.chatting) return;
+    if (locked) { this.inv.close(); this.ui.hide(); this.hud.show(true); return; }
+    if (this.chatting || this.inv.open) return;
     this.hud.show(false);
     if (this.state === 'playing') this.ui.show('pause');
   }

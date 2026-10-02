@@ -41,11 +41,16 @@ export class Inventory {
     if (!h.alive) return;
     for (const code in USE_KEYS) {
       if (!input.pressed[code]) continue;
-      const key = USE_KEYS[code], it = items.healing[key];
-      const needed = it.hp > 0 ? h.hp < h.maxHp : h.shield < h.maxShield;
-      if (this.heal[key] > 0 && needed) {
-        this.useKey = key; this.useT = this.useDur = it.time; player.useMul = 0.6;
-      }
+      this.startUse(USE_KEYS[code], player);
     }
+  }
+
+  // Démarre l'utilisation d'un soin si possible (touches 3/4/5 ou inventaire).
+  startUse(key, player) {
+    const it = items.healing[key], h = player.health;
+    const needed = it.hp > 0 ? h.hp < h.maxHp : h.shield < h.maxShield;
+    if (this.useKey || !h.alive || this.heal[key] <= 0 || !needed) return false;
+    this.useKey = key; this.useT = this.useDur = it.time; player.useMul = 0.6;
+    return true;
   }
 }

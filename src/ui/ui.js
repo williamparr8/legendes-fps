@@ -16,7 +16,7 @@ const MODES = {
 };
 const KEYS = [
   ['ZQSD / WASD', 'Déplacement'], ['Maj', 'Sprint'], ['Espace', 'Saut / escalade'], ['C / Ctrl', 'Accroupi ; en sprint : glissade'],
-  ['E', 'Ramasser · tyrolienne · réanimer (maintenir)'], ['Clic G / D', 'Tirer / viser'], ['R', 'Recharger'], ['1 / 2', 'Changer d\'arme'],
+  ['E', 'Ramasser · tyrolienne · réanimer (maintenir)'], ['Clic G / D', 'Tirer / viser'], ['R', 'Recharger'], ['Tab', 'Inventaire'], ['1 / 2', 'Changer d\'arme'],
   ['3 / 4 / 5', 'Seringue / kit médical / cellule de bouclier'], ['F / G', 'Habileté tactique / ultime'], ['Entrée', 'Chat (en ligne)'], ['Échap', 'Pause'],
 ];
 

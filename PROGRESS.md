@@ -34,6 +34,8 @@
 - Moins de collines (7 collines, hauteur max ~5 m au lieu de 15) ; tyroliennes : 4 tours dans les couloirs libres (x=±32), câble à 9,2 m, chaque ligne validée au chargement (relief/bâtiment/collision refusée) + garde-fou à l'exécution (`tickZip` lâche le joueur). Vérifié sur 7 graines : 0 collision, trajet complet de 172 m.
 - Rechargement animé (`viewmodel.js` : arme inclinée, chargeur éjecté/remplacé, armement final) ; ADS : arme plus petite et abaissée ; sniper : lunette plein écran avec réticule (`hud.js`, SVG). Testé par captures ; **sensations à la souris non testées**.
 
+- Inventaire (Tab) : `src/ui/inventory.js` — armes (équiper/lâcher), munitions (lâcher), soins (utiliser/lâcher) ; ne met pas le jeu en pause en ligne ; `Inventory.startUse`. Testé par simulation + capture ; **vrai Tab/pointer lock non testé**.
+
 ## À venir (priorité)
 0. **I-b** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
