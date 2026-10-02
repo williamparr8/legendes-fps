@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-02 — **Progression globale** : ~88 % (A–H écrites ; I optimisation à faire)
+**Date** : 2026-10-02 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles 3D des personnages en attente de confirmation)
 
 | Étape | État |
 |---|---|
@@ -12,7 +12,9 @@
 | F Bots | ✅ Écrit, vérifié par simulation (4 difficultés non comparées en détail) |
 | G Interface | ✅ Menus et HUD chargés dans le navigateur ; pointer lock / ressenti non testés |
 | H Multijoueur et salons | ✅ Testé : 2 onglets (BroadcastChannel) + vrai WebRTC/PeerJS (salon créé, rejoint, tirs, dégâts, butin, mort, résultats, retour au salon). Pas testé à plusieurs machines/NAT, ni à 3+ joueurs |
-| I Optimisation et finition | ⏳ |
+| I-a Visuel et relief (armes, munitions, terrain, bâtiments à étages) | ✅ Testé par simulation (escaliers, relief, partie solo, multi à 2 onglets, entraînement) ; rendu vérifié sur captures ; **pas testé sur GPU réel ni à la souris** |
+| I-b Modèles 3D réalistes (bots et joueurs) | ⏳ En attente de confirmation de l'utilisateur |
+| I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | ⏳ |
 
 ## Réalisé (fichiers)
 - **A** : `package.json`, `vite.config.js`, `.github/workflows/deploy.yml`, `start.bat`, `src/core/{loop,input,audio,hud}.js`.
@@ -26,10 +28,14 @@
 
 - **H** : `src/net/` — `transport.js` (PeerJS ou BroadcastChannel si l'URL contient `?local`), `session.js` (HostSession / ClientSession : salon, chat, snapshots 20 Hz, dégâts, butin, événements), `actors.js` (RemotePlayer côté hôte, ProxyActor côté client, NetHealth), `clientMatch.js`. `Match` accepte `cfg.humans` (humains répartis en escouades, places libres = bots) ; `game.js` : `start(cfg, net)` / `startClient` ; UI : écrans `online` et `lobby`, chat en jeu (Entrée).
 
+- **I-a** : `src/world/{terrain,skin,buildings,props,island,world}.js` — relief par carte de hauteurs (`Heightfield`, collines jusqu'à ~15 m, plat autour des bâtiments/tours/enceinte), `World.groundY`, rayon contre relief (`Colliders.rayGround`) ; bâtiments de 1 à 3 niveaux (petits 14–17 m, moyens 18–23, grands 25–31, hub central 26 m à 3 niveaux) avec fenêtres, portes, dalles, escaliers intérieurs, toit praticable à parapet, butin à chaque niveau ; arbres/rochers instanciés, conteneurs, montagnes lointaines, ciel, ombres du soleil (option, suit le joueur) ; matériaux procéduraux béton/bois/roche/tôle (`skin.js`). `src/combat/{models,viewmodel}.js` : 5 armes détaillées + mains, dessinées dans une scène à part (`Game.render` en 2 passes). `src/loot/{itemModels,loot}.js` : modèles d'objets + balises, butin avec hauteur `y` (aussi dans le réseau).
+
 ## À venir (priorité)
-1. **I** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
+0. **I-b (attendre l'accord de l'utilisateur)** : modèles 3D réalistes pour bots et joueurs (`Target`/`ProxyActor`/`RemotePlayer` utilisent aujourd'hui des boîtes ; hitboxes dans `zoneRay`).
+1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
 
 ## Problèmes connus / non testé
+- **I-a** : bots toujours au sol (aucun accès aux étages/toits : le butin d'étage est donc pour les humains) ; aucune limite de pente ; ~1000 boîtes de collision (0,5 ms/tick mesuré avec 11 bots, grille spatiale non faite) ; FPS réel non mesuré (navigateur de test sans GPU) → case « Ombres » dans Options si ça rame ; murs de Rempart et recul d'explosion non adaptés aux pentes ; lunette du sniper toujours absente.
 - **Non testé à la main** : verrouillage souris, sensations de tir/mouvement, rendu des effets, sons. Les menus se chargent, une partie démarre, le HUD se met à jour, aucune erreur hormis le pointer lock (refusé par le navigateur de test).
 - **Équilibrage** : parties de bots trop rapides (≈ 10 bots sur 11 éliminés en ~1 min) ; à ralentir en I.
 - Les bots **ne ramassent pas de butin** (ils naissent équipés, 1–2 soins) ; leur butin tombe à leur mort.
@@ -61,5 +67,5 @@
 - Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON (`weapons`, `legends`, `items`, `difficulty`) ; un acteur expose `team/health/hs/ray`.
 - Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin) ; fin → `Game.endMatch(res)` → écran résultats.
-- Prochaine tâche : **mise en ligne** (GitHub Pages, voir plus haut) puis test à plusieurs amis ; ensuite **étape I** (équilibrage, bots plus lents, effets/sons, minimap, lunette, parachutage). Bugs signalés par l'utilisateur : à recueillir.
+- Prochaine tâche : **I-b, seulement après confirmation de l'utilisateur** (modèles 3D réalistes bots/joueurs), puis I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a est commité mais PAS encore poussé). Bugs signalés par l'utilisateur : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).

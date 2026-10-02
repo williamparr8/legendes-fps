@@ -8,6 +8,7 @@ export class Colliders {
     this.b = new Float32Array(6 * 512);
     this.hitTop = 0;
     this.hitBottom = 0;
+    this.terrain = null; // relief (Heightfield) ; sans relief : sol plat à y = 0
   }
   add(x0, y0, z0, x1, y1, z1) {
     if ((this.n + 1) * 6 > this.b.length) {
@@ -30,11 +31,39 @@ export class Colliders {
       const t = rayAabb(ox, oy, oz, dx, dy, dz, b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4], b[o + 5], best);
       if (t >= 0 && t < best) { best = t; hit = true; }
     }
-    if (dy < 0 && oy > 0) {
+    if (this.terrain) {
+      const t = this.rayGround(ox, oy, oz, dx, dy, dz, best);
+      if (t >= 0 && t < best) { best = t; hit = true; }
+    } else if (dy < 0 && oy > 0) {
       const t = -oy / dy;
       if (t < best) { best = t; hit = true; }
     }
     return hit ? best : -1;
+  }
+
+  // Rayon contre le relief : pas de 1 m puis dichotomie. Un rayon qui part sous le sol ne le touche pas.
+  rayGround(ox, oy, oz, dx, dy, dz, maxT) {
+    const T = this.terrain, top = T.max + 0.01;
+    if (oy > top && dy >= 0) return -1;
+    let t = 0;
+    if (oy > top) { t = (oy - top) / -dy; if (t >= maxT) return -1; }
+    let prev = t;
+    if (oy + dy * t - T.at(ox + dx * t, oz + dz * t) < 0) return -1;
+    while (t < maxT) {
+      t = Math.min(maxT, t + 1);
+      const y = oy + dy * t;
+      if (y - T.at(ox + dx * t, oz + dz * t) < 0) {
+        let a = prev, b = t;
+        for (let k = 0; k < 6; k++) {
+          const m = (a + b) / 2;
+          if (oy + dy * m - T.at(ox + dx * m, oz + dz * m) < 0) b = m; else a = m;
+        }
+        return b;
+      }
+      if (y > top && dy >= 0) return -1;
+      prev = t;
+    }
+    return -1;
   }
   // Cylindre ≈ AABB (x±r, y..y+h, z±r). Renseigne hitTop/hitBottom des boîtes touchées.
   query(x, y, z, r, h) {

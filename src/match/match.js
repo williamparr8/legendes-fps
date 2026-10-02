@@ -50,8 +50,8 @@ export class Match {
     this.squads = []; this.bots = [];
 
     shuffle(world.lootPoints, r);
-    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || 170);
-    for (let i = 0; i < nLoot; i++) loot.spawn(loot.roll(cfg.weapons), world.lootPoints[i][0], world.lootPoints[i][1]);
+    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || 260);
+    for (let i = 0; i < nLoot; i++) loot.spawn(loot.roll(cfg.weapons), world.lootPoints[i][0], world.lootPoints[i][1], undefined, world.lootPoints[i][2]);
 
     // Échantillonnage du point le plus éloigné : escouades bien réparties sur la carte.
     const size = cfg.mode === 'solo' ? 1 : cfg.squadSize;
@@ -115,9 +115,9 @@ export class Match {
     this.addFeed(this.name(att) + ' ✕ ' + t.name);
     if (att && att.isHuman && t !== att && t.team !== att.team) { if (att === combat.pp) this.stats.kills++; else att.kills++; }
     if (t.isBot) {
-      loot.drop(t.x, t.z, 3, this.cfg.weapons);
-      if (t.wid) loot.spawnWeapon(t.wid, t.x + 0.6, t.z);
-    } else if (t === combat.pp || t.isRemote) loot.drop(t.x, t.z, 2, this.cfg.weapons);
+      loot.drop(t.x, t.z, 3, this.cfg.weapons, t.y);
+      if (t.wid) loot.spawnWeapon(t.wid, t.x + 0.6, t.z, t.y);
+    } else if (t === combat.pp || t.isRemote) loot.drop(t.x, t.z, 2, this.cfg.weapons, t.y);
   }
 
   tick(dt) {

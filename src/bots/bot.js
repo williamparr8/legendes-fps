@@ -19,6 +19,7 @@ export class Bot extends Target {
   constructor(ctx, x, z, team, o) {
     super(ctx.scene, x, z, team);
     this.ctx = ctx; this.isBot = true; this.noRespawn = true;
+    this.y = ctx.world.groundY(x, z);
     this.name = o.name; this.squad = o.squad; this.index = o.index || 0;
     this.diff = diffs[o.difficulty]; this.legend = o.legend; this.wid = o.weapon; this.def = wdefs[o.weapon];
     this.mag = this.def.mag; this.reloadT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.aimHead = false;
@@ -262,11 +263,13 @@ export class Bot extends Target {
     if (!c.query(nx, this.y, this.z, R, H)) this.x = nx; else this.tryStep(c, nx, this.z);
     const nz = this.z + this.vz * dt;
     if (!c.query(this.x, this.y, nz, R, H)) this.z = nz; else this.tryStep(c, this.x, nz);
+    const wasG = this.grounded;
     this.vy -= 24 * dt;
     const ny = this.y + this.vy * dt;
     if (c.query(this.x, ny, this.z, R, H)) { if (this.vy < 0) { this.y = c.hitTop; this.grounded = true; } else this.y = c.hitBottom - H - 0.001; this.vy = 0; }
     else { this.y = ny; this.grounded = false; }
-    if (this.y <= 0) { this.y = 0; if (this.vy < 0) this.vy = 0; this.grounded = true; }
+    const g = this.ctx.world.groundY(this.x, this.z);
+    if (this.y <= g || (wasG && this.vy <= 0 && this.y - g < 0.4)) { this.y = g; if (this.vy < 0) this.vy = 0; this.grounded = true; }
     // bloqué ? on recalcule le chemin
     if ((this.stuckT += dt) >= 1.2) {
       const moved = Math.hypot(this.x - this.lastPx, this.z - this.lastPz);

@@ -1,38 +1,39 @@
-import * as THREE from 'three';
 import items from './items.json';
+import { buildItemModel } from './itemModels.js';
 
-const N = 260;
-const geo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
-const mats = {};
-const mat = (c) => mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.35 }));
+const N = 400;
 
-// Objets au sol (pool). Ramassage avec E ; les armes remplacent l'arme tenue (l'ancienne tombe au sol).
+// Objets au sol (pool de 400 emplacements). Chaque emplacement crée à la demande un modèle par type d'objet (puis le réutilise).
+// Ramassage avec E (même étage : écart de hauteur < 2,4 m) ; les armes remplacent l'arme tenue (l'ancienne tombe au sol).
 export class LootField {
-  constructor(scene, rand = Math.random) {
-    this.rand = rand;
+  constructor(scene, rand = Math.random, groundY = () => 0) {
+    this.scene = scene; this.rand = rand; this.groundY = groundY;
     this.list = [];
-    for (let i = 0; i < N; i++) {
-      const m = new THREE.Mesh(geo, mats[0] || mat('#ffffff'));
-      m.visible = false;
-      scene.add(m);
-      this.list.push({ on: false, m, it: null, x: 0, z: 0, amount: 0, i, ti: -1 });
-    }
+    for (let i = 0; i < N; i++) this.list.push({ on: false, m: null, cache: {}, it: null, x: 0, y: 0, z: 0, amount: 0, i, ti: -1 });
     this.near = null;
     this.t = 0;
     this.dirty = new Set(); // emplacements modifiés depuis le dernier envoi réseau (hôte)
-    this.net = null;        // client : { pick(i), pickDone(i,on,amount), dropLoot(ti,x,z,amount) }
+    this.net = null;        // client : { pick(i), pickDone(i,on,amount), dropLoot(ti,x,z,amount,y) }
     this.pendT = 0;
   }
 
-  // Applique une liste [i, on, ti, x, z, amount] reçue de l'hôte.
+  // Active un emplacement avec le modèle de l'objet `ti`.
+  place(l, ti, x, y, z, amount) {
+    const it = items.table[ti];
+    if (l.m) l.m.visible = false;
+    l.m = l.cache[ti] || (l.cache[ti] = (() => { const g = buildItemModel(it); this.scene.add(g); return g; })());
+    l.on = true; l.it = it; l.ti = ti; l.x = x; l.y = y; l.z = z; l.amount = amount;
+    l.m.position.set(x, y + 0.3, z); l.m.visible = true;
+  }
+
+  hide(l) { l.on = false; if (l.m) l.m.visible = false; }
+
+  // Applique une liste [i, on, ti, x, z, amount, y] reçue de l'hôte.
   applyNet(entries) {
-    for (const [i, on, ti, x, z, amount] of entries) {
+    for (const [i, on, ti, x, z, amount, y] of entries) {
       const l = this.list[i];
       if (!l) continue;
-      if (!on) { l.on = false; l.m.visible = false; continue; }
-      const it = items.table[ti];
-      l.on = true; l.it = it; l.ti = ti; l.x = x; l.z = z; l.amount = amount;
-      l.m.material = mat(it.color); l.m.position.set(x, 0.4, z); l.m.visible = true;
+      if (!on) this.hide(l); else this.place(l, ti, x, y, z, amount);
     }
   }
 
@@ -46,22 +47,26 @@ export class LootField {
     return t[0];
   }
 
-  spawn(it, x, z, amount = it.amount) {
-    if (this.net) { this.net.dropLoot(items.table.indexOf(it), x, z, amount); return null; }
+  spawn(it, x, z, amount = it.amount, y = this.groundY(x, z)) {
+    const ti = items.table.indexOf(it);
+    if (this.net) { this.net.dropLoot(ti, x, z, amount, y); return null; }
     for (const l of this.list) {
       if (l.on) continue;
-      l.on = true; l.it = it; l.x = x; l.z = z; l.amount = amount; l.ti = items.table.indexOf(it); this.dirty.add(l.i);
-      l.m.material = mat(it.color); l.m.position.set(x, 0.4, z); l.m.visible = true;
+      this.place(l, ti, x, y, z, amount);
+      this.dirty.add(l.i);
       return l;
     }
     return null;
   }
 
-  spawnWeapon(key, x, z) { return this.spawn(items.table.find((e) => e.kind === 'weapon' && e.key === key), x, z); }
+  spawnWeapon(key, x, z, y) { return this.spawn(items.table.find((e) => e.kind === 'weapon' && e.key === key), x, z, undefined, y); }
 
   // Butin lâché par un joueur/bot éliminé.
-  drop(x, z, count, weapons) {
-    for (let i = 0; i < count; i++) this.spawn(this.roll(weapons), x + (this.rand() - 0.5) * 1.8, z + (this.rand() - 0.5) * 1.8);
+  drop(x, z, count, weapons, y) {
+    for (let i = 0; i < count; i++) {
+      const px = x + (this.rand() - 0.5) * 1.8, pz = z + (this.rand() - 0.5) * 1.8;
+      this.spawn(this.roll(weapons), px, pz, undefined, y === undefined ? undefined : Math.max(y, this.groundY(px, pz)));
+    }
   }
 
   tick(dt, player, inv, weapons, input) {
@@ -71,9 +76,9 @@ export class LootField {
     for (const l of this.list) {
       if (!l.on) continue;
       l.m.rotation.y += dt * 1.5;
-      l.m.position.y = 0.45 + Math.sin(this.t * 2 + l.x) * 0.06;
+      l.m.position.y = l.y + 0.3 + Math.sin(this.t * 2 + l.x) * 0.05;
       const dx = l.x - player.x, dz = l.z - player.z, d = dx * dx + dz * dz;
-      if (d < bd) { bd = d; best = l; }
+      if (d < bd && Math.abs(l.y - player.y) < 2.4) { bd = d; best = l; }
     }
     this.near = player.health.alive ? best : null;
     player.lootNear = !!this.near;
@@ -108,14 +113,14 @@ export class LootField {
       } else {
         const dropped = weapons.give(it.key);
         inv.add('ammo', weapons.defs[it.key].ammo, weapons.defs[it.key].mag * 2);
-        if (dropped) this.spawn(items.table.find((e) => e.kind === 'weapon' && e.key === dropped), player.x, player.z);
+        if (dropped) this.spawn(items.table.find((e) => e.kind === 'weapon' && e.key === dropped), player.x, player.z, undefined, player.y);
       }
-      l.on = false; l.m.visible = false; this.dirty.add(l.i);
+      this.hide(l); this.dirty.add(l.i);
       return;
     }
     const n = inv.add(it.kind, it.key, l.amount);
     if (n === 0) return;
     l.amount -= n; this.dirty.add(l.i);
-    if (l.amount <= 0) { l.on = false; l.m.visible = false; }
+    if (l.amount <= 0) this.hide(l);
   }
 }

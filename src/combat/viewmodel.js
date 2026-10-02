@@ -1,28 +1,30 @@
 import * as THREE from 'three';
+import { buildWeaponModel } from './models.js';
 
-const COLORS = { rifle: 0x445566, smg: 0x554466, shotgun: 0x665544, sniper: 0x334433, launcher: 0x664433 };
-// [longueur, épaisseur] du canon par arme
-const SHAPE = { rifle: [0.55, 0.07], smg: [0.4, 0.07], shotgun: [0.6, 0.09], sniper: [0.85, 0.05], launcher: [0.7, 0.14] };
+// Armes en vue subjective : modèles détaillés rendus dans une scène à part (profondeur effacée, FOV fixe, éclairage propre),
+// dessinée par-dessus le monde par Game.render.
+const SCALE = 0.62; // les modèles sont à taille réelle ; la vue subjective les réduit un peu
 
-// Armes en vue subjective : boîtes attachées à la caméra, dessinées par-dessus le monde.
 export class Viewmodel {
   constructor(camera, weapons) {
     this.w = weapons;
+    this.scene = new THREE.Scene();
+    this.cam = new THREE.PerspectiveCamera(58, camera.aspect, 0.02, 10);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.2));
+    const key = new THREE.DirectionalLight(0xfff0dc, 1.6);
+    key.position.set(-0.6, 1, 0.8);
+    this.scene.add(key);
     this.root = new THREE.Group();
-    camera.add(this.root);
+    this.root.scale.setScalar(SCALE);
+    this.scene.add(this.root);
     this.models = {};
-    this.flash = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffd060, depthTest: false }));
-    this.flash.renderOrder = 1000; this.flash.visible = false;
+    this.flash = new THREE.Group();
+    const fm = new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    for (const a of [0, Math.PI / 2]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), fm); p.rotation.z = a; this.flash.add(p); }
+    this.flash.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })));
+    this.flash.visible = false;
     for (const id of weapons.ids) {
-      const [len, th] = SHAPE[id] || [0.5, 0.07];
-      const mat = new THREE.MeshBasicMaterial({ color: COLORS[id] || 0x555555, depthTest: false });
-      const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.3), mat); body.position.set(0, 0, 0);
-      const barrel = new THREE.Mesh(new THREE.BoxGeometry(th, th, len), mat); barrel.position.set(0, 0.02, -0.15 - len / 2);
-      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.06), mat); grip.position.set(0, -0.1, 0.05);
-      g.add(body, barrel, grip);
-      g.traverse((o) => { o.renderOrder = 999; });
-      g.userData.muzzle = -0.15 - len;
+      const g = buildWeaponModel(id, true);
       g.visible = false;
       this.root.add(g);
       this.models[id] = g;
@@ -31,9 +33,10 @@ export class Viewmodel {
     this.cur = null;
   }
 
-  dispose(camera) { camera.remove(this.root); }
+  dispose() { this.scene.clear(); }
 
-  update(dt) {
+  update(dt, aspect) {
+    if (this.cam.aspect !== aspect) { this.cam.aspect = aspect; this.cam.updateProjectionMatrix(); }
     const w = this.w, id = w.id;
     if (this.cur !== id) {
       if (this.cur) this.models[this.cur].visible = false;
@@ -42,13 +45,15 @@ export class Viewmodel {
     }
     this.root.visible = !!id;
     if (!id) { this.flash.visible = false; return; }
-    const a = w.ads;
+    const a = w.ads, u = this.models[id].userData;
     const swapDrop = w.swap > 0 ? w.swap * 0.6 : 0;
     const reloadDrop = w.reload > 0 ? 0.18 : 0;
-    this.root.position.set(0.22 * (1 - a), -0.2 + 0.07 * a - swapDrop - reloadDrop, -0.45 + w.kick * 0.06);
+    // en ADS la ligne de visée (sightY) vient se centrer sur l'écran
+    this.root.position.set(0.17 * (1 - a), -0.17 * (1 - a) - u.sightY * SCALE * a - swapDrop - reloadDrop, -0.42 + w.kick * 0.05);
     this.root.rotation.set(w.kick * 0.05 + (w.reload > 0 ? -0.5 : 0), 0, 0);
     this.flash.visible = w.kick > 0.85;
-    this.flash.position.set(0, 0.02, this.models[id].userData.muzzle);
+    this.flash.position.set(0, 0.01, u.muzzle - 0.02);
+    this.flash.scale.setScalar(0.7 + Math.random() * 0.6);
     if (a >= 0.98 && id === 'sniper') this.root.visible = false; // lunette : on masque l'arme en ADS
   }
 }

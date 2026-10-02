@@ -24,7 +24,7 @@ export class Player {
   spawn() {
     this.health.reset();
     if (this.onSpawn) this.onSpawn();
-    this.x = this.sx; this.y = this.sy; this.z = this.sz;
+    this.x = this.sx; this.y = Math.max(this.sy, this.w.groundY(this.sx, this.sz)); this.z = this.sz;
     this.px = this.x; this.py = this.y; this.pz = this.z;
     this.vx = this.vy = this.vz = 0;
     this.yaw = this.syaw; this.pitch = 0;
@@ -134,7 +134,7 @@ export class Player {
     const wasGrounded = this.grounded;
     const preVy = this.vy;
     this.moveH(this.vx * dt, this.vz * dt);
-    this.moveV(dt);
+    this.moveV(dt, wasGrounded);
     if (!wasGrounded && this.grounded && preVy < -9) this.sfx.land(-preVy);
 
     // --- mantle / tyrolienne ---
@@ -181,7 +181,7 @@ export class Player {
     return true;
   }
 
-  moveV(dt) {
+  moveV(dt, wasGrounded) {
     const c = this.c, ny = this.y + this.vy * dt;
     if (c.query(this.x, ny, this.z, R, this.h)) {
       if (this.vy < 0) { this.y = c.hitTop; this.grounded = true; }
@@ -191,7 +191,9 @@ export class Player {
       this.y = ny;
       this.grounded = false;
     }
-    if (this.y <= 0) { this.y = 0; if (this.vy < 0) this.vy = 0; this.grounded = true; }
+    // Relief : on colle au sol (pentes montantes et descendantes) sauf pendant un saut / une impulsion.
+    const g = this.w.groundY(this.x, this.z);
+    if (this.y <= g || (wasGrounded && this.vy <= 0 && this.y - g < 0.4)) { this.y = g; if (this.vy < 0) this.vy = 0; this.grounded = true; }
   }
 
   // --- mantle ---

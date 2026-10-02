@@ -136,7 +136,7 @@ export class Abilities {
     const g = this.gases.find((x) => !x.on) || this.gases[0];
     g.on = true; g.team = this.actor.team; g.owner = this.owner; g.vis = false;
     g.x = this.ox + this.dx * this.hitT; g.z = this.oz + this.dz * this.hitT;
-    g.y = Math.max(0, this.oy + this.dy * this.hitT);
+    g.y = Math.max(this.cb.world.groundY(g.x, g.z), this.oy + this.dy * this.hitT);
     g.r = p.radius; g.t = p.duration; g.dps = p.dps;
     g.m.position.set(g.x, g.y, g.z); g.m.scale.setScalar(p.radius); g.m.visible = true;
     if (this.emit) this.emit(4, g.x, g.y, g.z, g.r, g.t);

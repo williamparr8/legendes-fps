@@ -2,7 +2,7 @@ import { MOVE } from '../player/config.js';
 import { setVolume } from '../core/audio.js';
 
 const KEY = 'legendes-fps-settings';
-export const settings = { sens: 1, fov: 90, volume: 0.7, name: '' };
+export const settings = { sens: 1, fov: 90, volume: 0.7, name: '', shadows: true };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* stockage indisponible */ }
 
 export function saveSettings() { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* ignoré */ } }

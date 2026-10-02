@@ -82,7 +82,8 @@ export const ULTIMATES = {
       if (t < 1) return false;
       const x = s.ox + s.dx * (t - 0.7), z = s.oz + s.dz * (t - 0.7);
       let y = s.oy + s.dy * (t - 0.7) - 1.6;
-      if (y < 0) y = 0;
+      const gy = s.cb.world.groundY(x, z);
+      if (y < gy) y = gy;
       if (!c.query(x, y, z, 0.4, 1.8)) {
         a.x = x; a.y = y; a.z = z; a.vx = a.vy = a.vz = 0; a.grounded = false;
         a.px = x; a.py = y; a.pz = z; // pas d'interpolation sur la téléportation

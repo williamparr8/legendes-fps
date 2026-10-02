@@ -27,7 +27,8 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
     document.body.prepend(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.05, 400);
+    this.camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.05, 900);
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.menuScene = new THREE.Scene();
     this.menuScene.background = new THREE.Color(0x0b0f14);
     addEventListener('resize', () => {
@@ -137,7 +138,8 @@ export class Game {
     const training = cfg.map === 'training';
     const scene = new THREE.Scene();
     scene.add(this.camera);
-    const world = training ? buildTestScene(scene) : buildIsland(scene, cfg.seed);
+    this.renderer.shadowMap.enabled = !training && settings.shadows;
+    const world = training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     player.allowRespawn = training;
@@ -145,7 +147,7 @@ export class Game {
     const abilities = new Abilities(combat, player, scene);
     abilities.setLegend(cfg.legend);
     abilities.allowSwitch = training;
-    const loot = new LootField(scene, world.rand || Math.random);
+    const loot = new LootField(scene, world.rand || Math.random, world.groundY);
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
     const m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match: null, cfg, net };
 
@@ -158,7 +160,7 @@ export class Game {
       inv.ammo.light = 120; inv.heal.syringe = 3; inv.heal.cell = 2;
       this.camera.fov = 90; player.spawn();
     } else {
-      m.nav = new NavGrid(world.colliders, HALF);
+      m.nav = new NavGrid(world.colliders, HALF, 1.5, world.groundY);
       combat.weapons.give('smg');
       inv.ammo.light = 90; inv.heal.syringe = 2; inv.heal.cell = 1;
       m.match = new Match({ scene, world, combat, abilities, nav: m.nav, loot, player, inv, net }, cfg, (res) => this.endMatch(res));
@@ -174,14 +176,15 @@ export class Game {
     this.dispose();
     const scene = new THREE.Scene();
     scene.add(this.camera);
-    const world = buildIsland(scene, msg.cfg.seed);
+    this.renderer.shadowMap.enabled = settings.shadows;
+    const world = buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     const combat = new Combat(scene, world, player, this.input, inv, {});
     combat.pp.name = msg.you.name;
     const abilities = new Abilities(combat, player, scene);
     abilities.setLegend(msg.you.legend);
-    const loot = new LootField(scene, Math.random);
+    const loot = new LootField(scene, Math.random, world.groundY);
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
     player.team = msg.you.team;
     player.sx = msg.you.x; player.sz = msg.you.z; player.syaw = msg.you.yaw; player.spawn();
@@ -248,8 +251,13 @@ export class Game {
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));
     this.input.mx = this.input.my = 0;
     m.player.getCamera(alpha, this.camera, dt);
-    m.viewmodel.update(dt);
+    m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
-    this.renderer.render(m.scene, this.camera);
+    if (m.world.sun) m.world.followSun(m.player.x, m.player.z);
+    const r = this.renderer;
+    r.render(m.scene, this.camera);
+    r.autoClear = false; r.clearDepth();
+    r.render(m.viewmodel.scene, m.viewmodel.cam);
+    r.autoClear = true;
   }
 }

@@ -1,7 +1,7 @@
 // Grille de navigation 2D (cases de 1,5 m) construite depuis les colliders + A* à 8 voisins.
 // Tous les tampons sont préalloués et partagés : une recherche à la fois, aucune allocation en jeu.
 export class NavGrid {
-  constructor(colliders, half = 120, cell = 1.5) {
+  constructor(colliders, half = 120, cell = 1.5, groundY = () => 0) {
     this.half = half; this.cell = cell;
     this.n = Math.ceil((2 * half) / cell);
     const N = this.n * this.n;
@@ -15,13 +15,15 @@ export class NavGrid {
     this.hf = new Float32Array(N * 4);
     this.hn = 0;
     this.rev = new Int32Array(2048);
-    this.build(colliders);
+    this.build(colliders, groundY);
   }
 
-  build(c) {
+  build(c, groundY) {
     const { half, cell, n, blocked } = this, m = 0.45, b = c.b;
     for (let i = 0, o = 0; i < c.n; i++, o += 6) {
-      if (b[o + 4] <= 0.6 || b[o + 1] >= 2.0 || b[o] > 1e5) continue; // marche franchissable / toit / emplacement vide
+      if (b[o] > 1e5) continue; // emplacement vide
+      const g = groundY((b[o] + b[o + 3]) / 2, (b[o + 2] + b[o + 5]) / 2);
+      if (b[o + 4] - g <= 0.6 || b[o + 1] - g >= 2.0) continue; // marche franchissable / étage ou toit
       const x0 = Math.max(0, Math.floor((b[o] - m + half) / cell)), x1 = Math.min(n - 1, Math.floor((b[o + 3] + m + half) / cell));
       const z0 = Math.max(0, Math.floor((b[o + 2] - m + half) / cell)), z1 = Math.min(n - 1, Math.floor((b[o + 5] + m + half) / cell));
       for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) blocked[z * n + x] = 1;

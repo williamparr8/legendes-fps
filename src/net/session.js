@@ -85,17 +85,17 @@ export class HostSession {
       case 'st': this.onState(ent, m); break;
       case 'pick': {
         const l = this.m && this.m.loot.list[m.i], r = ent.actor;
-        if (l && l.on && r && !r.health.dead && Math.hypot(l.x - r.x, l.z - r.z) < 6) ent.link.send({ t: 'pk', i: m.i });
+        if (l && l.on && r && !r.health.dead && Math.hypot(l.x - r.x, l.z - r.z) < 6 && Math.abs(l.y - r.y) < 3.5) ent.link.send({ t: 'pk', i: m.i });
         break;
       }
       case 'pk2': {
         const l = this.m && this.m.loot.list[m.i];
         if (!l) break;
-        if (!m.on) { l.on = false; l.m.visible = false; } else l.amount = m.amt;
+        if (!m.on) this.m.loot.hide(l); else l.amount = m.amt;
         this.m.loot.dirty.add(m.i);
         break;
       }
-      case 'drop': if (this.m && items.table[m.ti]) this.m.loot.spawn(items.table[m.ti], m.x, m.z, m.a); break;
+      case 'drop': if (this.m && items.table[m.ti]) this.m.loot.spawn(items.table[m.ti], m.x, m.z, m.a, m.y); break;
       case 'rv': { const t = this.byId && this.byId.get(m.id); if (t && t.health.downed) t.health.revived(); break; }
       case 'hl': {
         const t = this.byId && this.byId.get(m.id);
@@ -168,7 +168,7 @@ export class HostSession {
   sendFullLoot(ent) {
     if (!this.m) return;
     const lt = [];
-    for (const l of this.m.loot.list) if (l.on) lt.push([l.i, 1, l.ti, r1(l.x), r1(l.z), l.amount]);
+    for (const l of this.m.loot.list) if (l.on) lt.push([l.i, 1, l.ti, r1(l.x), r1(l.z), l.amount, r1(l.y)]);
     ent.link.send({ t: 'loot', lt });
   }
 
@@ -211,7 +211,7 @@ export class HostSession {
     };
     if (loot.dirty.size) {
       const lt = [];
-      for (const i of loot.dirty) { const l = loot.list[i]; lt.push(l.on ? [i, 1, l.ti, r1(l.x), r1(l.z), l.amount] : [i, 0]); }
+      for (const i of loot.dirty) { const l = loot.list[i]; lt.push(l.on ? [i, 1, l.ti, r1(l.x), r1(l.z), l.amount, r1(l.y)] : [i, 0]); }
       loot.dirty.clear();
       base.lt = lt;
     }
@@ -310,7 +310,7 @@ export class ClientSession {
     m.loot.net = {
       pick: (i) => this.send({ t: 'pick', i }),
       pickDone: (i, on, amt) => this.send({ t: 'pk2', i, on: on ? 1 : 0, amt }),
-      dropLoot: (ti, x, z, a) => this.send({ t: 'drop', ti, x: r1(x), z: r1(z), a }),
+      dropLoot: (ti, x, z, a, y) => this.send({ t: 'drop', ti, x: r1(x), z: r1(z), a, y: r1(y) }),
     };
     this.setReady();
   }
