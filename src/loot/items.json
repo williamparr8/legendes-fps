@@ -1,0 +1,23 @@
+{
+  "ammoCaps": { "light": 180, "shells": 36, "sniper": 24, "rocket": 12 },
+  "healCaps": { "syringe": 8, "medkit": 3, "cell": 4 },
+  "healing": {
+    "syringe": { "name": "Seringue", "time": 2, "hp": 25, "shield": 0 },
+    "medkit": { "name": "Kit médical", "time": 4, "hp": 100, "shield": 0 },
+    "cell": { "name": "Cellule de bouclier", "time": 3, "hp": 0, "shield": 50 }
+  },
+  "table": [
+    { "kind": "ammo", "key": "light", "amount": 40, "name": "Munitions légères", "color": "#f0c040", "w": 22 },
+    { "kind": "ammo", "key": "shells", "amount": 10, "name": "Cartouches", "color": "#e05030", "w": 8 },
+    { "kind": "ammo", "key": "sniper", "amount": 8, "name": "Munitions sniper", "color": "#40c070", "w": 5 },
+    { "kind": "ammo", "key": "rocket", "amount": 3, "name": "Roquettes", "color": "#d08030", "w": 3 },
+    { "kind": "heal", "key": "syringe", "amount": 2, "name": "Seringue", "color": "#60e0ff", "w": 14 },
+    { "kind": "heal", "key": "medkit", "amount": 1, "name": "Kit médical", "color": "#ffffff", "w": 6 },
+    { "kind": "heal", "key": "cell", "amount": 1, "name": "Cellule de bouclier", "color": "#4080ff", "w": 10 },
+    { "kind": "weapon", "key": "rifle", "amount": 1, "name": "Fusil d'assaut", "color": "#8899aa", "w": 9 },
+    { "kind": "weapon", "key": "smg", "amount": 1, "name": "Mitraillette", "color": "#aa88cc", "w": 9 },
+    { "kind": "weapon", "key": "shotgun", "amount": 1, "name": "Fusil à pompe", "color": "#cc9966", "w": 7 },
+    { "kind": "weapon", "key": "sniper", "amount": 1, "name": "Sniper", "color": "#66aa66", "w": 4 },
+    { "kind": "weapon", "key": "launcher", "amount": 1, "name": "Lance-roquettes", "color": "#cc6644", "w": 2 }
+  ]
+}

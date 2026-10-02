@@ -1,0 +1,163 @@
+{
+  "rifle": {
+    "name": "Fusil d'assaut",
+    "auto": true,
+    "dmg": 13,
+    "rpm": 800,
+    "mag": 28,
+    "reload": 2.1,
+    "spread": 0.01,
+    "adsSpread": 0.0025,
+    "bloom": 0.0008,
+    "bloomMax": 0.014,
+    "range": 250,
+    "headMult": 1.75,
+    "legMult": 0.9,
+    "adsFov": 72,
+    "adsSpeed": 0.75,
+    "adsTime": 0.15,
+    "recoil": {
+      "pitch": 0.0055,
+      "yaw": 0.003,
+      "recover": 5
+    },
+    "pattern": [
+      0,
+      0.4,
+      0.9,
+      0.5,
+      -0.2,
+      -0.8,
+      -0.5,
+      0.2,
+      0.7,
+      0.4
+    ],
+    "ammo": "light"
+  },
+  "smg": {
+    "name": "Mitraillette",
+    "auto": true,
+    "dmg": 10,
+    "rpm": 1000,
+    "mag": 36,
+    "reload": 1.8,
+    "spread": 0.018,
+    "adsSpread": 0.006,
+    "bloom": 0.001,
+    "bloomMax": 0.025,
+    "range": 150,
+    "headMult": 1.5,
+    "legMult": 0.9,
+    "adsFov": 78,
+    "adsSpeed": 0.85,
+    "adsTime": 0.12,
+    "recoil": {
+      "pitch": 0.0035,
+      "yaw": 0.0042,
+      "recover": 6
+    },
+    "pattern": [
+      0.2,
+      -0.5,
+      0.6,
+      -0.3,
+      0.8,
+      -0.7,
+      0.3,
+      -0.4
+    ],
+    "ammo": "light"
+  },
+  "shotgun": {
+    "name": "Fusil à pompe",
+    "auto": false,
+    "dmg": 9,
+    "pellets": 8,
+    "rpm": 70,
+    "mag": 6,
+    "reload": 2.8,
+    "spread": 0.05,
+    "adsSpread": 0.035,
+    "bloom": 0,
+    "bloomMax": 0,
+    "range": 40,
+    "headMult": 1.5,
+    "legMult": 0.9,
+    "adsFov": 80,
+    "adsSpeed": 0.8,
+    "adsTime": 0.15,
+    "recoil": {
+      "pitch": 0.03,
+      "yaw": 0.005,
+      "recover": 4
+    },
+    "pattern": [
+      0.5,
+      -0.5
+    ],
+    "ammo": "shells"
+  },
+  "sniper": {
+    "name": "Sniper",
+    "auto": false,
+    "dmg": 80,
+    "rpm": 40,
+    "mag": 5,
+    "reload": 3.2,
+    "spread": 0.02,
+    "adsSpread": 0.0001,
+    "bloom": 0,
+    "bloomMax": 0,
+    "range": 400,
+    "headMult": 2.2,
+    "legMult": 0.9,
+    "adsFov": 25,
+    "adsSpeed": 0.45,
+    "adsTime": 0.3,
+    "recoil": {
+      "pitch": 0.04,
+      "yaw": 0.006,
+      "recover": 3
+    },
+    "pattern": [
+      0.3,
+      -0.3
+    ],
+    "ammo": "sniper"
+  },
+  "launcher": {
+    "name": "Lance-roquettes",
+    "auto": false,
+    "dmg": 40,
+    "rpm": 60,
+    "mag": 3,
+    "reload": 3.5,
+    "spread": 0.004,
+    "adsSpread": 0.001,
+    "bloom": 0,
+    "bloomMax": 0,
+    "range": 300,
+    "headMult": 1,
+    "legMult": 1,
+    "adsFov": 80,
+    "adsSpeed": 0.8,
+    "adsTime": 0.2,
+    "recoil": {
+      "pitch": 0.02,
+      "yaw": 0.004,
+      "recover": 4
+    },
+    "pattern": [
+      0
+    ],
+    "projectile": {
+      "speed": 40,
+      "gravity": 5,
+      "life": 6,
+      "splashRadius": 4.5,
+      "splashDmg": 90
+    },
+    "ammo": "rocket"
+  }
+}

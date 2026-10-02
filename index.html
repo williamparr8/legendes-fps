@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Légendes FPS</title>
+<link rel="stylesheet" href="/src/ui/ui.css" />
+</head>
+<body>
+<div id="hud">
+  <div id="h-hurt"></div>
+  <div id="cross"></div><div id="h-hit">✕</div><div id="h-dmg"></div><div id="h-prompt"></div>
+  <div id="h-top"></div><div id="h-feed"></div><div id="h-squad"></div>
+  <div id="h-bars"><div class="bar"><i id="b-sh"></i></div><div class="bar"><i id="b-hp"></i></div></div>
+  <div id="h-abil"></div><div id="h-inv"></div><div id="h-ammo"></div><div id="h-wep"></div><div id="h-rev"><i></i></div>
+  <div id="h-state"></div><div id="h-speed"></div><div id="h-fps"></div>
+</div>
+<div id="chat"><div id="chat-log"></div><input id="chat-in" maxlength="200" placeholder="Message… (Entrée pour envoyer, Échap pour annuler)" autocomplete="off"></div>
+<div id="ui"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
