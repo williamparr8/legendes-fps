@@ -1,4 +1,5 @@
 import { Target } from '../combat/target.js';
+import legends from '../legends/legends.json';
 import { Health } from '../combat/health.js';
 
 export const r1 = (v) => Math.round(v * 10) / 10;
@@ -44,6 +45,7 @@ export class RemotePlayer extends Target {
     this.combat = null;
     this.gx = x; this.gz = z;
     this.addTag(this.name);
+    if (ent.legend && legends[ent.legend]) this.rig.setAccent(legends[ent.legend].color);
   }
 
   sendDamage(amount, zone, attacker) {
@@ -72,6 +74,7 @@ export class RemotePlayer extends Target {
     this.group.position.set(this.gx, this.y, this.gz);
     this.group.rotation.y = this.yaw;
     this.group.scale.y = this.hs;
+    this.rig.animate(dt, this.gx, this.gz);
     if (this.markT > 0) this.markT -= dt;
     this.marker.visible = this.markT > 0 && !h.dead;
   }
@@ -121,6 +124,7 @@ export class ProxyActor extends Target {
     this.group.position.set(this.x, this.y, this.z);
     this.group.rotation.y = this.yaw;
     this.group.scale.y = this.hs;
+    this.rig.animate(dt, this.x, this.z);
     if (this.markT > 0) this.markT -= dt;
     this.marker.visible = this.markT > 0 && !h.dead;
   }

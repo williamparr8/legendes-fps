@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-02 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles 3D des personnages en attente de confirmation)
+**Date** : 2026-10-02 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes écrits, à valider)
 
 | Étape | État |
 |---|---|
@@ -13,7 +13,7 @@
 | G Interface | ✅ Menus et HUD chargés dans le navigateur ; pointer lock / ressenti non testés |
 | H Multijoueur et salons | ✅ Testé : 2 onglets (BroadcastChannel) + vrai WebRTC/PeerJS (salon créé, rejoint, tirs, dégâts, butin, mort, résultats, retour au salon). Pas testé à plusieurs machines/NAT, ni à 3+ joueurs |
 | I-a Visuel et relief (armes, munitions, terrain, bâtiments à étages) | ✅ Testé par simulation (escaliers, relief, partie solo, multi à 2 onglets, entraînement) ; rendu vérifié sur captures ; **pas testé sur GPU réel ni à la souris** |
-| I-b Modèles 3D réalistes (bots et joueurs) | ⏳ En attente de confirmation de l'utilisateur |
+| I-b Modèles 3D humanoïdes (bots et joueurs) | 🔄 Écrit : `src/combat/humanoid.js` (Rig), branché sur Target/Bot/RemotePlayer/ProxyActor. Vérifié : build, partie solo simulée sans erreur, capture d'un bot. **Non testé** : multi en ligne avec le nouveau modèle, FPS, animation vue en mouvement, accroupi/glissade (non animés) |
 | I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | ⏳ |
 
 ## Réalisé (fichiers)
@@ -31,7 +31,7 @@
 - **I-a** : `src/world/{terrain,skin,buildings,props,island,world}.js` — relief par carte de hauteurs (`Heightfield`, collines jusqu'à ~15 m, plat autour des bâtiments/tours/enceinte), `World.groundY`, rayon contre relief (`Colliders.rayGround`) ; bâtiments de 1 à 3 niveaux (petits 14–17 m, moyens 18–23, grands 25–31, hub central 26 m à 3 niveaux) avec fenêtres, portes, dalles, escaliers intérieurs, toit praticable à parapet, butin à chaque niveau ; arbres/rochers instanciés, conteneurs, montagnes lointaines, ciel, ombres du soleil (option, suit le joueur) ; matériaux procéduraux béton/bois/roche/tôle (`skin.js`). `src/combat/{models,viewmodel}.js` : 5 armes détaillées + mains, dessinées dans une scène à part (`Game.render` en 2 passes). `src/loot/{itemModels,loot}.js` : modèles d'objets + balises, butin avec hauteur `y` (aussi dans le réseau).
 
 ## À venir (priorité)
-0. **I-b (attendre l'accord de l'utilisateur)** : modèles 3D réalistes pour bots et joueurs (`Target`/`ProxyActor`/`RemotePlayer` utilisent aujourd'hui des boîtes ; hitboxes dans `zoneRay`).
+0. **I-b** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
 
 ## Problèmes connus / non testé
@@ -67,5 +67,5 @@
 - Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON (`weapons`, `legends`, `items`, `difficulty`) ; un acteur expose `team/health/hs/ray`.
 - Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin) ; fin → `Game.endMatch(res)` → écran résultats.
-- Prochaine tâche : **I-b, seulement après confirmation de l'utilisateur** (modèles 3D réalistes bots/joueurs), puis I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a est commité mais PAS encore poussé). Bugs signalés par l'utilisateur : à recueillir.
+- Prochaine tâche : valider I-b (retours utilisateur), puis I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a poussé et déployé le 2026-10-02 ; I-b commité localement, pas poussé). Bugs signalés par l'utilisateur : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).

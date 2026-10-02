@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { Target } from '../combat/target.js';
 import { REVIVE_TIME } from '../combat/health.js';
 import { LEGENDS } from '../legends/abilities.js';
@@ -9,7 +8,6 @@ const PREF = { rifle: 20, smg: 12, shotgun: 7, sniper: 45, launcher: 25 }; // di
 const BASE_SPEED = 5.4, R = 0.4, H = 1.8;
 // Quand un bot utilise une habileté : engage = ennemi en vue, hurt = sous le feu, heal = blessé au calme, revive = allié à terre.
 const USE = { pulse: 'never', revealAll: 'never', grenade: 'engage', wall: 'hurt', dash: 'never', heal: 'heal', mine: 'engage', rage: 'engage', fortress: 'hurt', teleport: 'never', revivePulse: 'revive', gas: 'engage' };
-const gunG = new THREE.BoxGeometry(0.08, 0.1, 0.5), gunM = new THREE.MeshLambertMaterial({ color: 0x222222 });
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; return d; };
 
@@ -33,8 +31,7 @@ export class Bot extends Target {
     this.healItems = 1 + ((Math.random() * 2) | 0); this.healT = 0;
     this.coverX = 0; this.coverZ = 0; this.coverT = 0; this.wantCover = false;
     this.wx = 0; this.wz = 0; this.lastPx = x; this.lastPz = z; this.stuckT = 0;
-    this.gun = new THREE.Mesh(gunG, gunM); this.gun.position.set(0.28, 1.2, -0.35);
-    this.group.add(this.gun);
+    if (LEGENDS[o.legend]) this.rig.setAccent(LEGENDS[o.legend].color);
     ctx.abilities.applyPassive(this, o.legend);
   }
 
