@@ -17,9 +17,9 @@ export class Heightfield {
     this.max = 0;
     const r = rng((seed | 0) * 7 + 13);
     const hills = [];
-    for (let i = 0; i < 16; i++) {
-      const s = 14 + r() * 26;
-      hills.push([(r() - 0.5) * 2 * (half - 8), (r() - 0.5) * 2 * (half - 8), s, Math.min(s * 0.4, 3 + r() * 7)]);
+    for (let i = 0; i < 7; i++) {
+      const s = 16 + r() * 24;
+      hills.push([(r() - 0.5) * 2 * (half - 8), (r() - 0.5) * 2 * (half - 8), s, Math.min(s * 0.25, 2 + r() * 3.5)]);
     }
     const L = 64, lat = new Float32Array(L * L);
     for (let i = 0; i < lat.length; i++) lat[i] = r();
@@ -37,8 +37,8 @@ export class Heightfield {
           const hl = hills[k], dx = x - hl[0], dz = z - hl[1];
           v += hl[3] * Math.exp(-(dx * dx + dz * dz) / (2 * hl[2] * hl[2]));
         }
-        v += (vn(x * 0.05, z * 0.05) - 0.5) * 3.4 + (vn(x * 0.17, z * 0.17) - 0.5) * 0.9;
-        if (v > 6) v = 6 + (v - 6) * 0.4; // compresse les cumuls de collines superposées
+        v += (vn(x * 0.05, z * 0.05) - 0.5) * 1.8 + (vn(x * 0.17, z * 0.17) - 0.5) * 0.5;
+        if (v > 3) v = 3 + (v - 3) * 0.4; // compresse les cumuls de collines superposées
         let f = 1;
         for (let k = 0; k < zones.length; k++) {
           const q = zones[k], d = Math.hypot(x - q[0], z - q[1]);

@@ -30,6 +30,10 @@
 
 - **I-a** : `src/world/{terrain,skin,buildings,props,island,world}.js` — relief par carte de hauteurs (`Heightfield`, collines jusqu'à ~15 m, plat autour des bâtiments/tours/enceinte), `World.groundY`, rayon contre relief (`Colliders.rayGround`) ; bâtiments de 1 à 3 niveaux (petits 14–17 m, moyens 18–23, grands 25–31, hub central 26 m à 3 niveaux) avec fenêtres, portes, dalles, escaliers intérieurs, toit praticable à parapet, butin à chaque niveau ; arbres/rochers instanciés, conteneurs, montagnes lointaines, ciel, ombres du soleil (option, suit le joueur) ; matériaux procéduraux béton/bois/roche/tôle (`skin.js`). `src/combat/{models,viewmodel}.js` : 5 armes détaillées + mains, dessinées dans une scène à part (`Game.render` en 2 passes). `src/loot/{itemModels,loot}.js` : modèles d'objets + balises, butin avec hauteur `y` (aussi dans le réseau).
 
+## Retours utilisateur (2026-10-02, après I-b)
+- Moins de collines (7 collines, hauteur max ~5 m au lieu de 15) ; tyroliennes : 4 tours dans les couloirs libres (x=±32), câble à 9,2 m, chaque ligne validée au chargement (relief/bâtiment/collision refusée) + garde-fou à l'exécution (`tickZip` lâche le joueur). Vérifié sur 7 graines : 0 collision, trajet complet de 172 m.
+- Rechargement animé (`viewmodel.js` : arme inclinée, chargeur éjecté/remplacé, armement final) ; ADS : arme plus petite et abaissée ; sniper : lunette plein écran avec réticule (`hud.js`, SVG). Testé par captures ; **sensations à la souris non testées**.
+
 ## À venir (priorité)
 0. **I-b** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).

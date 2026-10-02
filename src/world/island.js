@@ -40,7 +40,8 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     else if (k < 0.75) sites.push({ cx, cz, sx: 18 + r() * 5, sz: 18 + r() * 5, floors: 2 });
     else sites.push({ cx, cz, sx: 25 + r() * 6, sz: 25 + r() * 6, floors: 3 });
   }
-  const towers = [[-100, -50], [95, 40], [20, 100]];
+  // tours placées dans les couloirs libres entre les rangées de bâtiments (x = ±32, z = -100)
+  const towers = [[-32, -100], [-32, 72], [32, -100], [32, 72]];
   const zones = [];
   for (const s of sites) { const rf = Math.max(s.sx, s.sz) * 0.72 + 3; zones.push([s.cx, s.cz, rf, rf + 16]); }
   for (const [x, z] of towers) zones.push([x, z + 5, 12, 30]);
@@ -82,9 +83,6 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     poi.push([x, z + 8]); lootPoints.push([x, z, H + 0.4], [x + 1, z + 1, H + 0.4]);
     tops.push([x, z]);
   }
-  const top = 6.5 + 2.0;
-  w.zip(tops[0][0], top, tops[0][1], tops[1][0], top, tops[1][1]);
-  w.zip(tops[1][0], top, tops[1][1], tops[2][0], top, tops[2][1]);
 
   // ---- 4. couvertures : caisses, conteneurs, rochers ----
   const rocks = [];
@@ -126,6 +124,19 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     c.add(x - 0.3 * k, gy - 0.4, z - 0.3 * k, x + 0.3 * k, gy + 3.6 * k, z + 0.3 * k);
   }
   makeTrees(scene, trees);
+
+  // ---- 5b. tyroliennes entre tours : câble à 9,2 m (pieds du joueur à 7,25 m, au-dessus du plateau) ; une ligne qui
+  // toucherait relief, bâtiment ou arbre est refusée (échantillon tous les mètres)
+  const top = 9.2, feet = top - 1.95;
+  const clear = (a, b) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    for (let d = 0; d <= len; d += 1) {
+      const x = a[0] + (b[0] - a[0]) * d / len, z = a[1] + (b[1] - a[1]) * d / len;
+      if (hf.at(x, z) + 0.6 > feet || c.query(x, feet, z, 0.5, 1.9)) return false;
+    }
+    return true;
+  };
+  for (const [p, q] of [[0, 1], [2, 3], [0, 2], [1, 3]]) if (clear(tops[p], tops[q])) w.zip(tops[p][0], top, tops[p][1], tops[q][0], top, tops[q][1]);
 
   // ---- 6. jump pads vers le centre ----
   for (let i = 0; i < 4; i++) {

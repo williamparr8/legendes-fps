@@ -9,7 +9,7 @@ export class Weapons {
     this.slots = [null, null];
     this.mags = {};
     this.cur = 0;
-    this.cd = 0; this.reload = 0; this.swap = 0;
+    this.cd = 0; this.reload = 0; this.reloadTotal = 1; this.swap = 0;
     this.ads = 0; this.bloom = 0; this.shots = 0; this.since = 99;
     this.accP = 0; this.accY = 0;
     this.kick = 0; // animation viewmodel
@@ -40,7 +40,7 @@ export class Weapons {
   startReload(player) {
     const d = this.def;
     if (this.reload > 0 || !d || this.mag >= d.mag || this.reserve <= 0) return;
-    this.reload = d.reload * player.pv.reloadMul;
+    this.reload = this.reloadTotal = d.reload * player.pv.reloadMul;
   }
 
   tick(dt, input, player) {

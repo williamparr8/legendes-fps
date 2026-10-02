@@ -267,6 +267,8 @@ export class Player {
     this.y = z.ay + z.dy * this.zipT - M.zipHang;
     this.z = z.az + z.dz * this.zipT;
     const jump = pr.Space;
+    // garde-fou : relief ou bâtiment sur le trajet (hors extrémités) -> on lâche au lieu de traverser
+    if (this.zipT > 3 && this.zipT < z.len - 3 && (this.w.groundY(this.x, this.z) > this.y - 0.1 || this.w.colliders.query(this.x, this.y + 0.1, this.z, 0.3, 1.6))) end = true;
     if (end || jump || pr.KeyE) {
       const s = this.zipDir * this.zipSpeed;
       this.vx = z.dx * s; this.vy = z.dy * s + (jump ? M.zipJump : 0); this.vz = z.dz * s;
