@@ -36,6 +36,8 @@
 
 - Inventaire (Tab) : `src/ui/inventory.js` — armes (équiper/lâcher), munitions (lâcher), soins (utiliser/lâcher) ; ne met pas le jeu en pause en ligne ; `Inventory.startUse`. Testé par simulation + capture ; **vrai Tab/pointer lock non testé**.
 
+- Vérification finale : 12 graines (tyroliennes 0 collision), 3 parties de bots complètes sans erreur/NaN, 28 trajets de tyrolienne (2 sens) OK, câble le mieux aligné choisi aux tours à 2 lignes, butin des tours aux coins. **Connu** : lâcher puis ramasser une arme remplit son chargeur ; Tab/molette/pointer lock jamais testés avec une vraie souris ; certaines graines n'ont que 2 tyroliennes.
+
 ## À venir (priorité)
 0. **I-b** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).

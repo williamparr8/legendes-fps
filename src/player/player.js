@@ -237,22 +237,27 @@ export class Player {
   checkZip(fx, fz, pr) {
     if (this.zipCd > 0 || this.lootNear) return;
     const zs = this.w.zips, ey = this.y + this.eye;
+    // plusieurs câbles peuvent partir d'une même tour : on prend celui le mieux aligné avec le regard
+    let best = null, bt = 0, bs = -1;
     for (let i = 0; i < zs.length; i++) {
       const z = zs[i];
       let t = (this.x - z.ax) * z.dx + (ey - z.ay) * z.dy + (this.z - z.az) * z.dz;
       t = t < 0 ? 0 : t > z.len ? z.len : t;
       const ex = this.x - (z.ax + z.dx * t), ez = this.z - (z.az + z.dz * t), ey2 = ey - (z.ay + z.dy * t);
       if (ex * ex + ey2 * ey2 + ez * ez > M.zipReach * M.zipReach) continue;
-      this.prompt = 'E — Tyrolienne';
-      if (pr.KeyE) {
-        this.zip = z; this.zipT = t; this.zipSpeed = 3;
-        this.zipDir = fx * z.dx + fz * z.dz >= 0 ? 1 : -1;
-        this.state = 'tyrolienne'; this.sliding = false; this.grounded = false;
-        this.h = M.hStand;
-        this.vx = this.vy = this.vz = 0;
-        this.sfx.zip();
-      }
-      return;
+      const sc = Math.abs(fx * z.dx + fz * z.dz);
+      if (sc > bs) { bs = sc; best = z; bt = t; }
+    }
+    if (!best) return;
+    const z = best;
+    this.prompt = 'E — Tyrolienne';
+    if (pr.KeyE) {
+      this.zip = z; this.zipT = bt; this.zipSpeed = 3;
+      this.zipDir = fx * z.dx + fz * z.dz >= 0 ? 1 : -1;
+      this.state = 'tyrolienne'; this.sliding = false; this.grounded = false;
+      this.h = M.hStand;
+      this.vx = this.vy = this.vz = 0;
+      this.sfx.zip();
     }
   }
 
@@ -268,7 +273,7 @@ export class Player {
     this.z = z.az + z.dz * this.zipT;
     const jump = pr.Space;
     // garde-fou : relief ou bâtiment sur le trajet (hors extrémités) -> on lâche au lieu de traverser
-    if (this.zipT > 3 && this.zipT < z.len - 3 && (this.w.groundY(this.x, this.z) > this.y - 0.1 || this.w.colliders.query(this.x, this.y + 0.1, this.z, 0.3, 1.6))) end = true;
+    if (this.zipT > 5 && this.zipT < z.len - 5 && (this.w.groundY(this.x, this.z) > this.y - 0.1 || this.w.colliders.query(this.x, this.y + 0.1, this.z, 0.3, 1.6))) end = true;
     if (end || jump || pr.KeyE) {
       const s = this.zipDir * this.zipSpeed;
       this.vx = z.dx * s; this.vy = z.dy * s + (jump ? M.zipJump : 0); this.vz = z.dz * s;

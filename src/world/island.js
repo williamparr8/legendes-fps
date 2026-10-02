@@ -80,7 +80,7 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     w.box(x - 3.3, H, z - 3.3, x + 3.3, H + 0.4, z + 3.3, 0x5c6874, 0);
     for (let i = 0; i < 13; i++) w.box(x - 1.5, 0, z + 3 + 0.8 * (12 - i), x + 1.5, (i + 1) * 0.5, z + 3 + 0.8 * (13 - i), 0xa0aab4, 0);
     solids.push([x - 3.3, z - 3.3, x + 3.3, z + 3 + 10.4]);
-    poi.push([x, z + 8]); lootPoints.push([x, z, H + 0.4], [x + 1, z + 1, H + 0.4]);
+    poi.push([x, z + 8]); lootPoints.push([x - 2.4, z - 2.4, H + 0.4], [x + 2.4, z - 2.4, H + 0.4]); // aux coins : loin du câble, pour ne pas bloquer E (tyrolienne)
     tops.push([x, z]);
   }
 

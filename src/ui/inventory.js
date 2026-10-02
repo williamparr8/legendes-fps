@@ -59,10 +59,11 @@ export class InventoryPanel {
     const m = this.g.m, W = m.combat.weapons, inv = m.inv, p = m.player;
     const ox = p.x - Math.sin(p.yaw) * 0.9, oz = p.z - Math.cos(p.yaw) * 0.9;
     const drop = (kind, key, n) => m.loot.spawn(items.table.find((e) => e.kind === kind && e.key === key), ox, oz, n, p.y);
+    const ok = (l) => !!l || !!m.loot.net; // pool de butin plein (hors ligne) : on ne perd pas l'objet
     if (a === 'eq') { W.select(i); }
-    else if (a === 'dw') { const id = W.slots[i]; if (id) { W.slots[i] = null; delete W.mags[id]; W.reload = 0; W.ads = 0; drop('weapon', id, 1); } }
-    else if (a === 'da') { const per = items.table.find((e) => e.kind === 'ammo' && e.key === k).amount, n = Math.min(per, inv.ammo[k]); if (n > 0) { inv.ammo[k] -= n; drop('ammo', k, n); } }
-    else if (a === 'dh') { if (inv.heal[k] > 0) { inv.heal[k]--; drop('heal', k, 1); } }
+    else if (a === 'dw') { const id = W.slots[i]; if (id && ok(drop('weapon', id, 1))) { W.slots[i] = null; delete W.mags[id]; W.reload = 0; W.ads = 0; } }
+    else if (a === 'da') { const per = items.table.find((e) => e.kind === 'ammo' && e.key === k).amount, n = Math.min(per, inv.ammo[k]); if (n > 0 && ok(drop('ammo', k, n))) inv.ammo[k] -= n; }
+    else if (a === 'dh') { if (inv.heal[k] > 0 && ok(drop('heal', k, 1))) inv.heal[k]--; }
     else if (a === 'uh') { if (inv.startUse(k, p)) { this.toggle(false); return; } }
     this.render();
   }

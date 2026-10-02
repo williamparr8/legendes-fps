@@ -48,7 +48,7 @@ export class Game {
     this.initChat();
     this.inv = new InventoryPanel(this);
     addEventListener('keydown', (e) => {
-      if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat && this.state === 'playing') this.inv.toggle(); }
+      if (e.code === 'Tab') { if (this.state !== 'playing' || this.chatting) return; e.preventDefault(); if (!e.repeat) this.inv.toggle(); }
       else if (e.code === 'Escape' && this.inv.open) { this.inv.close(); this.ui.show('pause'); }
     });
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
