@@ -47,6 +47,7 @@ export class Weapons {
     const k = input.k, pr = input.pressed, d = this.def;
     if (!player.health.alive) { this.ads = 0; this.reload = 0; player.speedMul = 1; player.ads = 0; return; }
     for (let i = 0; i < SLOT_KEYS.length; i++) if (pr[SLOT_KEYS[i]]) this.select(i);
+    if (input.wheel && this.slots[1 - this.cur]) this.select(1 - this.cur); // molette : autre arme
     this.cd -= dt; this.since += dt;
     if (this.swap > 0) this.swap -= dt;
     if (this.kick > 0) this.kick = Math.max(0, this.kick - dt * 8);

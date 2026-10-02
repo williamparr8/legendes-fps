@@ -71,7 +71,7 @@
 ## REPRISE
 - Projet : `C:\Users\willi\projets\legendes-fps`. `src/game.js` orchestre menus↔partie ; `src/combat` (Combat/Weapons), `src/legends`, `src/loot`, `src/match` (Match/Zone), `src/bots` (Bot/NavGrid), `src/world` (island/testScene/collision), `src/ui`.
 - Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON (`weapons`, `legends`, `items`, `difficulty`) ; un acteur expose `team/health/hs/ray`.
-- Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
+- Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes ou molette, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin) ; fin → `Game.endMatch(res)` → écran résultats.
 - Prochaine tâche : valider I-b (retours utilisateur), puis I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a poussé et déployé le 2026-10-02 ; I-b commité localement, pas poussé). Bugs signalés par l'utilisateur : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).

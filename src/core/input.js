@@ -6,7 +6,7 @@ export class Input {
     this.canvas = canvas;
     this.k = Object.create(null);
     this.pressed = Object.create(null);
-    this.mx = 0;
+    this.mx = 0; this.wheel = 0; // molette : -1 / +1 pendant ce tick
     this.my = 0;
     this.locked = false;
     this.sens = 0.0022;
@@ -24,6 +24,7 @@ export class Input {
     });
     addEventListener('mousedown', (e) => { if (this.locked) { this.k['Mouse' + e.button] = true; this.pressed['Mouse' + e.button] = true; } });
     addEventListener('mouseup', (e) => { this.k['Mouse' + e.button] = false; });
+    addEventListener('wheel', (e) => { if (this.locked) { e.preventDefault(); this.wheel = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0; } }, { passive: false });
     addEventListener('contextmenu', (e) => { if (this.locked) e.preventDefault(); });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
@@ -34,6 +35,7 @@ export class Input {
   }
   lock() { this.canvas.requestPointerLock(); }
   endTick() {
+    this.wheel = 0;
     for (const c in this.pressed) this.pressed[c] = false;
   }
 }
