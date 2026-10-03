@@ -1,13 +1,7 @@
+import { OPTICS, OPTIC_STYLE } from './optics.js';
 const $ = (id) => document.getElementById(id);
 const HIT_COLORS = ['#fff', '#ffe040', '#ff3030'];
 const HEAL_NAMES = [['syringe', 'Seringue', 3], ['medkit', 'Kit', 4], ['cell', 'Cellule', 5]];
-
-// Réticule de lunette (viewBox 100×100, centré, cercle de rayon 37) : gros traits extérieurs, croix fine, repères de chute de balle.
-const SCOPE_SVG = '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;left:50%;top:50%;height:100vmin;width:100vmin;transform:translate(-50%,-50%)">'
-  + '<g stroke="#000" fill="none"><path stroke-width="1.1" d="M13 50H44M56 50H87M50 13V44M50 56V87"/>'
-  + '<path stroke-width="0.12" d="M44 50H56M50 44V56"/>'
-  + '<g stroke-width="0.25"><path d="M50 58H52M50 63H53M50 68H52M50 73H53M50 78H52"/><path d="M58 50V52M63 50V53M68 50V52M72 50V52M42 50V52M37 50V52M32 50V52"/></g></g>'
-  + '<circle cx="50" cy="50" r="0.35" fill="#e02020"/><circle cx="50" cy="50" r="37" fill="none" stroke="#000" stroke-width="0.6"/></svg>';
 
 export class Hud {
   constructor() {
@@ -17,10 +11,15 @@ export class Hud {
     this.sh = $('b-sh'); this.hp = $('b-hp'); this.ammo = $('h-ammo'); this.wep = $('h-wep');
     this.abil = $('h-abil'); this.top = $('h-top'); this.feed = $('h-feed'); this.squad = $('h-squad'); this.inv = $('h-inv');
     this.rev = $('h-rev'); this.revI = this.rev.firstElementChild;
-    this.scope = document.createElement('div');
-    this.scope.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;z-index:5;display:none;background:radial-gradient(circle at center,transparent 0,transparent 37vmin,#000 37.4vmin)';
-    this.scope.innerHTML = SCOPE_SVG;
-    this.root.appendChild(this.scope);
+    // viseurs en surimpression (un par arme), affichés selon l'ADS
+    this.optics = {};
+    for (const id in OPTICS) {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;z-index:5;display:none;' + (OPTIC_STYLE[id] || '');
+      el.innerHTML = OPTICS[id];
+      this.root.appendChild(el);
+      this.optics[id] = { el, v: -1 };
+    }
     this.last = {};
     this._acc = 0; this._n = 0;
   }
@@ -48,13 +47,12 @@ export class Hud {
     const w = cb.weapons, d = w.def;
     this.set(this.ammo, 'a', !d ? '—' : w.reload > 0 ? 'RECHARGE…' : w.mag + ' / ' + w.reserve);
     this.set(this.wep, 'w', d ? d.name : 'Aucune arme (ramassez-en une)');
-    // viseur : toujours visible (point rouge en ADS) sauf lunette sniper
-    const snip = w.id === 'sniper';
-    this.cross.style.opacity = snip ? 0.8 * (1 - w.ads) : 0.85;
-    const dot = w.ads > 0.5;
-    if (this.last.dot !== dot) { this.last.dot = dot; this.cross.style.background = dot ? '#ff3030' : 'transparent'; this.cross.style.width = this.cross.style.height = dot ? '5px' : '6px'; this.cross.style.margin = dot ? '-2.5px' : '-3px'; }
-    const sc = w.id === 'sniper' ? Math.max(0, (w.ads - 0.8) / 0.2) : 0;
-    if (sc !== this.last.sc) { this.last.sc = sc; this.scope.style.opacity = sc; this.scope.style.display = sc > 0 ? 'block' : 'none'; }
+    this.cross.style.opacity = 0.85 * (1 - w.ads); // en ADS le viseur de l'arme prend le relais
+    for (const id in this.optics) {
+      const o = this.optics[id], v = w.id !== id ? 0 : id === 'sniper' ? Math.max(0, (w.ads - 0.8) / 0.2) : Math.max(0, (w.ads - 0.3) / 0.7);
+      if (v === o.v) continue;
+      o.v = v; o.el.style.opacity = v; o.el.style.display = v > 0 ? 'block' : 'none';
+    }
     this.set(this.inv, 'i', HEAL_NAMES.map(([k, n, key]) => `${n} ${inv.heal[k]} [${key}]`).join(' · ') + ' — ' + `Lég. ${inv.ammo.light} · Cart. ${inv.ammo.shells} · Snip. ${inv.ammo.sniper} · Roq. ${inv.ammo.rocket}`);
 
     const hm = cb.hitmark > 0 ? Math.min(1, cb.hitmark / 0.18) : 0;

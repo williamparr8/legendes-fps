@@ -72,7 +72,7 @@ export class Viewmodel {
     // en ADS : arme plus petite, reculée et abaissée pour dégager la ligne de visée
     const sc = SCALE * (1 - 0.3 * a);
     this.root.scale.setScalar(sc);
-    this.root.position.set(0.17 * (1 - a) - 0.07 * k, -0.17 * (1 - a) - u.sightY * sc * a - 0.035 * a - swapDrop + 0.03 * k, -0.42 - 0.05 * a + w.kick * 0.05 + mx);
+    this.root.position.set(0.17 * (1 - a) - 0.07 * k, -0.17 * (1 - a) - u.sightY * sc * a - (id === 'sniper' ? 0.035 : 0.075) * a - swapDrop + 0.03 * k, -0.42 - 0.05 * a + w.kick * 0.05 + mx);
     this.root.rotation.set(w.kick * 0.05 + 0.3 * k, 0.4 * k, -0.5 * k + (rk ? Math.sin(rk * 18) * 0.015 * k : 0));
     this.flash.visible = w.kick > 0.85;
     this.flash.position.set(0, 0.01, u.muzzle - 0.02);
