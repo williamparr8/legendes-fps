@@ -19,7 +19,7 @@ export class Player {
     this.speedMul = 1; this.ads = 0; this.adsFov = 70;
     this.team = 0; this.dmgMul = 1; this.takenMul = 1; this.moveMul = 1; this.sinceDamage = 99;
     this.pv = { markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1 }; // passives
-    this.tp = 0; this.rig = null; this.cx = this.cy = this.cz = 0; // tp : 0 = 1re personne, 1 = 3e personne (chute libre / parachute)
+    this.tp = 0; this.rig = null; this.cx = this.cy = this.cz = 0; // tp : 0 = 1re personne, 1 = 3e personne (chute libre)
     this.onSpawn = null; this.allowRespawn = false; this.useMul = 1; this.lootNear = false;
     this.spawn();
     this.fov = M.fov;
@@ -310,7 +310,7 @@ export class Player {
 
   // Applique la pose interpolée à la caméra (rendu).
   getCamera(alpha, cam, dt) {
-    this.tp += ((this.phase >= 2 ? 1 : 0) - this.tp) * Math.min(1, dt * 5);
+    this.tp += ((this.phase === 2 ? 1 : 0) - this.tp) * Math.min(1, dt * 5);
     const x = this.cx = this.px + (this.x - this.px) * alpha, y = this.cy = this.py + (this.y - this.py) * alpha, z = this.cz = this.pz + (this.z - this.pz) * alpha;
     let ey = y + this.peye + (this.eye - this.peye) * alpha, cx = x, cz = z;
     if (this.tp > 0.01) { // caméra derrière et au-dessus du personnage
