@@ -253,13 +253,14 @@ export class Game {
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));
     this.input.mx = this.input.my = 0;
     m.player.getCamera(alpha, this.camera, dt);
+    m.player.third(m.scene, dt);
     m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
     if (m.world.sun) m.world.followSun(m.player.x, m.player.z);
     const r = this.renderer;
     r.render(m.scene, this.camera);
     r.autoClear = false; r.clearDepth();
-    r.render(m.viewmodel.scene, m.viewmodel.cam);
+    if (m.player.tp < 0.5) r.render(m.viewmodel.scene, m.viewmodel.cam);
     r.autoClear = true;
   }
 }

@@ -1,4 +1,6 @@
+import * as THREE from 'three';
 import { tickPlayerDrop } from '../match/drop.js';
+import { Rig } from '../combat/humanoid.js';
 import { MOVE as M } from './config.js';
 import { Health } from '../combat/health.js';
 
@@ -17,6 +19,7 @@ export class Player {
     this.speedMul = 1; this.ads = 0; this.adsFov = 70;
     this.team = 0; this.dmgMul = 1; this.takenMul = 1; this.moveMul = 1; this.sinceDamage = 99;
     this.pv = { markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1 }; // passives
+    this.tp = 0; this.rig = null; this.cx = this.cy = this.cz = 0; // tp : 0 = 1re personne, 1 = 3e personne (chute libre / parachute)
     this.onSpawn = null; this.allowRespawn = false; this.useMul = 1; this.lootNear = false;
     this.spawn();
     this.fov = M.fov;
@@ -292,13 +295,30 @@ export class Player {
     this.eye += (target - this.eye) * Math.min(1, dt * 14);
   }
 
+  // Modèle du joueur, visible en 3e personne (créé à la demande ; stance = phase + 3 pendant le largage).
+  third(scene, dt) {
+    if (this.tp < 0.3) { if (this.rig) this.rig.g.visible = false; return; }
+    if (!this.rig) {
+      const g = new THREE.Group(); scene.add(g);
+      this.rig = { g, r: new Rig(g, true), a: { health: this.health, stance: 0, wid: null, shots: 0, reloading: false, pitch: 0 } };
+    }
+    const R = this.rig, a = R.a;
+    a.stance = this.phase ? this.phase + 3 : 0; a.pitch = this.pitch;
+    R.g.visible = true; R.g.position.set(this.cx, this.cy, this.cz); R.g.rotation.y = this.yaw;
+    R.r.animate(dt, this.cx, this.cz, a);
+  }
+
   // Applique la pose interpolée à la caméra (rendu).
   getCamera(alpha, cam, dt) {
-    cam.position.set(
-      this.px + (this.x - this.px) * alpha,
-      this.py + (this.y - this.py) * alpha + this.peye + (this.eye - this.peye) * alpha,
-      this.pz + (this.z - this.pz) * alpha,
-    );
+    this.tp += ((this.phase >= 2 ? 1 : 0) - this.tp) * Math.min(1, dt * 5);
+    const x = this.cx = this.px + (this.x - this.px) * alpha, y = this.cy = this.py + (this.y - this.py) * alpha, z = this.cz = this.pz + (this.z - this.pz) * alpha;
+    let ey = y + this.peye + (this.eye - this.peye) * alpha, cx = x, cz = z;
+    if (this.tp > 0.01) { // caméra derrière et au-dessus du personnage
+      const cp = Math.cos(this.pitch), d = 4.5 * this.tp;
+      cx -= -Math.sin(this.yaw) * cp * d; cz -= -Math.cos(this.yaw) * cp * d; ey += -Math.sin(this.pitch) * d + 0.6 * this.tp;
+      ey = Math.max(ey, this.w.groundY(cx, cz) + 0.4);
+    }
+    cam.position.set(cx, ey, cz);
     cam.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     let tf = this.sliding ? M.fovSlide : this.state === 'sprint' || this.state === 'tyrolienne' || this.phase === 2 ? M.fovSprint : M.fov;
     tf += (this.adsFov - tf) * this.ads;
