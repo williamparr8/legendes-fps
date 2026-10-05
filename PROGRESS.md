@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-05 — **Progression globale** : ~93 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes articulés faits, à valider à l'écran réel)
+**Date** : 2026-10-05 — **Progression globale** : ~96 % (A–H écrites ; I-a visuel/relief ; I-b modèles articulés ; bots niveaux/butin/sauts ; largage — tout testé par simulation, rien à la souris/GPU réel)
 
 | Étape | État |
 |---|---|
@@ -14,7 +14,7 @@
 | H Multijoueur et salons | ✅ Testé : 2 onglets (BroadcastChannel) + vrai WebRTC/PeerJS (salon créé, rejoint, tirs, dégâts, butin, mort, résultats, retour au salon). Pas testé à plusieurs machines/NAT, ni à 3+ joueurs |
 | I-a Visuel et relief (armes, munitions, terrain, bâtiments à étages) | ✅ Testé par simulation (escaliers, relief, partie solo, multi à 2 onglets, entraînement) ; rendu vérifié sur captures ; **pas testé sur GPU réel ni à la souris** |
 | I-b Modèles 3D humanoïdes (bots et joueurs) | ✅ Écrit et testé par simulation : `src/combat/humanoid.js` (Rig articulé : bassin/cuisses/genoux/buste/tête/bras, poses debout/accroupi/glissade/à terre, arme réelle tenue à 2 mains, recul + flash, rechargement, casque/gilet/sac/épaulettes, accent de légende). Vérifié par captures (face/profil, 7 poses), solo 60 s sans erreur (0,69 ms/tick), multi 2 onglets (posture, arme, tirs, légende transmis hôte↔client). **Non testé** : FPS réel (GPU), rendu à la souris |
-| I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | ⏳ |
+| I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | 🔄 Parachutage/largage ✅ (voir Réalisé) ; reste : équilibrage, sons (vent, vaisseau), minimap, profilage |
 
 ## Réalisé (fichiers)
 - **A** : `package.json`, `vite.config.js`, `.github/workflows/deploy.yml`, `start.bat`, `src/core/{loop,input,audio,hud}.js`.
@@ -77,9 +77,10 @@
 - GitHub Pages : pousser sur `main` ; Settings → Pages → Source = **GitHub Actions** (workflow `deploy.yml`).
 
 ## REPRISE
-- Projet : `C:\Users\willi\projets\legendes-fps`. `src/game.js` orchestre menus↔partie ; `src/combat` (Combat/Weapons), `src/legends`, `src/loot`, `src/match` (Match/Zone), `src/bots` (Bot/NavGrid), `src/world` (island/testScene/collision), `src/ui`.
-- Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON (`weapons`, `legends`, `items`, `difficulty`) ; un acteur expose `team/health/hs/ray`.
-- Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes ou molette, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
-- Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin) ; fin → `Game.endMatch(res)` → écran résultats.
-- I-b modèles articulés faits (voir Réalisé) : en attente des retours visuels. Prochaine tâche : I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a poussé et déployé le 2026-10-02 ; I-b commité localement, pas poussé). Bugs signalés par l'utilisateur : à recueillir.
+- Projet : `C:Userswilliprojetslegendes-fps`. `src/game.js` orchestre menus↔partie ; `src/combat`, `src/legends`, `src/loot`, `src/match` (Match, Zone, drop.js), `src/bots`, `src/world`, `src/net`, `src/ui`.
+- Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON ; un acteur expose `x,y,z,team,health,hs,stance,ray()` ; monde déterministe depuis `cfg.seed`.
+- Touches : ZQSD, Maj, Espace (saut / saut du vaisseau / parachute), C, E, clics, R, 1/2 ou molette, 3/4/5 soins, F/G habiletés, X (se détacher du chef en vol), Tab inventaire, Entrée chat, Échap ; debug entraînement : L, Y, T, P.
+- Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin, vaisseau) ; tous partent du vaisseau sans arme (sauf entraînement) ; fin → `Game.endMatch(res)`.
+- Git : poussé jusqu'à 9b02a35 (bots niveaux/butin/sauts) ; **largage commité localement, NON poussé** (a92d2de + commit PROGRESS). Site : https://williamparr8.github.io/legendes-fps/.
+- Prochaines tâches possibles : C bots dans les bâtiments (navigation multi-étages), D apprentissage des bots (mémoire adaptative en localStorage), I-c (équilibrage, sons, minimap, profilage), option menu « largage », légende avec `pv.chute`. Retours utilisateur sur largage/niveaux : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).
