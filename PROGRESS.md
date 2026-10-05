@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-02 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes écrits, à valider)
+**Date** : 2026-10-05 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes écrits, à valider)
 
 | Étape | État |
 |---|---|
@@ -37,9 +37,11 @@
 - Inventaire (Tab) : `src/ui/inventory.js` — armes (équiper/lâcher), munitions (lâcher), soins (utiliser/lâcher) ; ne met pas le jeu en pause en ligne ; `Inventory.startUse`. Testé par simulation + capture ; **vrai Tab/pointer lock non testé**.
 
 - Vérification finale : 12 graines (tyroliennes 0 collision), 3 parties de bots complètes sans erreur/NaN, 28 trajets de tyrolienne (2 sens) OK, câble le mieux aligné choisi aux tours à 2 lignes, butin des tours aux coins. **Connu** : lâcher puis ramasser une arme remplit son chargeur ; Tab/molette/pointer lock jamais testés avec une vraie souris ; certaines graines n'ont que 2 tyroliennes.
+- Viseurs par arme (`src/core/optics.js`, SVG en surimpression, ADS) : holo (fusil), annulaire (mitraillette), cornes (pompe), coins (lance-roquettes), lunette graduée (sniper) ; viseur rond masqué en ADS ; traçante depuis le canon centré en ADS. Vérifié par captures ; sensations à la souris non testées.
+- Poussé sur GitHub : jusqu'à 0c1ec6b. **95f54b5 (viseurs) commité mais PAS poussé** au 2026-10-05.
 
 ## À venir (priorité)
-0. **I-b** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
+0. **I-b (en cours d'amélioration)** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
 
 ## Problèmes connus / non testé
