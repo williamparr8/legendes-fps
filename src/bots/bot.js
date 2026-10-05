@@ -5,7 +5,8 @@ import diffs from './difficulty.json';
 import wdefs from '../combat/weapons.json';
 
 const PREF = { rifle: 20, smg: 12, shotgun: 7, sniper: 45, launcher: 25 }; // distance de combat préférée
-const BASE_SPEED = 5.4, R = 0.4, H = 1.8;
+const BASE_SPEED = 5.4, R = 0.4, H = 1.8, JUMP = 8.2, HEAL_CAP = 4;
+const RANK = { launcher: 1, shotgun: 2, sniper: 2, smg: 3, rifle: 4 }; // un bot ne ramasse qu'une arme mieux classée
 // Quand un bot utilise une habileté : engage = ennemi en vue, hurt = sous le feu, heal = blessé au calme, revive = allié à terre.
 const USE = { pulse: 'never', revealAll: 'never', grenade: 'engage', wall: 'hurt', dash: 'never', heal: 'heal', mine: 'engage', rage: 'engage', fortress: 'hurt', teleport: 'never', revivePulse: 'revive', gas: 'engage' };
 const TAU = Math.PI * 2;
@@ -29,6 +30,7 @@ export class Bot extends Target {
     this.alertT = 0; this.thinkT = Math.random() * 0.2; this.strafeDir = Math.random() < 0.5 ? 1 : -1; this.strafeT = 1;
     this.tCd = 5 + Math.random() * 10; this.uCharge = Math.random() * 20;
     this.healItems = 1 + ((Math.random() * 2) | 0); this.healT = 0;
+    this.lootI = -1; this.lootT = 0; this.lootSince = 0; this.bad = []; // butin visé, minuteurs, objets inaccessibles
     this.coverX = 0; this.coverZ = 0; this.coverT = 0; this.wantCover = false;
     this.wx = 0; this.wz = 0; this.lastPx = x; this.lastPz = z; this.stuckT = 0;
     if (LEGENDS[o.legend]) this.rig.setAccent(LEGENDS[o.legend].color);
@@ -68,7 +70,7 @@ export class Bot extends Target {
       if (dist > d.view) continue;
       if (dist > 14 && this.alertT <= 0 && Math.abs(angDiff(Math.atan2(-dx, -dz), this.yaw)) > 1.05) continue;
       if (!cb.los(this, t)) continue;
-      const s = dist - (t === this.enemy ? 8 : 0);
+      const s = dist - (t === this.enemy ? 8 : 0) - (d.focus && t.health.hp + t.health.shield < 60 ? 12 * d.focus : 0); // les niveaux élevés achèvent les cibles faibles
       if (s < bs) { bs = s; best = t; }
     }
     if (best) {
@@ -87,9 +89,44 @@ export class Bot extends Target {
     return best;
   }
 
+  // ---------- butin ----------
+  wantItem(l) {
+    const it = l.it;
+    return it.kind === 'heal' ? this.healItems < HEAL_CAP : it.kind === 'weapon' && RANK[it.key] > RANK[this.wid];
+  }
+
+  // Vise l'objet utile le plus proche au niveau du sol, dans le rayon du niveau (escouade : 12 m max).
+  seekLoot() {
+    const list = this.ctx.loot.list, cur = list[this.lootI];
+    if (cur && cur.on && this.wantItem(cur)) return true;
+    this.lootI = -1;
+    if ((this.lootT -= 0.2) > 0) return false;
+    this.lootT = 1.2;
+    const r = this.squad.isFollower(this) ? Math.min(12, this.diff.loot) : this.diff.loot;
+    let bd = r * r;
+    for (let i = 0; i < list.length; i++) {
+      const l = list[i];
+      if (!l.on || !this.wantItem(l) || Math.abs(l.y - this.y) > 1.2) continue;
+      const dx = l.x - this.x, dz = l.z - this.z, d = dx * dx + dz * dz;
+      if (d < bd && !this.bad.includes(i)) { bd = d; this.lootI = i; this.lootSince = 0; }
+    }
+    return this.lootI >= 0;
+  }
+
+  takeLoot(l) {
+    const L = this.ctx.loot, it = l.it;
+    if (it.kind === 'heal') this.healItems = Math.min(HEAL_CAP, this.healItems + 1);
+    else {
+      const old = this.wid;
+      this.wid = it.key; this.def = wdefs[it.key]; this.mag = this.def.mag; this.reloadT = 0;
+      L.spawnWeapon(old, this.x + 0.6, this.z, this.y);
+    }
+    L.hide(l); L.dirty.add(l.i); this.lootI = -1;
+  }
+
   // ---------- décisions ----------
   think() {
-    const c = this.ctx, h = this.health, z = c.zone;
+    const c = this.ctx, h = this.health, z = c.zone, d = this.diff;
     this.perceive();
     const e = this.seen ? this.enemy : null;
     const dist = e ? Math.hypot(e.x - this.x, e.z - this.z) : 0;
@@ -101,12 +138,13 @@ export class Bot extends Target {
     if (e && !(rotate && dist > 18)) st = 'engage';
     else if (rotate) st = 'rotate';
     else if (mate && this.sinceSeen > 1.5) st = 'revive';
-    else if ((h.hp < 60 || h.shield < 10) && this.healItems > 0 && this.sinceSeen > 2.5) st = 'heal';
+    else if ((h.hp < d.healHp || h.shield < 10) && this.healItems > 0 && this.sinceSeen > d.healSafe) st = 'heal';
+    else if (this.sinceSeen > 3 && this.seekLoot()) st = 'loot';
     else if (this.sinceSeen < 8) st = 'search';
     else st = this.squad.isFollower(this) ? 'follow' : 'roam';
     if (st !== prev) { this.state = st; this.pathLen = 0; this.hasGoal = false; if (st === 'heal') this.healT = 3; }
 
-    this.wantCover = this.reloadT > 0 || (h.hp < 45 && h.shield < 10);
+    this.wantCover = (d.coverReload && this.reloadT > 0) || (h.hp < d.coverHp && h.shield < 10);
     switch (st) {
       case 'engage':
         if (this.wantCover && e) { if (this.coverT <= 0) this.findCover(e); }
@@ -114,6 +152,14 @@ export class Bot extends Target {
         break;
       case 'rotate': if (!this.hasGoal || this.goalT <= 0) { const p = z.randomSafe(); this.setGoal(p[0], p[1]); this.goalT = 8; } break;
       case 'revive': if (mate) this.setGoal(mate.x, mate.z); break;
+      case 'loot': {
+        const l = this.ctx.loot.list[this.lootI];
+        if (!l || !l.on) break;
+        if ((this.lootSince += 0.2) > 14) { this.bad.push(this.lootI); this.lootI = -1; break; } // inaccessible : on abandonne
+        this.setGoal(l.x, l.z);
+        if (Math.hypot(l.x - this.x, l.z - this.z) < 1.7 && Math.abs(l.y - this.y) < 1.5) this.takeLoot(l);
+        break;
+      }
       case 'search': this.setGoal(this.lastX, this.lastZ); break;
       case 'follow': {
         const s = this.squad, a = (this.index / 3) * TAU;
@@ -174,6 +220,7 @@ export class Bot extends Target {
       else {
         if ((this.strafeT -= dt) <= 0) { this.strafeDir = -this.strafeDir; this.strafeT = 0.8 + Math.random() * 1.8; }
         this.wx = -nz * this.strafeDir; this.wz = nx * this.strafeDir; moving = true;
+        if (this.grounded && dist > 5 && Math.random() < d.jump * dt) { this.vy = JUMP; this.grounded = false; } // saut de duel
         mx = this.wx * speed * d.strafe; mz = this.wz * speed * d.strafe;
       }
       if (moving && !mx && !mz) { mx = this.wx * speed; mz = this.wz * speed; }
@@ -250,7 +297,7 @@ export class Bot extends Target {
     this.cd = 60 / def.rpm; this.mag--;
     if (--this.burst <= 0) {
       this.burst = def.auto ? 3 + ((Math.random() * 5) | 0) : 1;
-      this.pause = (def.auto ? 0.35 : 0.2) + Math.random() * 0.8 * (1.4 - d.strafe * 0.5);
+      this.pause = ((def.auto ? 0.35 : 0.2) + Math.random() * 0.8 * (1.4 - d.strafe * 0.5)) * d.pause;
       this.aimHead = Math.random() < d.headChance;
     }
   }
@@ -281,5 +328,6 @@ export class Bot extends Target {
     if (!this.grounded) return;
     const top = c.hitTop, d = top - this.y;
     if (d > 0 && d <= 0.55 && !c.query(nx, top, nz, R, H)) { this.x = nx; this.z = nz; this.y = top; }
+    else if (d > 0.55 && d <= 1.4 && !c.query(nx, top, nz, R, H)) { this.vy = JUMP; this.grounded = false; } // saute par-dessus l'obstacle
   }
 }

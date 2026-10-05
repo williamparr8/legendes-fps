@@ -1,6 +1,6 @@
 {
-  "easy":   { "name": "Facile",    "react": 0.9, "aimErr": 0.060, "headChance": 0.05, "dmg": 0.55,  "speed": 0.85, "strafe": 0.3, "view": 45, "ability": 0.3,  "turn": 3 },
-  "normal": { "name": "Normal",    "react": 0.6, "aimErr": 0.035, "headChance": 0.12, "dmg": 0.7, "speed": 0.92, "strafe": 0.6, "view": 60, "ability": 0.6,  "turn": 5 },
-  "hard":   { "name": "Difficile", "react": 0.35, "aimErr": 0.020, "headChance": 0.2, "dmg": 0.85,  "speed": 1.0,  "strafe": 0.9, "view": 75, "ability": 0.85, "turn": 8 },
-  "elite":  { "name": "Élite",     "react": 0.2, "aimErr": 0.011, "headChance": 0.3,  "dmg": 1.0,  "speed": 1.05, "strafe": 1.0, "view": 90, "ability": 1.0,  "turn": 12 }
+  "easy":   { "name": "Facile",    "react": 1.1,  "aimErr": 0.075, "headChance": 0.03, "dmg": 0.5,  "speed": 0.8,  "strafe": 0.25, "view": 40,  "ability": 0.25, "turn": 2.5, "jump": 0,    "coverHp": 25, "coverReload": 0, "healHp": 40, "healSafe": 5,   "loot": 15, "focus": 0,   "pause": 1.5 },
+  "normal": { "name": "Normal",    "react": 0.7,  "aimErr": 0.045, "headChance": 0.1,  "dmg": 0.65, "speed": 0.9,  "strafe": 0.55, "view": 55,  "ability": 0.55, "turn": 4.5, "jump": 0.12, "coverHp": 45, "coverReload": 1, "healHp": 60, "healSafe": 3,   "loot": 25, "focus": 0,   "pause": 1 },
+  "hard":   { "name": "Difficile", "react": 0.35, "aimErr": 0.02,  "headChance": 0.22, "dmg": 0.9,  "speed": 1.0,  "strafe": 0.9,  "view": 75,  "ability": 0.85, "turn": 8,   "jump": 0.4,  "coverHp": 60, "coverReload": 1, "healHp": 70, "healSafe": 1.8, "loot": 40, "focus": 0.5, "pause": 0.6 },
+  "elite":  { "name": "Élite",     "react": 0.12, "aimErr": 0.007, "headChance": 0.4,  "dmg": 1.0,  "speed": 1.08, "strafe": 1.0,  "view": 100, "ability": 1.0,  "turn": 14,  "jump": 0.8,  "coverHp": 75, "coverReload": 1, "healHp": 80, "healSafe": 0.9, "loot": 60, "focus": 1,   "pause": 0.3 }
 }

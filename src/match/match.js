@@ -79,7 +79,7 @@ export class Match {
         }
         const wid = this.pickWeapon(cfg.weapons, r);
         const legend = cfg.legends[(r() * cfg.legends.length) | 0];
-        const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player },
+        const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player, loot },
           sp.x + ox, sp.z + oz, team, { name: 'Bot ' + (this.bots.length + 1), squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: wid, yaw: sp.yaw });
         b.id = 100 + this.bots.length;
         combat.add(b);
