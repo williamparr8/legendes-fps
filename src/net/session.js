@@ -1,5 +1,6 @@
 import { hostListen, connectTo, makeCode } from './transport.js';
 import { RemotePlayer, r1, r2 } from './actors.js';
+import { packInfo } from '../combat/humanoid.js';
 import items from '../loot/items.json';
 
 export const MAX_PLAYERS = 8;
@@ -203,7 +204,7 @@ export class HostSession {
     for (const t of cb.all) {
       const h = t.health, id = t === cb.pp ? 0 : t.id;
       if (h.dead) { a.push([id, 2]); continue; }
-      a.push([id, r2(t.x), r2(t.y), r2(t.z), r2(t === cb.pp ? m.player.yaw : t.yaw), r1(h.hp), r1(h.shield), h.downed ? 1 : 0, r1(h.downedHp)]);
+      a.push([id, r2(t.x), r2(t.y), r2(t.z), r2(t === cb.pp ? m.player.yaw : t.yaw), r1(h.hp), r1(h.shield), h.downed ? 1 : 0, r1(h.downedHp), packInfo(t, t === cb.pp ? this.legend : t.legend)]);
     }
     const base = {
       t: 's', a, al: match.playersAlive, sq: match.aliveSquads,
@@ -330,7 +331,7 @@ export class ClientSession {
       const p = cm.proxies.get(e[0]);
       if (!p) continue;
       if (e.length === 2) p.health.setState(0, 0, e[1], 0);
-      else { p.push(now, e[1], e[2], e[3], e[4]); p.health.setState(e[5], e[6], e[7], e[8]); }
+      else { p.push(now, e[1], e[2], e[3], e[4]); p.health.setState(e[5], e[6], e[7], e[8]); if (e[9] !== undefined) p.setInfo(e[9]); }
     }
     cm.applyZone(s.z);
     cm.playersAlive = s.al; cm.aliveSquads = s.sq; cm.stats.kills = s.k;
@@ -352,7 +353,7 @@ export class ClientSession {
     if (!this.m || ++this.n < SEND_EVERY) return;
     this.n = 0;
     const p = this.m.player, h = p.health;
-    const s = { t: 'st', x: r2(p.x), y: r2(p.y), z: r2(p.z), w: r2(p.yaw), p: r2(p.pitch), hp: r1(h.hp), sh: r1(h.shield), dn: h.downed ? 1 : 0, dd: h.dead ? 1 : 0, dh: r1(h.downedHp) };
+    const s = { t: 'st', x: r2(p.x), y: r2(p.y), z: r2(p.z), w: r2(p.yaw), p: r2(p.pitch), hp: r1(h.hp), sh: r1(h.shield), dn: h.downed ? 1 : 0, dd: h.dead ? 1 : 0, dh: r1(h.downedHp), i: packInfo(this.m.combat.pp, this.legend) };
     if (this.evq.length) { s.ev = this.evq; this.evq = []; }
     if (this.hitq.length) { s.hit = this.hitq; this.hitq = []; }
     this.link.send(s);

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { rayAabb, raySphere } from './ray.js';
 import { Health } from './health.js';
-import { Rig } from './humanoid.js';
+import { Rig, WIDS, LEGS, CROUCH_HS } from './humanoid.js';
+import legends from '../legends/legends.json';
 
 const markG = new THREE.BoxGeometry(0.85, 1.95, 0.6);
 const markMat = new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.4, depthTest: false });
@@ -26,7 +27,7 @@ export class Target {
   constructor(scene, x, z, team, friendly = team === 0) {
     this.x = x; this.y = 0; this.z = z; this.team = team;
     this.health = new Health(100, 50);
-    this.zone = -1; this.name = 'Cible';
+    this.zone = -1; this.name = 'Cible'; this.wid = null; this.shots = 0; this.tag = null;
     this.respawnT = 0; this.noRespawn = false; this.reviveT = 0;
     this.dmgMul = 1; this.takenMul = 1; this.moveMul = 1; this.pv = defaultPv();
     this.lastAttacker = null; this.sinceDamage = 99;
@@ -40,7 +41,7 @@ export class Target {
     scene.add(this.group);
   }
 
-  get hs() { return this.health.downed ? 0.5 : 1; }
+  get hs() { return this.health.downed ? 0.5 : this.stance ? CROUCH_HS : 1; }
 
   setFriendly(f) { this.rig.setFriendly(f); }
 
@@ -54,7 +55,24 @@ export class Target {
     g.fillStyle = '#fff'; g.fillText(name, 128, 34);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
     sp.scale.set(1.6, 0.3, 1); sp.position.y = 2.15; sp.renderOrder = 997;
-    this.group.add(sp);
+    this.group.add(sp); this.tag = sp;
+  }
+
+  // Apparence reçue du réseau (voir packInfo) : arme, posture, rechargement, tirs, légende.
+  setInfo(i) {
+    this.wid = WIDS[(i & 7) - 1] || null; this.stance = (i >> 3) & 3; this.reloading = !!((i >> 5) & 1); this.shots = (i >> 6) & 15;
+    const lg = LEGS[(i >> 10) - 1];
+    if (lg && lg !== this.legend) { this.legend = lg; this.rig.setAccent(legends[lg].color); }
+  }
+
+  // Pose du modèle, étiquette et marqueur (appelé par tick).
+  pose(dt, x, z) {
+    const hs = this.hs;
+    this.rig.animate(dt, x, z, this);
+    if (this.tag) this.tag.position.y = 0.55 + 1.6 * hs;
+    if (this.markT > 0) this.markT -= dt;
+    this.marker.visible = this.markT > 0 && !this.health.dead;
+    this.marker.scale.y = hs; this.marker.position.y = 0.95 * hs;
   }
 
   ray(ox, oy, oz, dx, dy, dz, maxT) { return zoneRay(this, ox, oy, oz, dx, dy, dz, maxT); }
@@ -69,9 +87,6 @@ export class Target {
       if (h.dead) this.respawnT = 5;
       if (h.downed && this.reviveT > 0) this.reviveT = Math.max(0, this.reviveT - dt * 0.5);
     }
-    this.group.scale.y = this.hs;
-    this.rig.animate(dt, this.x, this.z);
-    if (this.markT > 0) this.markT -= dt;
-    this.marker.visible = this.markT > 0 && !h.dead;
+    this.pose(dt, this.x, this.z);
   }
 }

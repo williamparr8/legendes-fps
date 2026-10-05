@@ -19,6 +19,7 @@ export class Combat {
     this.fx = new Fx(scene);
     this.proj = new Projectiles(scene, this);
     this.weapons = new Weapons(defs, this, inv);
+    this.pp.w = this.weapons;
     this.hitT = 0; this.hitTarget = null; this.hitZone = -1;
     this.onDown = null; this.onDeath = null; this.onDamage = null;
     this.hitmark = 0; this.hitKind = 0; this.dmgSum = 0; this.dmgT = 0; this.hurt = 0;
@@ -114,6 +115,7 @@ export class Combat {
 
   // Tir du joueur (appelé par Weapons.shoot).
   fire(p, d, spread) {
+    this.pp.shots++;
     const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), sp = Math.sin(p.pitch), cp = Math.cos(p.pitch);
     const fx = -sy * cp, fy = sp, fz = -cy * cp;
     const rx = cy, rz = -sy;
@@ -136,6 +138,7 @@ export class Combat {
   // Tir d'un bot vers (tx,ty,tz) avec une erreur de visée `err` (rayon du cône).
   botShot(b, d, tx, ty, tz, err, mul) {
     const ox = b.x, oy = b.y + b.eye * b.hs, oz = b.z;
+    b.shots++;
     let dx = tx - ox, dy = ty - oy, dz = tz - oz;
     const l0 = Math.hypot(dx, dy, dz) || 1;
     dx /= l0; dy /= l0; dz /= l0;

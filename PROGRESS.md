@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-05 — **Progression globale** : ~90 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes écrits, à valider)
+**Date** : 2026-10-05 — **Progression globale** : ~93 % (A–H écrites ; I-a visuel/relief fait ; I-b modèles humanoïdes articulés faits, à valider à l'écran réel)
 
 | Étape | État |
 |---|---|
@@ -13,7 +13,7 @@
 | G Interface | ✅ Menus et HUD chargés dans le navigateur ; pointer lock / ressenti non testés |
 | H Multijoueur et salons | ✅ Testé : 2 onglets (BroadcastChannel) + vrai WebRTC/PeerJS (salon créé, rejoint, tirs, dégâts, butin, mort, résultats, retour au salon). Pas testé à plusieurs machines/NAT, ni à 3+ joueurs |
 | I-a Visuel et relief (armes, munitions, terrain, bâtiments à étages) | ✅ Testé par simulation (escaliers, relief, partie solo, multi à 2 onglets, entraînement) ; rendu vérifié sur captures ; **pas testé sur GPU réel ni à la souris** |
-| I-b Modèles 3D humanoïdes (bots et joueurs) | 🔄 Écrit : `src/combat/humanoid.js` (Rig), branché sur Target/Bot/RemotePlayer/ProxyActor. Testé (simulation) : build, solo 60 s sans erreur, jambes qui oscillent, hitboxes tête/torse/jambes OK, à terre (échelle 0,5), tick 0,28 ms avec 11 bots, multi 2 onglets (client voit 17 acteurs animés, 0 erreur). **Non testé** : FPS réel, Bob vu marcher côté hôte (inconclusif), accroupi/glissade (non animés) |
+| I-b Modèles 3D humanoïdes (bots et joueurs) | ✅ Écrit et testé par simulation : `src/combat/humanoid.js` (Rig articulé : bassin/cuisses/genoux/buste/tête/bras, poses debout/accroupi/glissade/à terre, arme réelle tenue à 2 mains, recul + flash, rechargement, casque/gilet/sac/épaulettes, accent de légende). Vérifié par captures (face/profil, 7 poses), solo 60 s sans erreur (0,69 ms/tick), multi 2 onglets (posture, arme, tirs, légende transmis hôte↔client). **Non testé** : FPS réel (GPU), rendu à la souris |
 | I-c Optimisation et finition (équilibrage, sons, minimap, lunette, parachutage) | ⏳ |
 
 ## Réalisé (fichiers)
@@ -38,15 +38,17 @@
 
 - Vérification finale : 12 graines (tyroliennes 0 collision), 3 parties de bots complètes sans erreur/NaN, 28 trajets de tyrolienne (2 sens) OK, câble le mieux aligné choisi aux tours à 2 lignes, butin des tours aux coins. **Connu** : lâcher puis ramasser une arme remplit son chargeur ; Tab/molette/pointer lock jamais testés avec une vraie souris ; certaines graines n'ont que 2 tyroliennes.
 - Viseurs par arme (`src/core/optics.js`, SVG en surimpression, ADS) : holo (fusil), annulaire (mitraillette), cornes (pompe), coins (lance-roquettes), lunette graduée (sniper) ; viseur rond masqué en ADS ; traçante depuis le canon centré en ADS. Vérifié par captures ; sensations à la souris non testées.
-- Poussé sur GitHub : jusqu'à 0c1ec6b. **95f54b5 (viseurs) commité mais PAS poussé** au 2026-10-05.
+- Poussé sur GitHub : jusqu'à 0c1ec6b. **95f54b5 (viseurs), bd70574 (PROGRESS) et le commit I-b (modèles) commités mais PAS poussés** au 2026-10-05.
+- **I-b (2026-10-05)** : `Rig.animate(dt,x,z,acteur)` lit `wid/stance/reloading/shots/pitch/health.downed` de l'acteur ; `Target.pose()` (marqueur, étiquette) et `Target.setInfo(i)` ; apparence réseau compactée par `packInfo` (arme 3 bits, posture 2, rechargement 1, compteur de tirs 4, légende 3) = 1 entier de plus par acteur dans les snapshots (`a[9]`) et `i` dans l'état client. Plus d'échelle `group.scale.y` : `hs` = 1 / 0,556 (accroupi/glissade, comme le joueur) / 0,5 (à terre). Armes tenues = 1 maillage fusionné par arme (couleurs par sommet), ~16 maillages par acteur (jambes, buste, tête, bras, arme).
 
 ## À venir (priorité)
-0. **I-b (en cours d'amélioration)** : fait en version low-poly (`humanoid.js` : jambes/buste/bras/tête/casque/arme, couleur d'équipe, accent de légende, marche déduite du déplacement). À affiner selon retours : poses accroupi/à terre, arme selon l'arme réelle, accent des ProxyActor (légende inconnue côté client).
+0. **I-b : à valider par l'utilisateur** (retours visuels). Limites : hitboxes accroupi/glissade/à terre approximatives (tête du modèle jusqu'à ~0,2 m décalée de la sphère), pitch non transmis aux ProxyActor (clients : visée à l'horizontale), flash de tir à 20 Hz côté distant, mannequins d'entraînement sans arme.
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).
 
 ## Problèmes connus / non testé
 - **I-a** : bots toujours au sol (aucun accès aux étages/toits : le butin d'étage est donc pour les humains) ; aucune limite de pente ; ~1000 boîtes de collision (0,5 ms/tick mesuré avec 11 bots, grille spatiale non faite) ; FPS réel non mesuré (navigateur de test sans GPU) → case « Ombres » dans Options si ça rame ; murs de Rempart et recul d'explosion non adaptés aux pentes ; lunette du sniper toujours absente.
 - **Non testé à la main** : verrouillage souris, sensations de tir/mouvement, rendu des effets, sons. Les menus se chargent, une partie démarre, le HUD se met à jour, aucune erreur hormis le pointer lock (refusé par le navigateur de test).
+- **Modèles** : accroupi/glissade/à terre maintenant animés (poses) ; hitboxes de ces postures approximatives (voir ci-dessus) ; FPS réel avec ~12 acteurs non mesuré.
 - **Équilibrage** : parties de bots trop rapides (≈ 10 bots sur 11 éliminés en ~1 min) ; à ralentir en I.
 - Les bots **ne ramassent pas de butin** (ils naissent équipés, 1–2 soins) ; leur butin tombe à leur mort.
 - Bots limités au sol (pas de tours/toits) ; les murs de bouclier ne sont pas dans la grille de navigation (blocage détecté → nouveau chemin).
@@ -77,5 +79,5 @@
 - Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON (`weapons`, `legends`, `items`, `difficulty`) ; un acteur expose `team/health/hs/ray`.
 - Touches : ZQSD, Maj, Espace, C, E, clics, R, 1/2 armes ou molette, 3/4/5 soins, F/G habiletés, Échap pause ; debug (entraînement) : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin) ; fin → `Game.endMatch(res)` → écran résultats.
-- Prochaine tâche : valider I-b (retours utilisateur), puis I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a poussé et déployé le 2026-10-02 ; I-b commité localement, pas poussé). Bugs signalés par l'utilisateur : à recueillir.
+- I-b modèles articulés faits (voir Réalisé) : en attente des retours visuels. Prochaine tâche : I-c (équilibrage, bots plus lents, sons, minimap, lunette, parachutage). Site en ligne : https://williamparr8.github.io/legendes-fps/ (push sur main = redéploiement ; I-a poussé et déployé le 2026-10-02 ; I-b commité localement, pas poussé). Bugs signalés par l'utilisateur : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).

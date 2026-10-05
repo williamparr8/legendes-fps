@@ -35,6 +35,8 @@ export class Bot extends Target {
     ctx.abilities.applyPassive(this, o.legend);
   }
 
+  get reloading() { return this.reloadT > 0; }
+
   onHurt(attacker) {
     this.sinceDamage = 0; this.alertT = 4;
     if (attacker && !this.seen && attacker.team !== this.team) { this.lastX = attacker.x; this.lastZ = attacker.z; this.sinceSeen = 0; }

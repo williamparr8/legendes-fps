@@ -58,6 +58,7 @@ export class RemotePlayer extends Target {
     this.x = s.x; this.y = s.y; this.z = s.z; this.yaw = s.w; this.pitch = s.p;
     const h = this.health, wasDown = h.downed;
     h.setState(s.hp, s.sh, (s.dn ? 1 : 0) | (s.dd ? 2 : 0), s.dh);
+    if (s.i !== undefined) this.setInfo(s.i);
     if (!wasDown && h.downed && this.combat && this.combat.onDown) this.combat.onDown(this, this.lastAttacker);
   }
 
@@ -73,10 +74,7 @@ export class RemotePlayer extends Target {
     this.gx += (this.x - this.gx) * k; this.gz += (this.z - this.gz) * k;
     this.group.position.set(this.gx, this.y, this.gz);
     this.group.rotation.y = this.yaw;
-    this.group.scale.y = this.hs;
-    this.rig.animate(dt, this.gx, this.gz);
-    if (this.markT > 0) this.markT -= dt;
-    this.marker.visible = this.markT > 0 && !h.dead;
+    this.pose(dt, this.gx, this.gz);
   }
 }
 
@@ -123,9 +121,6 @@ export class ProxyActor extends Target {
     }
     this.group.position.set(this.x, this.y, this.z);
     this.group.rotation.y = this.yaw;
-    this.group.scale.y = this.hs;
-    this.rig.animate(dt, this.x, this.z);
-    if (this.markT > 0) this.markT -= dt;
-    this.marker.visible = this.markT > 0 && !h.dead;
+    this.pose(dt, this.x, this.z);
   }
 }
