@@ -2,6 +2,7 @@ import { Target } from '../combat/target.js';
 import { REVIVE_TIME } from '../combat/health.js';
 import { LEGENDS } from '../legends/abilities.js';
 import diffs from './difficulty.json';
+import { SHIP_ALT, SHIP_SPEED, CHUTE_ALT } from '../match/drop.js';
 import wdefs from '../combat/weapons.json';
 
 const PREF = { rifle: 20, smg: 12, shotgun: 7, sniper: 45, launcher: 25 }; // distance de combat préférée
@@ -20,8 +21,8 @@ export class Bot extends Target {
     this.ctx = ctx; this.isBot = true; this.noRespawn = true;
     this.y = ctx.world.groundY(x, z);
     this.name = o.name; this.squad = o.squad; this.index = o.index || 0;
-    this.diff = diffs[o.difficulty]; this.legend = o.legend; this.wid = o.weapon; this.def = wdefs[o.weapon];
-    this.mag = this.def.mag; this.reloadT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.aimHead = false;
+    this.diff = diffs[o.difficulty]; this.legend = o.legend; this.wid = o.weapon; this.def = o.weapon ? wdefs[o.weapon] : null;
+    this.mag = this.def ? this.def.mag : 0; this.reloadT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.aimHead = false;
     this.yaw = o.yaw || 0; this.pitch = 0; this.eye = 1.65;
     this.vx = this.vy = this.vz = 0; this.grounded = true; this.sliding = false;
     this.state = 'roam'; this.gx = x; this.gz = z; this.hasGoal = false; this.goalT = 0;
@@ -29,15 +30,18 @@ export class Bot extends Target {
     this.enemy = null; this.seen = false; this.seeFor = 0; this.sinceSeen = 99; this.lastX = x; this.lastZ = z;
     this.alertT = 0; this.thinkT = Math.random() * 0.2; this.strafeDir = Math.random() < 0.5 ? 1 : -1; this.strafeT = 1;
     this.tCd = 5 + Math.random() * 10; this.uCharge = Math.random() * 20;
-    this.healItems = 1 + ((Math.random() * 2) | 0); this.healT = 0;
+    this.healItems = o.weapon ? 1 + ((Math.random() * 2) | 0) : 0; this.healT = 0;
     this.lootI = -1; this.lootT = 0; this.lootSince = 0; this.bad = []; // butin visé, minuteurs, objets inaccessibles
     this.coverX = 0; this.coverZ = 0; this.coverT = 0; this.wantCover = false;
     this.wx = 0; this.wz = 0; this.lastPx = x; this.lastPz = z; this.stuckT = 0;
     if (LEGENDS[o.legend]) this.rig.setAccent(LEGENDS[o.legend].color);
     ctx.abilities.applyPassive(this, o.legend);
+    this.phase = 0; this.dropT = 0; this.tx = this.tz = 0; this.jumpD = 99; this.dropLead = null; // largage : 0 sol, 1 vaisseau, 2 chute, 3 parachute
+    if (ctx.drop) { this.phase = 1; this.pickLanding(ctx.drop.ship); }
   }
 
   get reloading() { return this.reloadT > 0; }
+  get stance() { return this.phase ? this.phase + 3 : 0; }
 
   onHurt(attacker) {
     this.sinceDamage = 0; this.alertT = 4;
@@ -52,6 +56,7 @@ export class Bot extends Target {
     this.group.rotation.y = this.yaw;
     this.sinceDamage += dt;
     if (h.downed) return;
+    if (this.phase) { this.dropTick(dt); return; }
     if (this.pv.regen > 0 && this.sinceDamage > this.pv.regenDelay && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + this.pv.regen * dt);
     this.tCd -= dt; this.uCharge += dt; this.alertT -= dt; this.sinceSeen += dt; this.goalT -= dt;
     if ((this.thinkT -= dt) <= 0) { this.thinkT = 0.18 + Math.random() * 0.08; this.think(); }
@@ -65,7 +70,7 @@ export class Bot extends Target {
     let best = null, bs = 1e9;
     for (let i = 0; i < all.length; i++) {
       const t = all[i];
-      if (t === this || t.team === this.team || !t.health.alive) continue;
+      if (t === this || t.team === this.team || !t.health.alive || t.stance >= 4) continue;
       const dx = t.x - this.x, dz = t.z - this.z, dist = Math.hypot(dx, dz);
       if (dist > d.view) continue;
       if (dist > 14 && this.alertT <= 0 && Math.abs(angDiff(Math.atan2(-dx, -dz), this.yaw)) > 1.05) continue;
@@ -89,9 +94,44 @@ export class Bot extends Target {
     return best;
   }
 
+  // ---------- largage ----------
+  // Point d'atterrissage à ciel ouvert (hors toits), à moins de 85 m de la trajectoire du vaisseau.
+  pickLanding(ship) {
+    const c = this.ctx.world.colliders, nav = this.ctx.nav, lp = this.ctx.world.lootPoints, gy = this.ctx.world.groundY;
+    for (let i = 0; i < 30; i++) {
+      const p = lp[(Math.random() * lp.length) | 0], x = p[0], z = p[1];
+      const perp = Math.abs((x - ship.sx) * ship.dz - (z - ship.sz) * ship.dx);
+      if (perp > 85 || Math.abs(p[2] - gy(x, z)) > 1 || !nav.isFree(x, z) || c.ray(x, p[2] + 1, z, 0, 1, 0, 80) >= 0) continue;
+      this.tx = x; this.tz = z; this.jumpD = 95 + Math.random() * 30; return;
+    }
+    this.tx = 0; this.tz = 0; this.jumpD = 100;
+  }
+
+  dropTick(dt) {
+    const D = this.ctx.drop, ship = D.ship, lead = this.dropLead;
+    if (this.phase === 1) {
+      this.x = ship.x; this.z = ship.z; this.y = SHIP_ALT - 6; this.grounded = false;
+      if (D.t >= ship.jumpT && (D.t >= ship.ejectT || (lead ? lead.stance >= 5 : Math.hypot(ship.x - this.tx, ship.z - this.tz) < this.jumpD))) {
+        this.phase = 2; this.vx = ship.dx * SHIP_SPEED; this.vz = ship.dz * SHIP_SPEED; this.vy = -2;
+      }
+      return;
+    }
+    let tx = this.tx, tz = this.tz;
+    if (lead) { tx = lead.x + Math.cos(this.index * 2.1) * 5; tz = lead.z + Math.sin(this.index * 2.1) * 5; } // l'escouade se pose autour du chef
+    const dx = tx - this.x, dz = tz - this.z, d = Math.hypot(dx, dz) || 1, alt = this.y - this.ctx.world.groundY(this.x, this.z);
+    const fall = this.phase === 2, f = fall && d < 40 ? 1 : 0, m = d > 3 ? 1 : 0.15;
+    const H = (fall ? 30 - 20 * f : 13) * m, V = fall ? -(28 + 27 * f) : -9, a = Math.min(1, dt * 2.5);
+    this.vx += (dx / d * H - this.vx) * a; this.vz += (dz / d * H - this.vz) * a; this.vy += (V - this.vy) * Math.min(1, dt * 4);
+    if (Math.hypot(this.vx, this.vz) > 1) this.yaw = Math.atan2(-this.vx, -this.vz);
+    if (fall && (alt < CHUTE_ALT || (lead && lead.stance === 6))) this.phase = 3;
+    this.physics(dt);
+    if (this.grounded) { this.phase = 0; this.vx = this.vz = this.vy = 0; }
+  }
+
   // ---------- butin ----------
   wantItem(l) {
     const it = l.it;
+    if (!this.wid) return it.kind === 'weapon';
     return it.kind === 'heal' ? this.healItems < HEAL_CAP : it.kind === 'weapon' && RANK[it.key] > RANK[this.wid];
   }
 
@@ -102,7 +142,7 @@ export class Bot extends Target {
     this.lootI = -1;
     if ((this.lootT -= 0.2) > 0) return false;
     this.lootT = 1.2;
-    const r = this.squad.isFollower(this) ? Math.min(12, this.diff.loot) : this.diff.loot;
+    const r = !this.wid ? Math.max(45, this.diff.loot) : this.squad.isFollower(this) ? Math.min(12, this.diff.loot) : this.diff.loot;
     let bd = r * r;
     for (let i = 0; i < list.length; i++) {
       const l = list[i];
@@ -119,7 +159,7 @@ export class Bot extends Target {
     else {
       const old = this.wid;
       this.wid = it.key; this.def = wdefs[it.key]; this.mag = this.def.mag; this.reloadT = 0;
-      L.spawnWeapon(old, this.x + 0.6, this.z, this.y);
+      if (old) L.spawnWeapon(old, this.x + 0.6, this.z, this.y);
     }
     L.hide(l); L.dirty.add(l.i); this.lootI = -1;
   }
@@ -135,7 +175,8 @@ export class Bot extends Target {
     const rotate = !z.safe(this.x, this.z);
     const mate = this.downedMate();
     let st;
-    if (e && !(rotate && dist > 18)) st = 'engage';
+    if (e && this.wid && !(rotate && dist > 18)) st = 'engage';
+    else if (!this.wid && this.seekLoot()) st = 'loot'; // sans arme : d'abord s'armer
     else if (rotate) st = 'rotate';
     else if (mate && this.sinceSeen > 1.5) st = 'revive';
     else if ((h.hp < d.healHp || h.shield < 10) && this.healItems > 0 && this.sinceSeen > d.healSafe) st = 'heal';
@@ -281,6 +322,7 @@ export class Bot extends Target {
 
   shoot(dt, e) {
     const d = this.diff, def = this.def;
+    if (!def) return;
     this.cd -= dt;
     if (this.reloadT > 0) { if ((this.reloadT -= dt) <= 0) this.mag = def.mag; return; }
     if (this.pause > 0) this.pause -= dt;

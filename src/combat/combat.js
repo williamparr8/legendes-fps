@@ -157,7 +157,7 @@ export class Combat {
     const R = pr.splashRadius, all = this.all;
     for (let i = 0; i < all.length; i++) {
       const t = all[i];
-      if (t.health.dead) continue;
+      if (t.health.dead || t.stance >= 4) continue;
       const px = t.x - x, py = t.y + 0.9 * t.hs - y, pz = t.z - z, d = Math.hypot(px, py, pz);
       if (d >= R) continue;
       const f = 1 - d / R;

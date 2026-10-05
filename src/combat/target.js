@@ -9,6 +9,7 @@ const markMat = new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true
 
 // Hitboxes par zone (0 tête, 1 torse, 2 jambes) pour tout acteur ayant x,y,z,hs. Renseigne a.zone.
 export function zoneRay(a, ox, oy, oz, dx, dy, dz, maxT) {
+  if (a.stance >= 4) { a.zone = -1; return -1; } // vaisseau / chute : intouchable
   const hs = a.hs, x = a.x, z = a.z, y = a.y;
   let best = -1, zone = -1, t = raySphere(ox, oy, oz, dx, dy, dz, x, y + 1.62 * hs, z, 0.2, maxT);
   if (t >= 0) { best = t; zone = 0; }
@@ -20,7 +21,7 @@ export function zoneRay(a, ox, oy, oz, dx, dy, dz, maxT) {
   return best;
 }
 
-export const defaultPv = () => ({ markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1 });
+export const defaultPv = () => ({ markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1, chute: 0 });
 
 // Cible/mannequin. Les bots en héritent. État à terre = hauteur ÷ 2.
 export class Target {
@@ -60,14 +61,16 @@ export class Target {
 
   // Apparence reçue du réseau (voir packInfo) : arme, posture, rechargement, tirs, légende.
   setInfo(i) {
-    this.wid = WIDS[(i & 7) - 1] || null; this.stance = (i >> 3) & 3; this.reloading = !!((i >> 5) & 1); this.shots = (i >> 6) & 15;
-    const lg = LEGS[(i >> 10) - 1];
+    this.wid = WIDS[(i & 7) - 1] || null; this.stance = (i >> 3) & 7; this.reloading = !!((i >> 6) & 1); this.shots = (i >> 7) & 15;
+    const lg = LEGS[(i >> 11) - 1];
     if (lg && lg !== this.legend) { this.legend = lg; this.rig.setAccent(legends[lg].color); }
   }
 
   // Pose du modèle, étiquette et marqueur (appelé par tick).
   pose(dt, x, z) {
-    const hs = this.hs;
+    const hs = this.hs, sh = this.stance === 4; // 4 = dans le vaisseau : invisible
+    if (sh) this.group.visible = false; else if (this.wasShip) this.group.visible = !this.health.dead;
+    this.wasShip = sh;
     this.rig.animate(dt, x, z, this);
     if (this.tag) this.tag.position.y = 0.55 + 1.6 * hs;
     if (this.markT > 0) this.markT -= dt;

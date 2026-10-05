@@ -157,10 +157,10 @@ export class Abilities {
     if (this.uCharge < L.ultimate.charge) this.uCharge += dt;
 
     if (alive) {
-      if (pr.KeyF && this.tCd <= 0 && TACTICALS[L.tactical.type](this, L.tactical) !== false) {
+      if (pr.KeyF && !a.phase && this.tCd <= 0 && TACTICALS[L.tactical.type](this, L.tactical) !== false) {
         this.tCd = L.tactical.cooldown * (L.tactical.trap ? a.pv.trapMul : 1);
       }
-      if (pr.KeyG && this.ultReady && ULTIMATES[L.ultimate.type](this, L.ultimate) !== false) this.uCharge = 0;
+      if (pr.KeyG && !a.phase && this.ultReady && ULTIMATES[L.ultimate.type](this, L.ultimate) !== false) this.uCharge = 0;
       const pv = a.pv, h = a.health;
       if (pv.regen > 0 && a.sinceDamage > pv.regenDelay && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + pv.regen * dt);
     }

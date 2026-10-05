@@ -1,5 +1,6 @@
 import { Bot } from '../bots/bot.js';
 import { Zone } from './zone.js';
+import { Ship, ZONE_DELAY } from './drop.js';
 import wdefs from '../combat/weapons.json';
 
 // Escouade : les bots suivent un humain vivant de l'escouade (l'ancre) ; sans humain, le chef (premier bot vivant) choisit les destinations.
@@ -47,6 +48,8 @@ export class Match {
     this.humans = [];
     this.zone = new Zone(scene, r, cfg.zone, world.half);
     ctx.zone = this.zone;
+    this.drop = ctx.drop = { ship: new Ship(scene, cfg.seed, world.half), t: 0, leader: null }; // tout le monde part du vaisseau
+    if (cfg.zone) this.zone.t += ZONE_DELAY;
     this.squads = []; this.bots = [];
 
     shuffle(world.lootPoints, r);
@@ -73,18 +76,18 @@ export class Match {
         if (hs[i]) {
           const h = hs[i];
           const m = h.local ? combat.pp : ctx.net.makeRemote(scene, h, team, sp.x + ox, sp.z + oz, sp.yaw);
-          if (h.local) combat.pp.name = h.name; else combat.add(m);
+          if (h.local) combat.pp.name = h.name; else { combat.add(m); m.stance = 4; }
           sq.members.push(m); this.humans.push(m); sq.hasHuman = true;
           continue;
         }
-        const wid = this.pickWeapon(cfg.weapons, r);
         const legend = cfg.legends[(r() * cfg.legends.length) | 0];
-        const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player, loot },
-          sp.x + ox, sp.z + oz, team, { name: 'Bot ' + (this.bots.length + 1), squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: wid, yaw: sp.yaw });
+        const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player, loot, drop: this.drop },
+          sp.x + ox, sp.z + oz, team, { name: 'Bot ' + (this.bots.length + 1), squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: null, yaw: sp.yaw });
         b.id = 100 + this.bots.length;
         combat.add(b);
         sq.members.push(b); this.bots.push(b);
       }
+      for (const m of sq.members) if (m.isBot) m.dropLead = sq.members[0] === m ? null : sq.members[0]; // chef de saut = premier membre (humain d'abord)
       this.squads.push(sq);
       return sq;
     };
@@ -93,6 +96,8 @@ export class Match {
     this.playerSquad = this.squads[0]; // l'hôte (ou le joueur local) est toujours le premier humain
     player.team = 0;
     player.sx = spawns[0].x; player.sz = spawns[0].z; player.syaw = spawns[0].yaw; player.spawn();
+    const lead0 = this.squads[0].members[0];
+    player.drop = this.drop; player.phase = 1; player.attached = lead0 !== combat.pp; this.drop.leader = lead0 === combat.pp ? null : lead0;
     this.aliveSquads = this.squads.length;
     this.total = this.squads.length;
 
@@ -125,6 +130,7 @@ export class Match {
     const { combat, nav } = this.ctx;
     this.t += dt;
     combat.matchT = this.t;
+    this.drop.t = this.t; this.drop.ship.at(this.t);
     for (const f of this.feed) f.t -= dt;
     while (this.feed.length && this.feed[0].t <= 0) this.feed.shift();
     this.zone.tick(dt, combat);

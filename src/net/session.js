@@ -207,7 +207,7 @@ export class HostSession {
       a.push([id, r2(t.x), r2(t.y), r2(t.z), r2(t === cb.pp ? m.player.yaw : t.yaw), r1(h.hp), r1(h.shield), h.downed ? 1 : 0, r1(h.downedHp), packInfo(t, t === cb.pp ? this.legend : t.legend)]);
     }
     const base = {
-      t: 's', a, al: match.playersAlive, sq: match.aliveSquads,
+      t: 's', mt: r1(match.t), a, al: match.playersAlive, sq: match.aliveSquads,
       z: [r1(zn.cx), r1(zn.cz), r1(zn.r), r1(zn.nx), r1(zn.nz), r1(zn.nr), zn.t > 1e8 ? 1e9 : r1(zn.t), zn.shrinking ? 1 : 0, zn.phase],
     };
     if (loot.dirty.size) {
@@ -333,6 +333,7 @@ export class ClientSession {
       if (e.length === 2) p.health.setState(0, 0, e[1], 0);
       else { p.push(now, e[1], e[2], e[3], e[4]); p.health.setState(e[5], e[6], e[7], e[8]); if (e[9] !== undefined) p.setInfo(e[9]); }
     }
+    if (s.mt !== undefined) cm.t += (s.mt - cm.t) * 0.3; // horloge du vaisseau
     cm.applyZone(s.z);
     cm.playersAlive = s.al; cm.aliveSquads = s.sq; cm.stats.kills = s.k;
     if (s.lt) m.loot.applyNet(s.lt);

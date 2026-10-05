@@ -13,9 +13,9 @@ export const WIDS = Object.keys(wdefs);
 export const LEGS = Object.keys(legends);
 export const CROUCH_HS = 1.0 / 1.8;
 
-// Apparence transmise par le réseau : arme (3 bits) | posture (2) | rechargement (1) | compteur de tirs (4) | légende (3).
+// Apparence transmise par le réseau : arme (3 bits) | posture (3 : 0-2 au sol, 4 vaisseau, 5 chute libre, 6 parachute) | rechargement (1) | compteur de tirs (4) | légende (3).
 export const packInfo = (a, legend) =>
-  (WIDS.indexOf(a.wid) + 1) | ((a.stance || 0) << 3) | ((a.reloading ? 1 : 0) << 5) | ((a.shots & 15) << 6) | ((LEGS.indexOf(legend) + 1) << 10);
+  (WIDS.indexOf(a.wid) + 1) | ((a.stance || 0) << 3) | ((a.reloading ? 1 : 0) << 6) | ((a.shots & 15) << 7) | ((LEGS.indexOf(legend) + 1) << 11);
 
 const C = new THREE.Color();
 function paint(g, c) {
@@ -47,11 +47,12 @@ const G = {
   sleeve: new THREE.BoxGeometry(0.12, 1, 0.12).translate(0, -0.5, 0),
   hand: new THREE.BoxGeometry(0.1, 0.1, 0.1),
   flash: new THREE.BoxGeometry(0.07, 0.07, 0.14),
+  canopy: new THREE.SphereGeometry(1.6, 12, 5, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1.5, 0.9, 1.5),
 };
 const lam = c => new THREE.MeshLambertMaterial({ color: c });
 const M = {
   friend: lam(0x4080e0), enemy: lam(0xd04040), skin: lam(SKIN), dark: lam(DARK),
-  vc: new THREE.MeshLambertMaterial({ vertexColors: true }), flash: new THREE.MeshBasicMaterial({ color: 0xffd070 }),
+  vc: new THREE.MeshLambertMaterial({ vertexColors: true }), canopy: new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide }), flash: new THREE.MeshBasicMaterial({ color: 0xffd070 }),
 };
 const accents = new Map();
 const accentMat = hex => {
@@ -79,6 +80,9 @@ const POSES = [
   [0.38, 0.12, 1.5, -2.1, -0.45], // accroupi
   [0.22, -0.05, 1.45, -0.15, 0.55], // glissade (assis, jambes devant)
   [0.45, 0.35, 0.15, -1.75, -0.85], // à terre (à genoux, penché)
+  [0.84, 0, 0, 0, 0],            // vaisseau (invisible)
+  [0.84, 0, -1.25, -0.2, -1.4],  // chute libre (à plat ventre, bras écartés)
+  [0.84, 0, 0.1, -0.1, 0],       // parachute (bras en l'air)
 ];
 const DOWN = new THREE.Vector3(0, -1, 0), _v = new THREE.Vector3();
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -116,6 +120,7 @@ export class Rig {
     this.wp = joint(this.aim, 0.1, -0.02, -0.2);
     this.wmesh = mesh(WG.get(WIDS[0]).geo, M.vc, this.wp); this.wmesh.scale.setScalar(WS);
     this.flash = mesh(G.flash, M.flash, this.wp); this.flash.visible = false;
+    this.canopy = mesh(G.canopy, M.canopy, group, 0, 3.1, 0); this.canopy.visible = false;
     this.wmesh.visible = false;
     this.wid = undefined; this.ud = null;
     this.p = [0.84, 0, 0, 0, 0];
@@ -169,7 +174,8 @@ export class Rig {
     this.head.rotation.x = pitch - lean * 0.6;
     // arme
     if (a.wid !== this.wid) this.setWeapon(a.wid);
-    const armed = !!this.ud && !dn, ar = this.arms;
+    this.canopy.visible = st === 6;
+    const armed = !!this.ud && !dn && st < 4, ar = this.arms;
     this.wmesh.visible = armed;
     const sc = a.shots & 15;
     if (sc !== this.sc) { this.sc = sc; this.kick = 1; }
@@ -179,6 +185,7 @@ export class Rig {
     this.aim.rotation.x = armed ? clamp(pitch, -0.8, 0.8) - lean : 0;
     if (!armed) {
       this.flash.visible = false;
+      if (st >= 5) { const sp = st === 6 ? 0.8 : 2.2, up = st === 6 ? 0.6 : 0.5, fz = st === 6 ? 0 : -0.1; this.reach(ar[0], -0.29 * sp, up, fz); this.reach(ar[1], 0.29 * sp, up, fz); return; }
       const hang = dn ? -0.3 : 0;
       this.reach(ar[0], -0.3, -0.56, hang); this.reach(ar[1], 0.3, -0.56, hang);
       return;

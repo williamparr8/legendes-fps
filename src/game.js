@@ -167,8 +167,6 @@ export class Game {
       this.camera.fov = 90; player.spawn();
     } else {
       m.nav = new NavGrid(world.colliders, HALF, 1.5, world.groundY);
-      combat.weapons.give('smg');
-      inv.ammo.light = 90; inv.heal.syringe = 2; inv.heal.cell = 1;
       m.match = new Match({ scene, world, combat, abilities, nav: m.nav, loot, player, inv, net }, cfg, (res) => this.endMatch(res));
     }
     this.m = m;
@@ -194,8 +192,6 @@ export class Game {
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
     player.team = msg.you.team;
     player.sx = msg.you.x; player.sz = msg.you.z; player.syaw = msg.you.yaw; player.spawn();
-    combat.weapons.give('smg');
-    inv.ammo.light = 90; inv.heal.syringe = 2; inv.heal.cell = 1;
     const match = new ClientMatch(scene, world, combat, msg, net);
     this.m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match, cfg: msg.cfg, net };
     this.state = 'playing';

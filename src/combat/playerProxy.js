@@ -14,6 +14,6 @@ export class PlayerProxy {
   // Apparence (voir packInfo)
   get wid() { return this.w ? this.w.id : null; }
   get reloading() { return !!this.w && this.w.reload > 0; }
-  get stance() { return this.p.sliding ? 2 : this.p.h < 1.8 ? 1 : 0; }
+  get stance() { const p = this.p; return p.phase ? p.phase + 3 : p.sliding ? 2 : p.h < 1.8 ? 1 : 0; }
   ray(ox, oy, oz, dx, dy, dz, maxT) { return zoneRay(this, ox, oy, oz, dx, dy, dz, maxT); }
 }

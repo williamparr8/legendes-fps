@@ -1,3 +1,4 @@
+import { tickPlayerDrop } from '../match/drop.js';
 import { MOVE as M } from './config.js';
 import { Health } from '../combat/health.js';
 
@@ -34,6 +35,7 @@ export class Player {
     this.grounded = false;
     this.sliding = false;
     this.prompt = '';
+    this.phase = 0; this.dropT = 0; this.attached = false; this.drop = this.drop || null; // largage (voir match/drop.js)
     this.padCd = 0; this.zipCd = 0;
     this.zip = null; this.zipT = 0; this.zipDir = 1; this.zipSpeed = 0;
     this.mt = 0; this.mx0 = 0; this.my0 = 0; this.mz0 = 0; this.mx1 = 0; this.my1 = 0; this.mz1 = 0;
@@ -52,6 +54,7 @@ export class Player {
     this.prompt = '';
     if (this.zipCd > 0) this.zipCd -= dt;
     if (this.padCd > 0) this.padCd -= dt;
+    if (this.phase) { tickPlayerDrop(this, dt); return; }
     if (pr.KeyP && this.allowRespawn) { this.spawn(); return; } // debug : entraînement uniquement
     const down = !this.health.alive; // à terre ou mort : ramper, pas de saut/glissade/mantle/tyrolienne
 
@@ -114,6 +117,8 @@ export class Player {
       this.accelerate(wx, wz, M.airCap, M.airAccel, dt);
     }
     this.vy -= M.gravity * dt;
+    // parachute rouvrable seulement par une compétence de légende (pv.chute)
+    if (this.pv.chute > 0 && pr.Space && !this.grounded && this.vy < -6 && this.drop && this.y - this.w.groundY(this.x, this.z) > 6) { this.pv.chute--; this.phase = 3; this.dropT = 1; this.altC = -1; return; }
 
     // --- jump pads ---
     if (this.padCd <= 0) {
@@ -295,7 +300,7 @@ export class Player {
       this.pz + (this.z - this.pz) * alpha,
     );
     cam.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
-    let tf = this.sliding ? M.fovSlide : this.state === 'sprint' || this.state === 'tyrolienne' ? M.fovSprint : M.fov;
+    let tf = this.sliding ? M.fovSlide : this.state === 'sprint' || this.state === 'tyrolienne' || this.phase === 2 ? M.fovSprint : M.fov;
     tf += (this.adsFov - tf) * this.ads;
     if (Math.abs(tf - this.fov) > 0.01) {
       this.fov += (tf - this.fov) * Math.min(1, dt * 8);
