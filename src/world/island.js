@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { Heightfield, buildTerrainMesh, buildMountains, buildSky } from './terrain.js';
+import { Heightfield, buildTerrainMesh, buildMountains, buildSky, HORIZON } from './terrain.js';
 import { buildBuilding } from './buildings.js';
-import { makeTrees, makeRocks } from './props.js';
+import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
 
 export const HALF = 120;
 const WALLS = [[0x9a9ea6, 0x6c7078], [0xb7a88c, 0x7d7058], [0x94604f, 0x5e3c33], [0x7f93a6, 0x56667a], [0xa9a39a, 0x6f6a62]];
@@ -15,10 +15,10 @@ const CONTAINER = [0x3d6a8f, 0x8f3d3d, 0x4f7a4a, 0xb0842f];
 // opts.shadows : ombres du soleil (suit le joueur, voir World.followSun).
 export function buildIsland(scene, seed = 1, opts = {}) {
   const r = rng(seed);
-  scene.background = new THREE.Color(0xcfe0ee);
-  scene.fog = new THREE.Fog(0xcfe0ee, 90, 340);
-  scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x66724e, 0.95));
-  const sun = new THREE.DirectionalLight(0xfff0d4, 1.55);
+  scene.background = new THREE.Color(HORIZON);
+  scene.fog = new THREE.Fog(HORIZON, 70, 360);
+  scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x6a7550, 1.15));
+  const sun = new THREE.DirectionalLight(0xfff1d8, 2.1);
   if (opts.shadows) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -124,6 +124,9 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     c.add(x - 0.3 * k, gy - 0.4, z - 0.3 * k, x + 0.3 * k, gy + 3.6 * k, z + 0.3 * k);
   }
   makeTrees(scene, trees);
+  const ok = (x, z, m) => hf.free(x, z) > 0.9 && hf.slope(x, z) < 0.5 && !near(x, z, m) && Math.hypot(x, z) > 6;
+  makeBushes(scene, hf, seed, ok);
+  makeGrass(scene, hf, seed, ok);
 
   // ---- 5b. tyroliennes entre tours : câble à 9,2 m (pieds du joueur à 7,25 m, au-dessus du plateau) ; une ligne qui
   // toucherait relief, bâtiment ou arbre est refusée (échantillon tous les mètres)

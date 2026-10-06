@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { startLoop } from './core/loop.js';
+import { Post } from './core/post.js';
 import { Input } from './core/input.js';
 import { Hud } from './core/hud.js';
 import { sfx } from './core/audio.js';
@@ -30,10 +31,13 @@ export class Game {
     document.body.prepend(this.renderer.domElement);
     this.camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.05, 900);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.post = new Post(this.renderer);
+    this.post.setQuality(settings.quality);
     this.menuScene = new THREE.Scene();
     this.menuScene.background = new THREE.Color(0x0b0f14);
     addEventListener('resize', () => {
       this.renderer.setSize(innerWidth, innerHeight);
+      this.post.resize();
       this.camera.aspect = innerWidth / innerHeight;
       this.camera.updateProjectionMatrix();
     });
@@ -258,6 +262,7 @@ export class Game {
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
     if (m.world.sun) m.world.followSun(m.player.x, m.player.z);
     const r = this.renderer;
+    if (this.post.on) { this.post.render(m.scene, this.camera, m.player.tp < 0.5 ? m.viewmodel : null, dt); return; }
     r.render(m.scene, this.camera);
     r.autoClear = false; r.clearDepth();
     if (m.player.tp < 0.5) r.render(m.viewmodel.scene, m.viewmodel.cam);

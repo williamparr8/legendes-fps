@@ -4,6 +4,7 @@ import diffs from '../bots/difficulty.json';
 import { settings, saveSettings, applySettings } from './settings.js';
 import { transportKind, errorText, cleanCode } from '../net/transport.js';
 import { MAX_PLAYERS } from '../net/session.js';
+import { QUALITY } from '../core/post.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -45,6 +46,7 @@ export class UI {
       else if (id === 'o-fov') settings.fov = +e.target.value;
       else if (id === 'o-vol') settings.volume = +e.target.value;
       else if (id === 'o-shadows') { settings.shadows = e.target.checked; saveSettings(); return; }
+      else if (id === 'o-quality') { settings.quality = +e.target.value; saveSettings(); this.game.post.setQuality(settings.quality); return; }
       else return;
       applySettings(this.game.input); saveSettings();
       $('v-' + id.slice(2)).textContent = e.target.value;
@@ -204,6 +206,7 @@ export class UI {
       <label>Sensibilité souris : <b id="v-sens">${settings.sens}</b><input type="range" id="o-sens" min="0.3" max="3" step="0.1" value="${settings.sens}"></label>
       <label>Champ de vision : <b id="v-fov">${settings.fov}</b><input type="range" id="o-fov" min="70" max="110" step="1" value="${settings.fov}"></label>
       <label>Volume : <b id="v-vol">${settings.volume}</b><input type="range" id="o-vol" min="0" max="1" step="0.05" value="${settings.volume}"></label>
+      <label>Qualité graphique : <select id="o-quality">${QUALITY.map((n, i) => `<option value="${i}" ${settings.quality === i ? 'selected' : ''}>${n}</option>`).join('')}</select> <small>(Bloom, couleurs, vignette ; baisser si ça rame)</small></label>
       <label class="chk"><input type="checkbox" id="o-shadows" ${settings.shadows ? 'checked' : ''}> Ombres du soleil (appliqué à la prochaine partie ; décocher si ça rame)</label></div>
       <table class="keys">${keys}</table><div class="row"><button data-act="back">Retour</button></div></div>`;
   }

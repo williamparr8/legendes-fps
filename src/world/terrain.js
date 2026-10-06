@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rng } from './testScene.js';
+import { terrainMaterial } from './skin.js';
 
 const CELL = 1;
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -110,7 +111,7 @@ export function buildTerrainMesh(scene, hf) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const tex = grassTexture();
   tex.repeat.set(size / 7, size / 7);
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: tex }));
+  const mesh = new THREE.Mesh(geo, terrainMaterial(tex));
   mesh.receiveShadow = true;
   scene.add(mesh);
   return mesh;
@@ -132,20 +133,36 @@ export function buildMountains(scene, seed) {
   scene.add(mesh);
 }
 
-// Ciel : dégradé + disque solaire (dôme centré sur la carte, indépendant du brouillard).
+// Ciel : dégradé, nuages procéduraux, soleil (disque HDR pour le bloom) et halo ; couleurs définies en sRGB puis converties
+// (tone mapping et espace colorimétrique appliqués comme pour les autres matériaux). Dôme centré sur la carte, indépendant du brouillard.
+export const HORIZON = 0xd4e3f0; // = couleur du brouillard
 export function buildSky(scene, sunDir) {
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { sun: { value: sunDir.clone().normalize() } },
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `varying vec3 vD; uniform vec3 sun;
+      vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
+      float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+      float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h21(i), h21(i + vec2(1,0)), f.x), mix(h21(i + vec2(0,1)), h21(i + vec2(1,1)), f.x), f.y); }
+      float fbm(vec2 p){ return vn(p) * 0.5 + vn(p * 2.1) * 0.25 + vn(p * 4.3) * 0.125 + vn(p * 8.7) * 0.0625; }
       void main(){
-        float h = clamp(vD.y, -0.2, 1.0);
-        vec3 top = vec3(0.16,0.38,0.80), mid = vec3(0.55,0.75,0.93), hor = vec3(0.86,0.90,0.93);
-        vec3 c = mix(hor, mid, smoothstep(0.0, 0.25, h)); c = mix(c, top, smoothstep(0.2, 0.9, h));
-        float s = max(dot(normalize(vD), sun), 0.0);
-        c += vec3(1.0,0.92,0.7) * (pow(s, 600.0) * 3.0 + pow(s, 12.0) * 0.18);
+        vec3 d = normalize(vD); float h = clamp(d.y, -0.2, 1.0);
+        vec3 top = lin(vec3(0.17,0.38,0.80)), mid = lin(vec3(0.46,0.69,0.92)), hor = lin(vec3(0.83,0.89,0.94));
+        vec3 c = mix(hor, mid, smoothstep(0.0, 0.3, h)); c = mix(c, top, smoothstep(0.2, 0.95, h));
+        float s = max(dot(d, sun), 0.0);
+        // nuages : plan projeté, bords doux, face éclairée côté soleil
+        vec2 q = d.xz / (d.y + 0.18) * 0.55;
+        float n = fbm(q + vec2(3.0, 1.0)), cl = smoothstep(0.5, 0.78, n) * smoothstep(0.03, 0.22, d.y);
+        float lit = fbm(q + vec2(3.0, 1.0) + sun.xz * 0.08);
+        vec3 cc = mix(lin(vec3(0.62,0.68,0.78)), lin(vec3(1.0,0.98,0.95)), clamp(0.55 + (n - lit) * 3.0, 0.0, 1.0));
+        c = mix(c, cc, cl * 0.9);
+        c += lin(vec3(1.0,0.88,0.62)) * (pow(s, 1200.0) * 40.0 + pow(s, 60.0) * 0.6 + pow(s, 7.0) * 0.14);
+        c = mix(c, hor, (1.0 - smoothstep(0.0, 0.12, h)) * 0.8); // voile d'horizon
         gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), mat);
