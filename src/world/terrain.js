@@ -136,8 +136,8 @@ export function buildMountains(scene, seed) {
 // Ciel : dégradé, nuages procéduraux, soleil (disque HDR pour le bloom) et halo ; couleurs définies en sRGB puis converties
 // (tone mapping et espace colorimétrique appliqués comme pour les autres matériaux). Dôme centré sur la carte, indépendant du brouillard.
 export const HORIZON = 0xd4e3f0; // = couleur du brouillard
-export function buildSky(scene, sunDir) {
-  const mat = new THREE.ShaderMaterial({
+function skyMaterial(sunDir) {
+  return new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { sun: { value: sunDir.clone().normalize() } },
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -165,7 +165,20 @@ export function buildSky(scene, sunDir) {
         #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), mat);
+}
+
+// Le ciel est statique : on le pré-calcule une fois dans un cube (HDR) au lancement du jeu ; chaque partie l'utilise comme fond.
+let skyCube = null;
+export function bakeSky(renderer, sunDir) {
+  const sc = new THREE.Scene();
+  sc.add(new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(sunDir)));
+  const rt = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType });
+  new THREE.CubeCamera(0.1, 1000, rt).update(renderer, sc);
+  skyCube = rt.texture;
+}
+export function buildSky(scene, sunDir) {
+  if (skyCube) { scene.background = skyCube; return; }
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(sunDir));
   sky.renderOrder = -10;
   scene.add(sky);
 }

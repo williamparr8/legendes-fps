@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { startLoop } from './core/loop.js';
 import { Post } from './core/post.js';
+import { bakeSky } from './world/terrain.js';
 import { Input } from './core/input.js';
 import { Hud } from './core/hud.js';
 import { sfx } from './core/audio.js';
@@ -25,12 +26,13 @@ import { InventoryPanel } from './ui/inventory.js';
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
 export class Game {
   constructor() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ antialias: settings.quality === 0, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
     document.body.prepend(this.renderer.domElement);
     this.camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.05, 900);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    bakeSky(this.renderer, new THREE.Vector3(60, 100, 30).normalize());
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
     this.menuScene = new THREE.Scene();
@@ -149,6 +151,7 @@ export class Game {
     const scene = new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = !training && settings.shadows;
+    this.renderer.shadowMap.autoUpdate = false; // ombres statiques : voir World.followSun
     const world = training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
@@ -185,6 +188,7 @@ export class Game {
     const scene = new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = settings.shadows;
+    this.renderer.shadowMap.autoUpdate = false;
     const world = buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
@@ -260,7 +264,7 @@ export class Game {
     m.player.third(m.scene, dt);
     m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
-    if (m.world.sun) m.world.followSun(m.player.x, m.player.z);
+    if (m.world.sun && m.world.followSun(m.player.x, m.player.z)) this.renderer.shadowMap.needsUpdate = true;
     const r = this.renderer;
     if (this.post.on) { this.post.render(m.scene, this.camera, m.player.tp < 0.5 ? m.viewmodel : null, dt); return; }
     r.render(m.scene, this.camera);

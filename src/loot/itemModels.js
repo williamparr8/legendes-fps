@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergedWeapon } from '../combat/models.js';
 
 // Modèles d'objets au sol (munitions, soins, armes) + balise lumineuse colorée visible de loin.
@@ -45,8 +46,45 @@ const MODEL = {
   },
 };
 
-const beaconMat = {};
-const beacon = (color) => beaconMat[color] || (beaconMat[color] = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
+// Fusionne les maillages d'un modèle en 1 (opaque) + 1 (verre transparent), couleurs par sommet (émissif ajouté à la couleur).
+const SOLID = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 30, specular: 0x222222 });
+const GLASS = new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, opacity: 0.55, shininess: 100 });
+const BAKED = {};
+function bake(key, build) {
+  if (BAKED[key]) return BAKED[key];
+  const root = new THREE.Group(), solid = [], glass = [], c = new THREE.Color();
+  build(root);
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    let p = o.geometry.clone().applyMatrix4(o.matrixWorld);
+    if (p.index) p = p.toNonIndexed();
+    p.deleteAttribute('uv');
+    c.copy(o.material.color);
+    if (o.material.emissive) c.add(new THREE.Color().copy(o.material.emissive).multiplyScalar(o.material.emissiveIntensity));
+    const n = p.attributes.position.count, col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    p.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    (o.material.transparent ? glass : solid).push(p);
+  });
+  return (BAKED[key] = { solid: mergeGeometries(solid), glass: glass.length ? mergeGeometries(glass) : null });
+}
+// Balise : mât + disque au sol en un seul maillage.
+const BEACON = mergeGeometries([new THREE.CylinderGeometry(0.035, 0.035, 2.6, 6).translate(0, 1.3, 0), new THREE.CylinderGeometry(0.42, 0.42, 0.02, 20).translate(0, 0.01, 0)]);
+
+// Toutes les balises = un seul InstancedMesh (une instance par emplacement de butin, couleur par instance).
+export function makeBeacons(n) {
+  const m = new THREE.InstancedMesh(BEACON, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }), n);
+  const z = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color(0xffffff);
+  for (let i = 0; i < n; i++) { m.setMatrixAt(i, z); m.setColorAt(i, c); }
+  m.frustumCulled = false;
+  return m;
+}
+const _m = new THREE.Matrix4(), _c = new THREE.Color();
+export function setBeacon(m, i, on, x = 0, y = 0, z = 0, color = 0) {
+  if (on) { _m.makeTranslation(x, y, z); m.setColorAt(i, _c.set(color)); m.instanceColor.needsUpdate = true; } else _m.makeScale(0, 0, 0);
+  m.setMatrixAt(i, _m); m.instanceMatrix.needsUpdate = true;
+}
 
 // `it` : entrée de items.json. Le modèle repose sur y = 0 ; la balise s'étend vers le haut.
 export function buildItemModel(it) {
@@ -56,12 +94,12 @@ export function buildItemModel(it) {
     const w = new THREE.Mesh(mergedWeapon(it.key).geo, WPN);
     w.rotation.z = Math.PI / 2; w.position.y = 0.12; w.scale.setScalar(0.85);
     body.add(w);
-  } else (MODEL[`${it.kind}:${it.key}`] || MODEL['ammo:light'])(body);
-  body.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+  } else {
+    const b = bake(`${it.kind}:${it.key}`, (MODEL[`${it.kind}:${it.key}`] || MODEL['ammo:light']));
+    body.add(new THREE.Mesh(b.solid, SOLID));
+    if (b.glass) body.add(new THREE.Mesh(b.glass, GLASS));
+  }
   g.add(body);
-  const col = new THREE.Color(it.color);
-  add(g, cy(0.035, 2.6, 6), beacon(col.getHex()), 0, 1.3, 0);
-  add(g, cy(0.42, 0.02, 20), beacon(col.getHex()), 0, 0.01, 0);
   g.userData.body = body;
   return g;
 }

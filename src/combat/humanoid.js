@@ -122,35 +122,49 @@ const DOWN = new THREE.Vector3(0, -1, 0);
 const _d = new THREE.Vector3(), _p = new THREE.Vector3(), _e = new THREE.Vector3(), _f = new THREE.Vector3(), _q = new THREE.Quaternion();
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+// Un squelette par acteur : 3 maillages skinnés (couleurs / équipe / accent) au lieu de ~14 maillages séparés (3 appels de dessin au lieu de 14).
+// Chaque géométrie est cuite dans le repère du groupe (pose de repos) puis rattachée à l'os de son articulation.
+// Os : 0 bassin, 1/2 cuisse/genou G, 3/4 cuisse/genou D, 5 buste, 6 tête, 7 visée, 8/9 épaule/coude G, 10/11 épaule/coude D.
+const BS = new THREE.Sphere(new THREE.Vector3(0, 1.4, 0), 3); // volume de culling fixe (les poses sortent de celui de la pose de repos)
+function skin(list) {
+  return mergeGeometries(list.map(([g0, bone, x, y, z]) => {
+    const g = g0.index ? g0.toNonIndexed() : g0.clone();
+    g.deleteAttribute('uv'); g.translate(x, y, z);
+    const n = g.attributes.position.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { si[i * 4] = bone; sw[i * 4] = 1; }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    return g;
+  }));
+}
+let SK = null;
+const skins = () => SK || (SK = {
+  vc: skin([[G.thigh[0], 1, -0.12, 0.84, 0], [G.shin, 2, -0.12, 0.42, 0], [G.thigh[1], 3, 0.12, 0.84, 0], [G.shin, 4, 0.12, 0.42, 0], [G.body, 5, 0, 0.84, 0], [G.head, 6, 0, 1.62, 0], [G.farm, 9, -0.29, 1.05, 0], [G.farm, 11, 0.29, 1.05, 0]]),
+  team: skin([[G.torso, 5, 0, 0.84, 0], [G.helmet, 6, 0, 1.62, 0], [G.uarm, 8, -0.29, 1.38, 0], [G.uarm, 10, 0.29, 1.38, 0]]),
+  acc: skin([[G.trim, 5, 0, 0.84, 0], [G.visor, 6, 0, 1.62, 0]]),
+});
+
 export class Rig {
   constructor(group, friendly) {
     const joint = (parent, x, y, z) => { const j = new THREE.Group(); j.position.set(x, y, z); parent.add(j); return j; };
     const mesh = (g, m, parent, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); parent.add(o); return o; };
-    const team = friendly ? M.friend : M.enemy;
-    this.team = [];
-    this.pelvis = joint(group, 0, 0.84, 0);
+    const team = friendly ? M.friend : M.enemy, bones = [];
+    const bone = (parent, x, y, z) => { const o = new THREE.Bone(); o.position.set(x, y, z); parent.add(o); bones.push(o); return o; };
+    this.pelvis = bone(group, 0, 0.84, 0);
     this.thigh = []; this.shin = [];
-    for (const sx of [-0.12, 0.12]) {
-      const t = joint(this.pelvis, sx, 0, 0), s = joint(t, 0, -0.42, 0);
-      mesh(G.thigh[sx > 0 ? 1 : 0], M.vc, t); mesh(G.shin, M.vc, s);
-      this.thigh.push(t); this.shin.push(s);
-    }
-    this.spine = joint(this.pelvis, 0, 0, 0);
-    mesh(G.body, M.vc, this.spine);
-    this.team.push(mesh(G.torso, team, this.spine));
-    this.trim = mesh(G.trim, accentMat(NEUTRAL), this.spine);
-    this.head = joint(this.spine, 0, 0.78, 0);
-    mesh(G.head, M.vc, this.head);
-    this.team.push(mesh(G.helmet, team, this.head));
-    this.visor = mesh(G.visor, accentMat(NEUTRAL), this.head);
-    // épaules, bras (deux segments + main) et arme : tournent avec la visée
-    this.aim = joint(this.spine, 0, 0.54, 0);
+    for (const sx of [-0.12, 0.12]) { const t = bone(this.pelvis, sx, 0, 0); this.thigh.push(t); this.shin.push(bone(t, 0, -0.42, 0)); }
+    this.spine = bone(this.pelvis, 0, 0, 0);
+    this.head = bone(this.spine, 0, 0.78, 0);
+    this.aim = bone(this.spine, 0, 0.54, 0); // épaules, bras (deux segments + main) et arme : tournent avec la visée
     this.arms = [];
-    for (const sx of [-0.29, 0.29]) {
-      const g = joint(this.aim, sx, 0, 0), up = mesh(G.uarm, team, g), el = joint(g, 0, -L1, 0), fa = mesh(G.farm, M.vc, el);
-      this.team.push(up);
-      this.arms.push({ g, el, up, fa, sx });
-    }
+    for (const sx of [-0.29, 0.29]) { const g = bone(this.aim, sx, 0, 0); this.arms.push({ g, el: bone(g, 0, -L1, 0), sx }); }
+    group.updateMatrixWorld(true);
+    const skel = new THREE.Skeleton(bones), K = skins();
+    const sk = (geo, mat) => { const o = new THREE.SkinnedMesh(geo, mat); o.boundingSphere = BS; group.add(o); return o; };
+    const ms = [sk(K.vc, M.vc), sk(K.team, team), sk(K.acc, accentMat(NEUTRAL))];
+    group.updateMatrixWorld(true);
+    for (const o of ms) o.bind(skel, o.matrixWorld);
+    this.team = [ms[1]]; this.acc = ms[2];
     this.wp = joint(this.aim, 0.1, -0.02, -0.2);
     this.wmesh = mesh(mergedWeapon(WIDS[0]).geo, M.wpn, this.wp); this.wmesh.scale.setScalar(WS);
     this.flash = mesh(G.flash, M.flash, this.wp); this.flash.visible = false;
@@ -167,8 +181,7 @@ export class Rig {
 
   // Couleur d'accent (légende) : visière, crête du casque, bande de poitrine, épaulettes.
   setAccent(hex) {
-    const m = accentMat(typeof hex === 'string' ? parseInt(hex.slice(1), 16) : hex);
-    this.visor.material = m; this.trim.material = m;
+    this.acc.material = accentMat(typeof hex === 'string' ? parseInt(hex.slice(1), 16) : hex);
   }
 
   setWeapon(id) {
@@ -193,8 +206,9 @@ export class Rig {
     _e.copy(_d).multiplyScalar(a).addScaledVector(_p, h);
     arm.g.quaternion.setFromUnitVectors(DOWN, _f.copy(_e).normalize());
     _f.set(tx - sx, ty, tz).sub(_e).normalize().applyQuaternion(_q.copy(arm.g.quaternion).invert());
+    _f.y /= s; _f.normalize(); // compense l'étirement en y du bras
     arm.el.quaternion.setFromUnitVectors(DOWN, _f);
-    arm.up.scale.y = arm.fa.scale.y = s; arm.el.position.y = -l1;
+    arm.g.scale.y = s;
   }
 
   // Posture, marche déduite du déplacement réel, arme/recul/rechargement. `a` : acteur (health, stance, wid, reloading, shots, pitch).

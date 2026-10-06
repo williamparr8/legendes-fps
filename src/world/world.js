@@ -67,13 +67,17 @@ export class World {
   }
 
   // Ombre du soleil : la fenêtre suit le joueur (alignée sur les texels pour éviter le scintillement).
+  // Renvoie true quand la fenêtre a bougé (pas de 64 texels = 3,1 m) : la carte d'ombres, statique, n'est alors recalculée qu'à ce moment.
   followSun(x, z) {
     const s = this.sun;
-    if (!s) return;
-    const q = 100 / 2048;
+    if (!s) return false;
+    const q = (100 / 2048) * 64;
     x = Math.round(x / q) * q; z = Math.round(z / q) * q;
+    if (x === this._sx && z === this._sz) return false;
+    this._sx = x; this._sz = z;
     s.target.position.set(x, 0, z);
     s.position.set(x + 60, 100, z + 30);
     s.target.updateMatrixWorld();
+    return true;
   }
 }

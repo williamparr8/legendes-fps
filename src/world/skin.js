@@ -22,8 +22,9 @@ const PATTERN = `
   vec3 p = vWP; vec3 an = vLN;
   vec2 uv = an.y > 0.7 ? p.xz : (an.x > an.z ? p.zy : p.xy);
   float k = 1.0, bk = 2.0;
+  float fl = 1.0 - smoothstep(25.0, 50.0, length(vViewPosition)); // détail fin : fondu puis supprimé avec la distance
   #if SKIN == 0
-    float n = vnoise(uv * 2.5) * 0.5 + vnoise(uv * 11.0) * 0.3 + vnoise(uv * 40.0) * 0.2;
+    float n = vnoise(uv * 2.5) * 0.5 + vnoise(uv * 11.0) * 0.3 + (fl > 0.0 ? mix(0.1, vnoise(uv * 40.0) * 0.2, fl) : 0.1);
     k = 0.82 + 0.3 * n;
     k *= 0.93 + 0.14 * vnoise(uv * 0.35 + 7.0);                      // grandes taches
     if (an.y < 0.7) {
@@ -37,14 +38,14 @@ const PATTERN = `
     bk = 2.2;
   #elif SKIN == 1
     float pl = abs(fract(uv.y / 0.28) - 0.5);
-    float grain = vnoise(vec2(uv.x * 6.0, uv.y * 60.0)) * 0.6 + vnoise(vec2(uv.x * 1.5, uv.y * 14.0)) * 0.4;
+    float grain = (fl > 0.0 ? mix(0.5, vnoise(vec2(uv.x * 6.0, uv.y * 60.0)), fl) : 0.5) * 0.6 + vnoise(vec2(uv.x * 1.5, uv.y * 14.0)) * 0.4;
     k = 0.74 + 0.36 * grain;
     k *= 1.0 - 0.38 * smoothstep(0.46, 0.5, pl);                    // jointures de planches
     float band = min(abs(fract(uv.x / 1.0) - 0.5), 0.5);
     k *= 1.0 - 0.18 * smoothstep(0.4, 0.5, band);
     bk = 3.0;
   #elif SKIN == 2 || SKIN == 6
-    float n = vnoise(uv * 1.6) * 0.55 + vnoise(uv * 6.0) * 0.3 + vnoise(uv * 22.0) * 0.15;
+    float n = vnoise(uv * 1.6) * 0.55 + vnoise(uv * 6.0) * 0.3 + (fl > 0.0 ? mix(0.5, vnoise(uv * 22.0), fl) : 0.5) * 0.15;
     k = 0.65 + 0.5 * n;
     k *= 0.88 + 0.12 * sin(p.y * 7.0 + vnoise(uv * 3.0) * 5.0);      // strates
     bk = 3.5;
@@ -62,10 +63,12 @@ const PATTERN = `
     k = 0.5 + 0.7 * n;
     bk = 3.0;
   #else
-    float n = vnoise(p.xz * 0.18) * 0.5 + vnoise(p.xz * 0.9) * 0.3 + vnoise(p.xz * 4.5) * 0.2;
+    float n = vnoise(p.xz * 0.18) * 0.5 + vnoise(p.xz * 0.9) * 0.3 + (fl > 0.0 ? mix(0.5, vnoise(p.xz * 4.5), fl) : 0.5) * 0.2;
     k = 0.8 + 0.4 * n;
-    k *= 0.9 + 0.2 * vnoise(p.xz * vec2(30.0, 7.0));                // brins d'herbe
-    bumpH = (vnoise(p.xz * 14.0) * 0.6 + vnoise(p.xz * 50.0) * 0.4) * 0.5;
+    if (fl > 0.0) {
+      k *= 0.9 + 0.2 * mix(0.5, vnoise(p.xz * vec2(30.0, 7.0)), fl); // brins d'herbe
+      bumpH = (vnoise(p.xz * 14.0) * 0.6 + vnoise(p.xz * 50.0) * 0.4) * 0.5;
+    }
     bk = 0.0;
   #endif
   #if SKIN < 4

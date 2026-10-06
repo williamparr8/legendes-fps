@@ -1,5 +1,5 @@
 import items from './items.json';
-import { buildItemModel } from './itemModels.js';
+import { buildItemModel, makeBeacons, setBeacon } from './itemModels.js';
 
 const N = 400;
 
@@ -10,6 +10,7 @@ export class LootField {
     this.scene = scene; this.rand = rand; this.groundY = groundY;
     this.list = [];
     for (let i = 0; i < N; i++) this.list.push({ on: false, m: null, cache: {}, it: null, x: 0, y: 0, z: 0, amount: 0, i, ti: -1 });
+    this.beacons = makeBeacons(N); scene.add(this.beacons);
     this.near = null;
     this.t = 0;
     this.dirty = new Set(); // emplacements modifiés depuis le dernier envoi réseau (hôte)
@@ -24,9 +25,10 @@ export class LootField {
     l.m = l.cache[ti] || (l.cache[ti] = (() => { const g = buildItemModel(it); this.scene.add(g); return g; })());
     l.on = true; l.it = it; l.ti = ti; l.x = x; l.y = y; l.z = z; l.amount = amount;
     l.m.position.set(x, y + 0.3, z); l.m.visible = true;
+    setBeacon(this.beacons, l.i, true, x, y + 0.3, z, it.color);
   }
 
-  hide(l) { l.on = false; if (l.m) l.m.visible = false; }
+  hide(l) { l.on = false; if (l.m) l.m.visible = false; setBeacon(this.beacons, l.i, false); }
 
   // Applique une liste [i, on, ti, x, z, amount, y] reçue de l'hôte.
   applyNet(entries) {
@@ -78,6 +80,7 @@ export class LootField {
       l.m.rotation.y += dt * 1.5;
       l.m.position.y = l.y + 0.3 + Math.sin(this.t * 2 + l.x) * 0.05;
       const dx = l.x - player.x, dz = l.z - player.z, d = dx * dx + dz * dz;
+      l.m.userData.body.visible = d < 4900; // le modèle n'est dessiné que dans un rayon de 70 m (la balise reste visible de loin)
       if (d < bd && Math.abs(l.y - player.y) < 2.4) { bd = d; best = l; }
     }
     this.near = player.health.alive ? best : null;
