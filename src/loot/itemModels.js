@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildWeaponModel } from '../combat/models.js';
+import { mergedWeapon } from '../combat/models.js';
 
 // Modèles d'objets au sol (munitions, soins, armes) + balise lumineuse colorée visible de loin.
 const lam = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
@@ -10,6 +10,7 @@ const M = {
   cell: new THREE.MeshLambertMaterial({ color: 0x3a78ff, emissive: 0x1840b0, emissiveIntensity: 0.7 }),
   orange: lam(0xe0782a), green: lam(0x3f7a4a), yellow: lam(0xe0c040),
 };
+const WPN = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: 0x333333 });
 const G = {};
 const bx = (w, h, d) => G[`b${w}${h}${d}`] || (G[`b${w}${h}${d}`] = new THREE.BoxGeometry(w, h, d));
 const cy = (r, h, s = 10) => G[`c${r}${h}${s}`] || (G[`c${r}${h}${s}`] = new THREE.CylinderGeometry(r, r, h, s));
@@ -52,7 +53,7 @@ export function buildItemModel(it) {
   const g = new THREE.Group();
   const body = new THREE.Group();
   if (it.kind === 'weapon') {
-    const w = buildWeaponModel(it.key, false);
+    const w = new THREE.Mesh(mergedWeapon(it.key).geo, WPN);
     w.rotation.z = Math.PI / 2; w.position.y = 0.12; w.scale.setScalar(0.85);
     body.add(w);
   } else (MODEL[`${it.kind}:${it.key}`] || MODEL['ammo:light'])(body);

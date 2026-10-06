@@ -1,6 +1,6 @@
 # PROGRESS — Légendes FPS (hero shooter web, Three.js)
 
-**Date** : 2026-10-05 — **Progression globale** : ~96 % (A–H écrites ; I-a visuel/relief ; I-b modèles articulés ; bots niveaux/butin/sauts ; largage — tout testé par simulation, rien à la souris/GPU réel)
+**Date** : 2026-10-06 — **Progression globale** : ~96 % (A–H écrites ; I-a visuel/relief ; I-b modèles articulés ; bots niveaux/butin/sauts ; largage — tout testé par simulation, rien à la souris/GPU réel)
 
 | Étape | État |
 |---|---|
@@ -29,6 +29,10 @@
 - **H** : `src/net/` — `transport.js` (PeerJS ou BroadcastChannel si l'URL contient `?local`), `session.js` (HostSession / ClientSession : salon, chat, snapshots 20 Hz, dégâts, butin, événements), `actors.js` (RemotePlayer côté hôte, ProxyActor côté client, NetHealth), `clientMatch.js`. `Match` accepte `cfg.humans` (humains répartis en escouades, places libres = bots) ; `game.js` : `start(cfg, net)` / `startClient` ; UI : écrans `online` et `lobby`, chat en jeu (Entrée).
 
 - **I-a** : `src/world/{terrain,skin,buildings,props,island,world}.js` — relief par carte de hauteurs (`Heightfield`, collines jusqu'à ~15 m, plat autour des bâtiments/tours/enceinte), `World.groundY`, rayon contre relief (`Colliders.rayGround`) ; bâtiments de 1 à 3 niveaux (petits 14–17 m, moyens 18–23, grands 25–31, hub central 26 m à 3 niveaux) avec fenêtres, portes, dalles, escaliers intérieurs, toit praticable à parapet, butin à chaque niveau ; arbres/rochers instanciés, conteneurs, montagnes lointaines, ciel, ombres du soleil (option, suit le joueur) ; matériaux procéduraux béton/bois/roche/tôle (`skin.js`). `src/combat/{models,viewmodel}.js` : 5 armes détaillées + mains, dessinées dans une scène à part (`Game.render` en 2 passes). `src/loot/{itemModels,loot}.js` : modèles d'objets + balises, butin avec hauteur `y` (aussi dans le réseau).
+
+## Chantier graphique (décidé 2026-10-06) — ordre : 1) personnages et armes, 2) matériaux et nature, 3) éclairage et atmosphère
+- **1) Personnages et armes : fait (procédural, sans assets externes)**. `src/combat/models.js` réécrit : corps d'armes en profils latéraux extrudés et biseautés (`prof`), rails, chargeurs courbes, optiques, pontets, crosses ; gants + avant-bras cylindriques en vue subjective ; `mergedWeapon(id)` = 1 maillage couleurs par sommet (acteurs **et** butin au sol). `src/combat/humanoid.js` refait : opérateur tactique (plaques biseautées, sac, ceinture, genouillères, bottes, cagoule, casque + lunettes d'accent, épaulettes), **bras à 2 segments en cinématique inverse** (coude vers le bas/extérieur, étirement ≤ 8 % hors de portée), parachute avec suspentes. API inchangée (`Rig`, `packInfo`, `userData` des armes). Testé par simulation + captures (5 armes de profil, 5 personnages, parachute), 6 postures × 2 états sans NaN, solo 150 s sans erreur (1,3 ms/tick). **Non testé** : FPS réel (~18 maillages/acteur, comme avant), sensations, rendu sur GPU. Matériaux toujours Lambert/Phong : l'éclairage (étape 3) apportera l'essentiel du rendu.
+- Piste non faite : modèles glTF gratuits (Quaternius/Mixamo) à télécharger par l'utilisateur + animation par squelette.
 
 ## Retours utilisateur (2026-10-02, après I-b)
 - Moins de collines (7 collines, hauteur max ~5 m au lieu de 15) ; tyroliennes : 4 tours dans les couloirs libres (x=±32), câble à 9,2 m, chaque ligne validée au chargement (relief/bâtiment/collision refusée) + garde-fou à l'exécution (`tickZip` lâche le joueur). Vérifié sur 7 graines : 0 collision, trajet complet de 172 m.
@@ -83,5 +87,6 @@
 - Touches : ZQSD, Maj, Espace (saut / saut du vaisseau / parachute), C, E, clics, R, 1/2 ou molette, 3/4/5 soins, F/G habiletés, X (se détacher du chef en vol), Tab inventaire, Entrée chat, Échap ; debug entraînement : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin, vaisseau) ; tous partent du vaisseau sans arme (sauf entraînement) ; fin → `Game.endMatch(res)`.
 - Git : poussé jusqu'à 9b02a35 (bots niveaux/butin/sauts) ; **largage + caméra 3e personne en chute libre commités localement, NON poussés** (voir git log origin/main..main). Site : https://williamparr8.github.io/legendes-fps/.
+- Graphismes (2026-10-06) : personnages/armes procéduraux améliorés (voir « Chantier graphique »), **commités localement, non poussés**. Prochain : 2) matériaux et nature, 3) éclairage et atmosphère.
 - Prochaines tâches possibles : C bots dans les bâtiments (navigation multi-étages), D apprentissage des bots (mémoire adaptative en localStorage), I-c (équilibrage, sons, minimap, profilage), option menu « largage », légende avec `pv.chute`. Retours utilisateur sur largage/niveaux : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).
