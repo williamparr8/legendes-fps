@@ -1,11 +1,42 @@
 import Peer from 'peerjs';
+import extraTurn from './turn.json';
 
 // Transport : un « lien » = { send(obj), close(), onmessage, onclose }. Deux implémentations :
 //  - 'peer'  : WebRTC via PeerJS (courtier de signalisation public, pas de serveur de jeu) ;
 //  - 'local' : BroadcastChannel, pour tester plusieurs onglets du même navigateur (URL avec ?local).
 const PREFIX = 'legendes-fps-';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] };
+// Serveurs ICE : STUN (découverte d'adresse), relais TURN officiels de PeerJS (par défaut de la bibliothèque ; gratuits, sans garantie —
+// mesurés injoignables le 2026-10-08), puis relais personnels de src/net/turn.json (liste de { urls, username, credential }).
+// Sans relais joignable, deux joueurs dont l'un a un NAT strict (Wi-Fi d'école, 4G/5G…) ne peuvent pas se connecter : voir PROGRESS.md.
+const ICE = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
+    ...extraTurn,
+  ],
+  iceCandidatePoolSize: 2,
+};
+
+// Sonde réseau (une fois par page, en arrière-plan) : ce navigateur obtient-il une adresse publique (STUN) et un relais (TURN) ?
+// Sert uniquement à expliquer l'échec d'une connexion.
+const probeState = { stun: null, relay: null, started: false };
+function probeNetwork() {
+  if (probeState.started || typeof RTCPeerConnection === 'undefined') return;
+  probeState.started = true;
+  try {
+    const pc = new RTCPeerConnection({ iceServers: ICE.iceServers });
+    probeState.stun = false; probeState.relay = false;
+    pc.onicecandidate = (e) => {
+      const t = e.candidate && / typ (\w+)/.exec(e.candidate.candidate);
+      if (t && t[1] === 'srflx') probeState.stun = true;
+      if (t && t[1] === 'relay') probeState.relay = true;
+    };
+    pc.createDataChannel('probe');
+    pc.createOffer().then((o) => pc.setLocalDescription(o)).catch(() => {});
+    setTimeout(() => pc.close(), 8000);
+  } catch (e) { /* ignoré */ }
+}
 
 export const transportKind = () => (new URLSearchParams(location.search).has('local') ? 'local' : 'peer');
 export const makeCode = () => Array.from({ length: 5 }, () => ALPHABET[(Math.random() * ALPHABET.length) | 0]).join('');
@@ -27,6 +58,7 @@ function wrapConn(conn, onDestroy) {
 }
 
 function peerHost(code, onlink) {
+  probeNetwork();
   return new Promise((resolve, reject) => {
     const peer = new Peer(PREFIX + code, { debug: 0, config: ICE });
     let opened = false;
@@ -38,11 +70,12 @@ function peerHost(code, onlink) {
 }
 
 function peerConnect(code) {
+  probeNetwork();
   return new Promise((resolve, reject) => {
     const peer = new Peer({ debug: 0, config: ICE });
     let done = false;
     const fail = (e) => { if (done) return; done = true; try { peer.destroy(); } catch (x) { /* ignoré */ } reject(e); };
-    const timer = setTimeout(() => fail({ type: 'timeout' }), 15000);
+    const timer = setTimeout(() => fail({ type: 'timeout' }), 25000);
     peer.on('error', fail);
     peer.on('open', () => {
       const conn = peer.connect(PREFIX + code, { serialization: 'json', reliable: true });
@@ -107,7 +140,11 @@ export const connectTo = (code) => (transportKind() === 'local' ? localConnect :
 export function errorText(e) {
   const t = e && e.type;
   if (t === 'peer-unavailable') return 'Salon introuvable : vérifiez le code.';
-  if (t === 'timeout') return 'Connexion impossible (délai dépassé). Réseau trop restrictif ? Essayez un autre réseau ou le partage de connexion du téléphone.';
+  if (t === 'timeout') {
+    if (probeState.stun === false) return 'Connexion impossible : ce réseau bloque les connexions directes entre joueurs (UDP/WebRTC). Essayez un autre réseau ou le partage de connexion du téléphone.';
+    if (!probeState.relay) return 'Connexion impossible : le réseau de l’un des joueurs (NAT strict : Wi-Fi d’école, 4G/5G…) refuse la connexion directe et aucun serveur relais n’est disponible. Essayez le partage de connexion du téléphone pour l’un des deux.';
+    return 'Connexion impossible (délai dépassé), même via le relais. Réessayez ou changez de réseau.';
+  }
   if (t === 'unavailable-id') return 'Ce code est déjà utilisé, réessayez.';
   if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') return 'Serveur de mise en relation injoignable. Vérifiez votre connexion Internet.';
   return 'Erreur de connexion' + (t ? ' (' + t + ')' : '') + '.';

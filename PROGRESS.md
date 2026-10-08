@@ -66,6 +66,11 @@
 - Collisions : liste linéaire d'AABB (≈ 300 boîtes, 0,1 ms/tick mesuré avec 17 bots) ; grille spatiale si la carte grossit.
 - Mantle : hauteur max relative aux pieds (≈ 3,4 m depuis un saut). Sons = bips WebAudio, formes procédurales.
 
+## Diagnostic « mode en ligne : délai dépassé » (2026-10-08)
+- Constaté : courtier PeerJS OK (salon ouvert en 0,4 s), STUN OK, liaison WebRTC + échange de messages OK entre deux pairs ; **aucun relais TURN joignable** : ceux de PeerJS (eu-0/us-0.turn.peerjs.com, ajoutés par défaut par la bibliothèque mais **retirés par notre ancienne config ICE**) sont morts (UDP et TCP, mesuré depuis le PC de l'utilisateur), openrelay/freestun/numb aussi. Sans relais, deux joueurs dont l'un a un NAT strict (Wi-Fi d'école/cégep, 4G/5G) ne peuvent pas se connecter.
+- Fait : `src/net/transport.js` : config ICE avec relais PeerJS rétablis + `src/net/turn.json` (liste `[{ "urls": [...], "username": "...", "credential": "..." }]`, vide par défaut) pour brancher un vrai relais ; sonde réseau en arrière-plan ; délai 15 → 25 s ; message d'erreur qui dit la vraie cause (réseau bloqué / NAT strict sans relais).
+- **Reste** : un relais TURN avec identifiants (compte gratuit Metered ou Cloudflare Realtime, à créer par l'utilisateur) à mettre dans `turn.json`, ou un relais de secours par courtier MQTT public (sans compte, mais trafic public et plus lent) — à décider.
+
 ## Multijoueur (H) — fonctionnement
 - **Hôte** : simule tout (monde, bots, zone, butin, escouades). Il garde la simulation active même onglet masqué (Worker dans `core/loop.js`). Si l'hôte quitte, le salon ferme pour tous (pas de migration d'hôte).
 - **Clients** : reconstruisent la même carte (graine) ; gèrent eux-mêmes leur déplacement, leur santé, leurs tirs et leurs habiletés. Les touches sont rapportées à l'hôte (`hit`) qui les applique (le tireur a raison, comme sur son écran). Les autres acteurs sont des `ProxyActor` interpolés (retard 100 ms).
