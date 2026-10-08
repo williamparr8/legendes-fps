@@ -89,7 +89,7 @@
 - Conventions : mètres/secondes ; `tick(dt)` sans allocation ; données en JSON ; un acteur expose `x,y,z,team,health,hs,stance,ray()` ; monde déterministe depuis `cfg.seed`.
 - Touches : ZQSD, Maj, Espace (saut / saut du vaisseau / parachute), C, E, clics, R, 1/2 ou molette, 3/4/5 soins, F/G habiletés, X (se détacher du chef en vol), Tab inventaire, Entrée chat, Échap ; debug entraînement : L, Y, T, P.
 - Flux partie : `UI.readConfig()` → `Game.start(cfg)` → `Match` (zone, bots, butin, vaisseau) ; tous partent du vaisseau sans arme (sauf entraînement) ; fin → `Game.endMatch(res)`.
-- Git : poussé jusqu'à 9b02a35 (bots niveaux/butin/sauts) ; **largage + caméra 3e personne en chute libre commités localement, NON poussés** (voir git log origin/main..main). Site : https://williamparr8.github.io/legendes-fps/.
-- Graphismes (2026-10-06) : paliers 1, 2, 3 faits (voir « Chantier graphique »), commités localement, **non poussés**. Qualité réglable dans Options. Prochain : retours visuels de l'utilisateur, textures photo CC0 éventuelles, I-c.
+- Git : **tout est poussé jusqu'à a234cf0 (2026-10-08)** : largage + caméra, personnages/armes, matériaux/nature, éclairage/post-traitement, optimisation FPS ; déployé. Site : https://williamparr8.github.io/legendes-fps/.
+- Graphismes (2026-10-06) : paliers 1, 2, 3 faits (voir « Chantier graphique »), poussés et déployés. Qualité réglable dans Options. Prochain : retours visuels de l'utilisateur, textures photo CC0 éventuelles, I-c.
 - Prochaines tâches possibles : C bots dans les bâtiments (navigation multi-étages), D apprentissage des bots (mémoire adaptative en localStorage), I-c (équilibrage, sons, minimap, profilage), option menu « largage », légende avec `pv.chute`. Retours utilisateur sur largage/niveaux : à recueillir.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).
