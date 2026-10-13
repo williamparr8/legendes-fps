@@ -8,7 +8,7 @@ import skinData from '../shop/skins.json';
 class Squad {
   constructor(team) {
     this.team = team; this.members = [];
-    this.leader = null; this.anchor = null; this.ax = 0; this.az = 0; this.gx = 0; this.gz = 0; this.goalT = 0; this.place = 0; this.alive = true;
+    this.leader = null; this.anchor = null; this.ax = 0; this.az = 0; this.ay = NaN; this.gx = 0; this.gz = 0; this.goalT = 0; this.place = 0; this.alive = true;
     this.hasHuman = false; this.done = false;
   }
   isFollower(b) { return this.anchor !== null || (this.leader !== null && this.leader !== b); }
@@ -29,7 +29,7 @@ class Squad {
       else if (this.anchor === null && !m.health.dead) this.anchor = m;
     }
     const a = this.anchor || this.leader;
-    if (a) { this.ax = a.x; this.az = a.z; }
+    if (a) { this.ax = a.x; this.az = a.z; this.ay = a.y; }
   }
 }
 
@@ -146,7 +146,8 @@ export class Match {
     for (let k = 0; k < n; k++) {
       const b = this.bots[(this.pi + k) % n];
       if (b.needPath && b.health.alive) {
-        b.pathLen = nav.find(b.x, b.z, b.gx, b.gz, b.path); b.pathI = 0; b.needPath = false;
+        b.pathLen = nav.find(b.x, b.z, b.gx, b.gz, b.path, b.y, b.gy); b.pathI = 0; b.needPath = false;
+        if (b.pathLen === 0 && b.state === 'loot' && b.lootI >= 0) { b.bad.push(b.lootI); b.lootI = -1; } // butin inaccessible : on l'oublie tout de suite
         this.pi = (this.pi + k + 1) % n;
         break;
       }

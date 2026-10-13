@@ -280,6 +280,6 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   }
   w.finalize();
   w.half = HALF; w.ext = EXT; w.lootPoints = lootPoints; w.poi = poi; w.spawns = spawns; w.rand = r; w.buildings = buildingsInfo;
-  w.places = places; w.roads = roads; w.coast = coast;
+  w.places = places; w.roads = roads; w.coast = coast; w.towers = towers;
   return w;
 }

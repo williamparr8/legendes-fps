@@ -25,7 +25,7 @@ export class Bot extends Target {
     this.mag = this.def ? this.def.mag : 0; this.reloadT = 0; this.cd = 0; this.burst = 0; this.pause = 0; this.aimHead = false;
     this.yaw = o.yaw || 0; this.pitch = 0; this.eye = 1.65;
     this.vx = this.vy = this.vz = 0; this.grounded = true; this.sliding = false;
-    this.state = 'roam'; this.gx = x; this.gz = z; this.hasGoal = false; this.goalT = 0;
+    this.state = 'roam'; this.gx = x; this.gz = z; this.gy = NaN; this.hasGoal = false; this.goalT = 0; // gy : étage visé (NaN = sol)
     this.path = new Int32Array(64); this.pathLen = 0; this.pathI = 0; this.needPath = false;
     this.enemy = null; this.seen = false; this.seeFor = 0; this.sinceSeen = 99; this.lastX = x; this.lastZ = z;
     this.alertT = 0; this.thinkT = Math.random() * 0.2; this.strafeDir = Math.random() < 0.5 ? 1 : -1; this.strafeT = 1;
@@ -146,7 +146,7 @@ export class Bot extends Target {
     let bd = r * r;
     for (let i = 0; i < list.length; i++) {
       const l = list[i];
-      if (!l.on || !this.wantItem(l) || Math.abs(l.y - this.y) > 1.2) continue;
+      if (!l.on || !this.wantItem(l)) continue;
       const dx = l.x - this.x, dz = l.z - this.z, d = dx * dx + dz * dz;
       if (d < bd && !this.bad.includes(i)) { bd = d; this.lootI = i; this.lootSince = 0; }
     }
@@ -189,22 +189,22 @@ export class Bot extends Target {
     switch (st) {
       case 'engage':
         if (this.wantCover && e) { if (this.coverT <= 0) this.findCover(e); }
-        else if (e && dist > PREF[this.wid] * 1.3 && !c.combat.los(this, e)) this.setGoal(e.x, e.z);
+        else if (e && dist > PREF[this.wid] * 1.3 && !c.combat.los(this, e)) this.setGoal(e.x, e.z, e.y);
         break;
       case 'rotate': if (!this.hasGoal || this.goalT <= 0) { const p = z.randomSafe(); this.setGoal(p[0], p[1]); this.goalT = 8; } break;
-      case 'revive': if (mate) this.setGoal(mate.x, mate.z); break;
+      case 'revive': if (mate) this.setGoal(mate.x, mate.z, mate.y); break;
       case 'loot': {
         const l = this.ctx.loot.list[this.lootI];
         if (!l || !l.on) break;
-        if ((this.lootSince += 0.2) > 14) { this.bad.push(this.lootI); this.lootI = -1; break; } // inaccessible : on abandonne
-        this.setGoal(l.x, l.z);
+        if ((this.lootSince += 0.2) > 20) { this.bad.push(this.lootI); this.lootI = -1; break; } // inaccessible : on abandonne
+        this.setGoal(l.x, l.z, l.y);
         if (Math.hypot(l.x - this.x, l.z - this.z) < 1.7 && Math.abs(l.y - this.y) < 1.5) this.takeLoot(l);
         break;
       }
       case 'search': this.setGoal(this.lastX, this.lastZ); break;
       case 'follow': {
         const s = this.squad, a = (this.index / 3) * TAU;
-        if (Math.hypot(s.ax - this.x, s.az - this.z) < 8) { this.hasGoal = false; this.pathLen = 0; } else this.setGoal(s.ax + Math.cos(a) * 5, s.az + Math.sin(a) * 5);
+        if (Math.hypot(s.ax - this.x, s.az - this.z) < 8) { this.hasGoal = false; this.pathLen = 0; } else this.setGoal(s.ax + Math.cos(a) * 5, s.az + Math.sin(a) * 5, s.ay);
         break;
       }
       case 'roam': { const s = this.squad; if (s.goalT <= 0 || Math.hypot(s.gx - this.x, s.gz - this.z) < 4) s.pickGoal(c.world, z); this.setGoal(s.gx, s.gz); break; }
@@ -212,10 +212,10 @@ export class Bot extends Target {
     if (this.coverT > 0) this.coverT -= 0.2;
   }
 
-  setGoal(x, z) {
+  setGoal(x, z, y = NaN) {
     if (!this.hasGoal || Math.hypot(x - this.gx, z - this.gz) > 3 || (this.pathI >= this.pathLen && this.goalT <= 0)) {
-      this.gx = x; this.gz = z; this.needPath = true; this.hasGoal = true; this.goalT = 3;
-    } else { this.gx = x; this.gz = z; }
+      this.gx = x; this.gz = z; this.gy = y; this.needPath = true; this.hasGoal = true; this.goalT = 3;
+    } else { this.gx = x; this.gz = z; this.gy = y; }
   }
 
   findCover(e) {
@@ -224,7 +224,7 @@ export class Bot extends Target {
     for (let i = 0; i < 10; i++) {
       const a = Math.random() * TAU, r = 3 + Math.random() * 6;
       const x = this.x + Math.cos(a) * r, z = this.z + Math.sin(a) * r;
-      if (!nav.isFree(x, z)) continue;
+      if (!nav.isFree(x, z, this.y)) continue;
       const dx = x - e.x, dz = z - e.z, d = Math.hypot(dx, dz);
       if (c.ray(e.x, e.y + 1.5, e.z, dx / d, 0, dz / d, d) < 0) continue; // visible depuis l'ennemi : pas un abri
       if (r < bestD) { bestD = r; this.coverX = x; this.coverZ = z; found = true; }
@@ -296,7 +296,7 @@ export class Bot extends Target {
     const nav = this.ctx.nav;
     while (this.pathI < this.pathLen) {
       const ci = this.path[this.pathI], dx = nav.cx(ci) - this.x, dz = nav.cz(ci) - this.z, dd = Math.hypot(dx, dz);
-      if (dd < 0.9) { this.pathI++; continue; }
+      if (dd < (ci < nav.N ? 0.65 : ci < nav.N + nav.C ? 0.5 : 0.4) && Math.abs(nav.cy(ci) - this.y) < 1.8) { this.pathI++; continue; } // même étage seulement ; étages et escaliers : plus précis
       this.wx = dx / dd; this.wz = dz / dd;
       return true;
     }

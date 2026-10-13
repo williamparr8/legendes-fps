@@ -2,7 +2,8 @@
 // avec parapet. Tout est généré à partir d'un rng : même résultat pour l'hôte et les clients.
 export const FH = 3.6;            // hauteur d'un niveau (dessus de dalle → dessus de dalle suivante)
 const T = 0.25, SL = 0.4;          // demi-épaisseur des murs, épaisseur des dalles
-const SW = 2.2, ND = 8, SD = 0.8, SH = FH / ND; // escalier : largeur, nombre de marches, profondeur, hauteur (0,45 < marche auto 0,55)
+export const ND = 8, SD = 0.8;     // escalier : nombre de marches, profondeur
+const SW = 2.2, SH = FH / ND;      // largeur, hauteur de marche (0,45 < marche auto 0,55)
 const WIN_W = 2.0, WIN_Y0 = 0.95, WIN_Y1 = 2.4;
 
 function wallPieces(w, axis, fixed, a0, a1, yb, h, gaps, col) {
@@ -112,8 +113,15 @@ export function buildBuilding(w, r, spec) {
 
   // butin : 4 points par niveau (+ centre au rez-de-chaussée), y = dessus de dalle
   const lootPoints = [];
+  // (on évite les trémies et les escaliers : un objet au-dessus du vide serait inaccessible)
+  const inR = (r, x, z, m) => x > r[0] - m && x < r[2] + m && z > r[1] - m && z < r[3] + m;
+  const lane = (s) => { const e = s.s0 + s.dir * ND * SD, a = Math.min(s.s0, e), b = Math.max(s.s0, e); return s.axis === 'z' ? [s.lo, a, s.hi, b] : [a, s.lo, b, s.hi]; };
   for (let f = 0; f <= n; f++) {
-    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) lootPoints.push([cx + a * sx * 0.25, cz + b * sz * 0.25, f * FH]);
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const x = cx + a * sx * 0.25, z = cz + b * sz * 0.25;
+      if ((f >= 1 && inR(holes[f - 1], x, z, 0.8)) || (f < n && inR(lane(stairs[f]), x, z, 0.8))) continue;
+      lootPoints.push([x, z, f * FH]);
+    }
   }
   lootPoints.push([cx, cz, 0]);
   return { lootPoints, solid: [x0 - T, z0 - T, x1 + T, z1 + T], roof: ry, stairs };
