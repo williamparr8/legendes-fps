@@ -6,7 +6,7 @@ import { Input } from './core/input.js';
 import { Hud } from './core/hud.js';
 import { sfx } from './core/audio.js';
 import { buildTestScene } from './world/testScene.js';
-import { buildIsland, HALF } from './world/island.js';
+import { buildIsland, EXT } from './world/island.js';
 import { Player } from './player/player.js';
 import { Combat } from './combat/combat.js';
 import { Viewmodel } from './combat/viewmodel.js';
@@ -181,7 +181,7 @@ export class Game {
       inv.ammo.light = 120; inv.heal.syringe = 3; inv.heal.cell = 2;
       this.camera.fov = 90; player.spawn();
     } else {
-      m.nav = new NavGrid(world.colliders, HALF, 1.5, world.groundY);
+      m.nav = new NavGrid(world.colliders, EXT, 1.5, world.groundY);
       m.match = new Match({ scene, world, combat, abilities, nav: m.nav, loot, player, inv, net }, cfg, (res) => this.endMatch(res));
     }
     this.m = m;

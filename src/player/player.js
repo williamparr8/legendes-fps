@@ -166,15 +166,15 @@ export class Player {
   }
 
   moveH(dx, dz) {
-    const c = this.c;
+    const c = this.c, hf = c.terrain; // hf.sinks : eau trop profonde (la mer est un mur, mais on peut en sortir)
     if (dx !== 0) {
       const nx = this.x + dx;
-      if (!c.query(nx, this.y, this.z, R, this.h)) this.x = nx;
+      if (!c.query(nx, this.y, this.z, R, this.h) && !(hf && hf.sinks(this.x, this.z, nx, this.z, this.y))) this.x = nx;
       else if (!this.tryStep(nx, this.z)) this.vx = 0;
     }
     if (dz !== 0) {
       const nz = this.z + dz;
-      if (!c.query(this.x, this.y, nz, R, this.h)) this.z = nz;
+      if (!c.query(this.x, this.y, nz, R, this.h) && !(hf && hf.sinks(this.x, this.z, this.x, nz, this.y))) this.z = nz;
       else if (!this.tryStep(this.x, nz)) this.vz = 0;
     }
   }
@@ -206,9 +206,10 @@ export class Player {
 
   // --- mantle ---
   tryMantle(fx, fz) {
-    const b = this.c.b, n = this.c.n;
+    const b = this.c.b, cell = this.c.cellAt(this.x + fx * 0.7, this.z + fz * 0.7);
     const px = this.x + fx * 0.7, pz = this.z + fz * 0.7;
-    for (let i = 0, o = 0; i < n; i++, o += 6) {
+    for (let ci = 0; ci < cell.length; ci++) {
+      const o = cell[ci] * 6;
       if (px + 0.1 <= b[o] || px - 0.1 >= b[o + 3] || pz + 0.1 <= b[o + 2] || pz - 0.1 >= b[o + 5]) continue;
       const top = b[o + 4], dh = top - this.y;
       if (dh < M.mantleMin || dh > M.mantleMax || b[o + 1] > this.y + 1.0) continue;

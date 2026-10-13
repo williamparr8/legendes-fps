@@ -346,11 +346,11 @@ export class Bot extends Target {
 
   // ---------- physique ----------
   physics(dt) {
-    const c = this.ctx.combat.world.colliders;
+    const c = this.ctx.combat.world.colliders, hf = c.terrain;
     let nx = this.x + this.vx * dt;
-    if (!c.query(nx, this.y, this.z, R, H)) this.x = nx; else this.tryStep(c, nx, this.z);
+    if (!c.query(nx, this.y, this.z, R, H) && !(hf && hf.sinks(this.x, this.z, nx, this.z, this.y))) this.x = nx; else this.tryStep(c, nx, this.z);
     const nz = this.z + this.vz * dt;
-    if (!c.query(this.x, this.y, nz, R, H)) this.z = nz; else this.tryStep(c, this.x, nz);
+    if (!c.query(this.x, this.y, nz, R, H) && !(hf && hf.sinks(this.x, this.z, this.x, nz, this.y))) this.z = nz; else this.tryStep(c, this.x, nz);
     const wasG = this.grounded;
     this.vy -= 24 * dt;
     const ny = this.y + this.vy * dt;

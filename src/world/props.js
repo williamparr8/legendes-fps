@@ -73,7 +73,7 @@ export function makeRocks(scene, list) {
 // Buissons : blobs de feuillage aplatis, aucun collider. `ok(x, z)` accepte un emplacement.
 export function makeBushes(scene, hf, seed, ok, count = 90) {
   const r = rng((seed | 0) * 13 + 5), list = [];
-  for (let i = 0; i < count * 6 && list.length < count; i++) {
+  for (let i = 0; i < count * 12 && list.length < count; i++) {
     const x = (r() - 0.5) * 2 * (hf.half - 6), z = (r() - 0.5) * 2 * (hf.half - 6), k = 0.6 + r() * 0.8, t = r();
     if (ok(x, z, 2.5)) list.push([x, hf.at(x, z) + 0.25 * k, z, k, t]);
   }
@@ -108,7 +108,7 @@ export function makeGrass(scene, hf, seed, ok, count = 6000) {
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const list = [];
-  for (let i = 0; i < count * 5 && list.length < count; i++) {
+  for (let i = 0; i < count * 9 && list.length < count; i++) {
     const x = (r() - 0.5) * 2 * (hf.half - 3), z = (r() - 0.5) * 2 * (hf.half - 3);
     if (ok(x, z, 0.8)) list.push([x, hf.at(x, z) - 0.02, z, 0.8 + r() * 0.9, r()]);
   }

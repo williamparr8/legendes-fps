@@ -51,14 +51,14 @@ export class Match {
     this.hold = false;
     const humans = cfg.humans || [{ id: 0, local: true, name: 'Vous', legend: cfg.legend }];
     this.humans = [];
-    this.zone = new Zone(scene, r, cfg.zone, world.half);
+    this.zone = new Zone(scene, r, cfg.zone, world.half, (x, z) => world.coast(x, z) > 20);
     ctx.zone = this.zone;
     this.drop = ctx.drop = { ship: new Ship(scene, cfg.seed, world.half), t: 0, leader: null }; // tout le monde part du vaisseau
     if (cfg.zone) this.zone.t += ZONE_DELAY;
     this.squads = []; this.bots = [];
 
     shuffle(world.lootPoints, r);
-    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || 260);
+    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || 360);
     for (let i = 0; i < nLoot; i++) loot.spawn(loot.roll(cfg.weapons), world.lootPoints[i][0], world.lootPoints[i][1], undefined, world.lootPoints[i][2]);
 
     // Échantillonnage du point le plus éloigné : escouades bien réparties sur la carte.

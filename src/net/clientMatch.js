@@ -6,7 +6,7 @@ import { Ship } from '../match/drop.js';
 export class ClientMatch {
   constructor(scene, world, combat, msg, net) {
     this.cfg = msg.cfg;
-    this.zone = new Zone(scene, Math.random, !!msg.cfg.zone, world.half);
+    this.zone = new Zone(scene, Math.random, !!msg.cfg.zone, world.half, null);
     this.stats = { kills: 0, damage: 0 };
     this.feed = [];
     this.aliveSquads = 0; this.playersAlive = 0; this.t = 0;

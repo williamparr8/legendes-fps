@@ -29,7 +29,7 @@ export class Ship {
     this.x = this.sx + this.dx * d; this.z = this.sz + this.dz * d;
     this.mesh.position.set(this.x, SHIP_ALT, this.z);
     this.mesh.visible = t < this.T;
-    if (this.fog) { const u = clamp((t - this.T) / 8, 0, 1); this.fog.near = 200 - 110 * u; this.fog.far = 700 - 360 * u; } // vue dégagée depuis le vaisseau
+    if (this.fog) { const u = clamp((t - this.T) / 8, 0, 1); this.fog.near = 200 - 120 * u; this.fog.far = 700 - 260 * u; } // vue dégagée depuis le vaisseau
   }
 }
 

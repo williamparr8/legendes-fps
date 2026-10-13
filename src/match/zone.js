@@ -2,16 +2,17 @@ import * as THREE from 'three';
 
 // Phases : attente (cercle suivant affiché), puis rétrécissement ; dégâts/s hors du cercle.
 const PHASES = [
-  { wait: 50, shrink: 40, r: 80, dps: 2 },
-  { wait: 40, shrink: 30, r: 50, dps: 4 },
-  { wait: 30, shrink: 25, r: 28, dps: 8 },
-  { wait: 25, shrink: 20, r: 12, dps: 15 },
-  { wait: 20, shrink: 15, r: 3, dps: 25 },
+  { wait: 60, shrink: 50, r: 160, dps: 2 },
+  { wait: 45, shrink: 40, r: 100, dps: 4 },
+  { wait: 35, shrink: 30, r: 58, dps: 8 },
+  { wait: 28, shrink: 22, r: 26, dps: 15 },
+  { wait: 20, shrink: 15, r: 5, dps: 25 },
 ];
 
 export class Zone {
-  constructor(scene, rand, enabled, half) {
-    this.enabled = enabled; this.rand = rand;
+  // land(x, z) : le centre d'un cercle doit tomber sur la terre ferme (île irrégulière) ; null = pas de contrainte.
+  constructor(scene, rand, enabled, half, land = null) {
+    this.enabled = enabled; this.rand = rand; this.land = land;
     this.cx = 0; this.cz = 0; this.r = half * 1.5;
     this.nx = 0; this.nz = 0; this.nr = this.r; // cercle suivant
     this.px = 0; this.pz = 0; this.pr = this.r;  // cercle au début du rétrécissement
@@ -31,8 +32,12 @@ export class Zone {
     const P = PHASES[Math.min(this.phase, PHASES.length - 1)];
     this.px = this.cx; this.pz = this.cz; this.pr = this.r;
     this.nr = Math.min(P.r, this.r);
-    const maxOff = Math.max(0, this.r - this.nr) * 0.8, a = this.rand() * 6.2832, d = this.rand() * maxOff;
-    this.nx = this.cx + Math.cos(a) * d; this.nz = this.cz + Math.sin(a) * d;
+    const maxOff = Math.max(0, this.r - this.nr) * 0.8;
+    for (let k = 0; k < 14; k++) {
+      const a = this.rand() * 6.2832, d = this.rand() * maxOff;
+      this.nx = this.cx + Math.cos(a) * d; this.nz = this.cz + Math.sin(a) * d;
+      if (!this.land || this.land(this.nx, this.nz)) break;
+    }
     this.t = P.wait; this.shrinking = false; this.dps = P.dps; this.P = P;
   }
 
@@ -48,9 +53,12 @@ export class Zone {
 
   // Point aléatoire dans le prochain cercle (tableau réutilisé).
   randomSafe() {
-    const a = this.rand() * 6.2832, d = Math.sqrt(this.rand()) * this.nr * 0.6;
     this._p = this._p || [0, 0];
-    this._p[0] = this.nx + Math.cos(a) * d; this._p[1] = this.nz + Math.sin(a) * d;
+    for (let k = 0; k < 8; k++) {
+      const a = this.rand() * 6.2832, d = Math.sqrt(this.rand()) * this.nr * 0.6;
+      this._p[0] = this.nx + Math.cos(a) * d; this._p[1] = this.nz + Math.sin(a) * d;
+      if (!this.land || this.land(this._p[0], this._p[1])) break;
+    }
     return this._p;
   }
 

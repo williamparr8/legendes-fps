@@ -28,6 +28,8 @@ export class NavGrid {
       const z0 = Math.max(0, Math.floor((b[o + 2] - m + half) / cell)), z1 = Math.min(n - 1, Math.floor((b[o + 5] + m + half) / cell));
       for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) blocked[z * n + x] = 1;
     }
+    // mer : cases dont le sol est sous le seuil de profondeur praticable
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (groundY(-half + (i + 0.5) * cell, -half + (j + 0.5) * cell) < -1.9) blocked[j * n + i] = 1;
   }
 
   ix(v) { const i = Math.floor((v + this.half) / this.cell); return i < 0 ? 0 : i >= this.n ? this.n - 1 : i; }
@@ -95,7 +97,7 @@ export class NavGrid {
     this.g[start] = 0; this.parent[start] = -1; this.open[start] = sid;
     this.push(start, 0);
     let found = false, iter = 0;
-    while (this.hn > 0 && iter++ < 9000) {
+    while (this.hn > 0 && iter++ < 16000) {
       const cur = this.pop();
       if (this.closed[cur] === sid) continue;
       this.closed[cur] = sid;

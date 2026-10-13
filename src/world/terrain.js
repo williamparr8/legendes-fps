@@ -2,73 +2,22 @@ import * as THREE from 'three';
 import { rng } from './testScene.js';
 import { terrainMaterial } from './skin.js';
 
-const CELL = 1;
+import { SEA } from './relief.js';
+export { Heightfield, makeCoast, SEA, DEEP } from './relief.js';
+
 const smooth = (t) => t * t * (3 - 2 * t);
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 
-// Relief : carte de hauteurs précalculée (1 m), échantillonnée par interpolation bilinéaire (aucune allocation).
-// Déterministe d'après la graine : hôte et clients obtiennent exactement le même terrain.
-// zones : [x, z, rayon plat, rayon de fondu] — le relief s'aplatit autour des bâtiments et des tours.
-export class Heightfield {
-  constructor(half, seed, zones) {
-    this.half = half; this.ext = half + 24;
-    const n = this.n = Math.ceil((2 * this.ext) / CELL) + 1;
-    this.h = new Float32Array(n * n);
-    this.flat = new Float32Array(n * n); // 0 = zone plate, 1 = relief libre
-    this.max = 0;
-    const r = rng((seed | 0) * 7 + 13);
-    const hills = [];
-    for (let i = 0; i < 7; i++) {
-      const s = 16 + r() * 24;
-      hills.push([(r() - 0.5) * 2 * (half - 8), (r() - 0.5) * 2 * (half - 8), s, Math.min(s * 0.25, 2 + r() * 3.5)]);
-    }
-    const L = 64, lat = new Float32Array(L * L);
-    for (let i = 0; i < lat.length; i++) lat[i] = r();
-    const vn = (x, z) => {
-      const xi = Math.floor(x), zi = Math.floor(z), fx = smooth(x - xi), fz = smooth(z - zi);
-      const a = lat[(zi & 63) * L + (xi & 63)], b = lat[(zi & 63) * L + ((xi + 1) & 63)];
-      const c = lat[((zi + 1) & 63) * L + (xi & 63)], d = lat[((zi + 1) & 63) * L + ((xi + 1) & 63)];
-      return (a + (b - a) * fx) * (1 - fz) + (c + (d - c) * fx) * fz;
-    };
-    for (let j = 0; j < n; j++) {
-      for (let i = 0; i < n; i++) {
-        const x = -this.ext + i * CELL, z = -this.ext + j * CELL;
-        let v = 0;
-        for (let k = 0; k < hills.length; k++) {
-          const hl = hills[k], dx = x - hl[0], dz = z - hl[1];
-          v += hl[3] * Math.exp(-(dx * dx + dz * dz) / (2 * hl[2] * hl[2]));
-        }
-        v += (vn(x * 0.05, z * 0.05) - 0.5) * 1.8 + (vn(x * 0.17, z * 0.17) - 0.5) * 0.5;
-        if (v > 3) v = 3 + (v - 3) * 0.4; // compresse les cumuls de collines superposées
-        let f = 1;
-        for (let k = 0; k < zones.length; k++) {
-          const q = zones[k], d = Math.hypot(x - q[0], z - q[1]);
-          const t = smooth(clamp01((d - q[2]) / (q[3] - q[2])));
-          if (t < f) f = t;
-        }
-        f *= smooth(clamp01((half - 4 - Math.max(Math.abs(x), Math.abs(z))) / 26)); // plat contre l'enceinte
-        v *= f;
-        if (v < -1.5) v = -1.5;
-        this.h[j * n + i] = v; this.flat[j * n + i] = f;
-        if (v > this.max) this.max = v;
-      }
-    }
+// Routes : polylignes [[x0,z0,x1,z1], …] ; distance au segment le plus proche.
+export function roadDist(roads, x, z) {
+  let best = 1e9;
+  for (let i = 0; i < roads.length; i++) {
+    const s = roads[i], vx = s[2] - s[0], vz = s[3] - s[1], l2 = vx * vx + vz * vz || 1;
+    const t = clamp01(((x - s[0]) * vx + (z - s[1]) * vz) / l2);
+    const d = Math.hypot(x - (s[0] + vx * t), z - (s[1] + vz * t));
+    if (d < best) best = d;
   }
-
-  at(x, z) {
-    const n = this.n, u = (x + this.ext) / CELL, v = (z + this.ext) / CELL;
-    if (u < 0 || v < 0 || u >= n - 1 || v >= n - 1) return 0;
-    const i = u | 0, j = v | 0, fu = u - i, fv = v - j, k = j * n + i, h = this.h;
-    return (h[k] * (1 - fu) + h[k + 1] * fu) * (1 - fv) + (h[k + n] * (1 - fu) + h[k + n + 1] * fu) * fv;
-  }
-
-  // 0 = zone plate (bâtiment), 1 = relief libre
-  free(x, z) {
-    const n = this.n, i = Math.round((x + this.ext) / CELL), j = Math.round((z + this.ext) / CELL);
-    return i < 0 || j < 0 || i >= n || j >= n ? 0 : this.flat[j * n + i];
-  }
-
-  slope(x, z) { return Math.hypot(this.at(x + 1, z) - this.at(x - 1, z), this.at(x, z + 1) - this.at(x, z - 1)) / 2; }
+  return best;
 }
 
 function grassTexture() {
@@ -89,22 +38,25 @@ function grassTexture() {
 }
 
 // Maillage du terrain : couleurs par altitude / pente / proximité des bâtiments, ombres reçues.
-export function buildTerrainMesh(scene, hf) {
-  const seg = 176, size = hf.ext * 2;
+export function buildTerrainMesh(scene, hf, roads = []) {
+  const seg = 272, size = hf.ext * 2;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, cnt = pos.count;
   for (let i = 0; i < cnt; i++) pos.setY(i, hf.at(pos.getX(i), pos.getZ(i)));
   geo.computeVertexNormals();
   const nor = geo.attributes.normal, col = new Float32Array(cnt * 3);
-  const grass = new THREE.Color(0x4f7d3a), dry = new THREE.Color(0x9a9a52), rock = new THREE.Color(0x7d786f), dirt = new THREE.Color(0x8c7c60), low = new THREE.Color(0x3d6330);
+  const grass = new THREE.Color(0x4f7d3a), dry = new THREE.Color(0x9a9a52), rock = new THREE.Color(0x7d786f), dirt = new THREE.Color(0x8c7c60);
+  const sand = new THREE.Color(0xcdbb8c), wet = new THREE.Color(0x8d8466), bed = new THREE.Color(0x5f7a70), road = new THREE.Color(0x8f836a);
   const c = new THREE.Color();
   for (let i = 0; i < cnt; i++) {
-    const x = pos.getX(i), z = pos.getZ(i), h = pos.getY(i), f = hf.free(x, z), ny = nor.getY(i);
+    const x = pos.getX(i), z = pos.getZ(i), h = pos.getY(i), f = hf.free(x, z), ny = nor.getY(i), m = hf.coast(x, z);
     c.copy(grass).lerp(dry, clamp01((h - 1) / 9));
-    if (h < -0.3) c.lerp(low, clamp01(-h / 1.2));
-    if (f < 0.45) c.lerp(dirt, clamp01((0.45 - f) / 0.35));
+    if (f < 0.25 && m > 20) c.lerp(dirt, clamp01((0.25 - f) / 0.25));
     if (ny < 0.9) c.lerp(rock, clamp01((0.9 - ny) / 0.1));
+    if (roads.length && m > 4) c.lerp(road, 1 - smooth(clamp01((roadDist(roads, x, z) - 1.6) / 2.6)));
+    c.lerp(sand, 1 - smooth(clamp01((m - 4) / 12))); // plage
+    if (h < SEA + 0.3) c.lerp(h < -1.6 ? bed : wet, 0.8);
     const n = 0.93 + 0.14 * (0.5 + 0.5 * Math.sin(x * 1.7 + Math.cos(z * 2.3) * 2.1) * Math.sin(z * 1.3 + x * 0.4));
     col[i * 3] = c.r * n; col[i * 3 + 1] = c.g * n; col[i * 3 + 2] = c.b * n;
   }
@@ -117,14 +69,25 @@ export function buildTerrainMesh(scene, hf) {
   return mesh;
 }
 
+// Mer : grand plan semi-transparent à SEA (reflet du soleil par spéculaire), débordant très loin dans la brume.
+export function buildWater(scene) {
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2),
+    new THREE.MeshPhongMaterial({ color: 0x2a7fa0, specular: 0xffffff, shininess: 110, transparent: true, opacity: 0.84, side: THREE.DoubleSide }),
+  );
+  m.position.y = SEA;
+  m.receiveShadow = false;
+  scene.add(m);
+}
+
 // Chaîne de montagnes lointaines (décor), noyée dans la brume.
 export function buildMountains(scene, seed) {
-  const r = rng((seed | 0) + 99), N = 30;
+  const r = rng((seed | 0) + 99), N = 36;
   const mesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 6), new THREE.MeshLambertMaterial({ flatShading: true }), N);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
   for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2 + r() * 0.2, d = 230 + r() * 50, w = 45 + r() * 50, h = 40 + r() * 60;
-    p.set(Math.cos(a) * d, h / 2 - 4, Math.sin(a) * d); s.set(w, h, w);
+    const a = (i / N) * Math.PI * 2 + r() * 0.2, d = 400 + r() * 70, w = 70 + r() * 60, h = 45 + r() * 60;
+    p.set(Math.cos(a) * d, h / 2 - 6, Math.sin(a) * d); s.set(w, h, w);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * 3);
     m.compose(p, q, s); mesh.setMatrixAt(i, m);
     mesh.setColorAt(i, c.setHSL(0.58, 0.18, 0.38 + r() * 0.12));

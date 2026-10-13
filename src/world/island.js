@@ -1,22 +1,25 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { Heightfield, buildTerrainMesh, buildMountains, buildSky, HORIZON } from './terrain.js';
+import { Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, HORIZON } from './terrain.js';
 import { buildBuilding } from './buildings.js';
 import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
 
-export const HALF = 120;
+export const HALF = 270;        // demi-taille de référence (vaisseau, zone) ; le relief s'étend à HALF + 24
+export const EXT = HALF + 24;
 const WALLS = [[0x9a9ea6, 0x6c7078], [0xb7a88c, 0x7d7058], [0x94604f, 0x5e3c33], [0x7f93a6, 0x56667a], [0xa9a39a, 0x6f6a62]];
 const CRATE = [0xb08a60, 0xa07a50, 0xc09a68, 0x9a7048];
 const CONTAINER = [0x3d6a8f, 0x8f3d3d, 0x4f7a4a, 0xb0842f];
+// Poids (caisse, conteneur, rocher) du décor par lieu
+const DECOR = { Port: [0.35, 0.55, 0.1], Usine: [0.35, 0.55, 0.1], Ferme: [0.6, 0.1, 0.3], Ruines: [0.4, 0.1, 0.5], 'Base militaire': [0.35, 0.45, 0.2] };
 
-// Carte « Île » : 240×240 m, relief (collines, plaines plates autour des bâtiments), bâtiments à étages et toits praticables,
-// tours + tyroliennes, caisses, conteneurs, rochers, arbres, jump pads. Générée uniquement depuis la graine.
-// opts.shadows : ombres du soleil (suit le joueur, voir World.followSun).
+// Carte « Île » : île irrégulière d'environ 430 m (silhouette générée, plages, mer), lieux nommés (citadelle, village, base militaire,
+// usine, ferme, port, ruines, hameau, phare) reliés par des routes, forêts par amas, massifs, tours + tyroliennes, jump pads.
+// Générée uniquement depuis la graine. opts.shadows : ombres du soleil (suit le joueur, voir World.followSun).
 export function buildIsland(scene, seed = 1, opts = {}) {
   const r = rng(seed);
   scene.background = new THREE.Color(HORIZON);
-  scene.fog = new THREE.Fog(HORIZON, 70, 360);
+  scene.fog = new THREE.Fog(HORIZON, 80, 440);
   scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x6a7550, 1.15));
   const sun = new THREE.DirectionalLight(0xfff1d8, 2.1);
   if (opts.shadows) {
@@ -30,24 +33,98 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   scene.add(sun, sun.target);
   buildSky(scene, new THREE.Vector3(60, 100, 30));
   buildMountains(scene, seed);
+  buildWater(scene);
 
-  // ---- 1. plan : sites des bâtiments et tours (avant le relief, qui s'aplatit autour d'eux) ----
-  const sites = [{ cx: 0, cz: 0, sx: 26, sz: 26, floors: 3 }];
-  for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) {
-    if (gx === 0 && gz === 0) continue;
-    const k = r(), cx = gx * 65 + (r() - 0.5) * 16, cz = gz * 65 + (r() - 0.5) * 16;
-    if (k < 0.35) sites.push({ cx, cz, sx: 14 + r() * 3, sz: 14 + r() * 3, floors: r() < 0.3 ? 2 : 1 });
-    else if (k < 0.75) sites.push({ cx, cz, sx: 18 + r() * 5, sz: 18 + r() * 5, floors: 2 });
-    else sites.push({ cx, cz, sx: 25 + r() * 6, sz: 25 + r() * 6, floors: 3 });
+  const coast = makeCoast(seed);
+
+  // ---- 1. plan : lieux, bâtiments, tours, massifs (avant le relief, qui s'aplatit autour des bâtiments et des tours) ----
+  const sites = [], places = [{ name: 'Citadelle', x: 0, z: 0, r: 48 }];
+  const addB = (cx, cz, sx, sz, floors) => {
+    const rf = Math.max(sx, sz) * 0.72 + 3;
+    if (coast(cx, cz) < rf + 24) return false;
+    for (const s of sites) if (Math.abs(cx - s.cx) < (sx + s.sx) / 2 + 5 && Math.abs(cz - s.cz) < (sz + s.sz) / 2 + 5) return false;
+    sites.push({ cx, cz, sx, sz, floors });
+    return true;
+  };
+  const small = () => [14 + r() * 3, 14 + r() * 3, r() < 0.3 ? 2 : 1];
+  const medium = () => [18 + r() * 5, 18 + r() * 5, 2];
+  const put = (x, z, s) => addB(x, z, s[0], s[1], s[2]);
+  const LAYOUT = {
+    Citadelle: (x, z) => {
+      addB(x, z, 26, 26, 3);
+      for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(x + a * 42 + (r() - 0.5) * 8, z + b * 42 + (r() - 0.5) * 8, r() < 0.5 ? medium() : small());
+    },
+    Village: (x, z) => {
+      const alongX = r() < 0.5;
+      for (let i = -2; i <= 2; i++) for (const s of [-1, 1]) {
+        if (r() < 0.2) continue;
+        const u = i * 23 + (r() - 0.5) * 4, v = s * (16 + (r() - 0.5) * 4);
+        put(alongX ? x + u : x + v, alongX ? z + v : z + u, r() < 0.8 ? small() : medium());
+      }
+    },
+    'Base militaire': (x, z) => {
+      addB(x, z, 28, 28, 3);
+      put(x - 36, z - 6, medium()); put(x + 36, z + 8, medium()); if (r() < 0.7) put(x + 2, z + 38, small());
+    },
+    Usine: (x, z) => { addB(x - 21, z, 30, 26, 3); addB(x + 21, z + 4, 28, 22, 2); put(x, z - 32, small()); },
+    Ferme: (x, z) => { addB(x, z, 24, 16, 1); addB(x + 26, z - 4, 14, 14, 2); addB(x - 24, z + 14, 14, 14, 1); },
+    Port: (x, z) => { addB(x - 21, z, 26, 16, 1); addB(x + 21, z + 2, 26, 16, 1); },
+    Ruines: (x, z) => { for (let k = 0; k < 3; k++) addB(x + (r() - 0.5) * 44, z + (r() - 0.5) * 44, 14 + r() * 3, 14 + r() * 3, 1); },
+    Hameau: (x, z) => { for (let k = 0; k < 3; k++) put(x + (r() - 0.5) * 46, z + (r() - 0.5) * 46, small()); },
+    Phare: (x, z) => { addB(x, z, 11, 11, 4); },
+  };
+  LAYOUT.Citadelle(0, 0);
+  for (const [name, rad, lo, hi] of [['Village', 52, 45, 1e9], ['Base militaire', 48, 50, 1e9], ['Usine', 44, 50, 1e9], ['Ferme', 36, 45, 1e9],
+    ['Port', 40, 40, 58], ['Ruines', 34, 45, 1e9], ['Hameau', 32, 45, 1e9], ['Phare', 14, 36, 48]]) {
+    for (let t = 0; t < 500; t++) {
+      const a = r() * 6.2832, d = 45 + r() * 210, x = Math.cos(a) * d, z = Math.sin(a) * d, m = coast(x, z);
+      if (m < lo || m > hi || !places.every((p) => Math.hypot(x - p.x, z - p.z) > rad + p.r + 14)) continue;
+      places.push({ name, x, z, r: rad });
+      LAYOUT[name](x, z);
+      break;
+    }
   }
-  // tours placées dans les couloirs libres entre les rangées de bâtiments (x = ±32, z = -100)
-  const towers = [[-32, -100], [-32, 72], [32, -100], [32, 72]];
+  // tours (escalier 13 marches de 0,5 m au sud) : 6 emplacements répartis autour de l'île
+  const free = (x0, z0, x1, z1, m) => !sites.some((s) => x1 + m > s.cx - s.sx / 2 && x0 - m < s.cx + s.sx / 2 && z1 + m > s.cz - s.sz / 2 && z0 - m < s.cz + s.sz / 2);
+  const towers = [];
+  for (let k = 0; k < 6; k++) {
+    for (let t = 0; t < 30; t++) {
+      const a = k * 1.0472 + (r() - 0.5) * 0.6, d = 85 + r() * 90, x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (coast(x, z + 5) < 50 || !free(x - 6, z - 6, x + 6, z + 16, 14)) continue;
+      if (towers.some((q) => Math.hypot(q[0] - x, q[1] - z) < 40)) continue;
+      towers.push([x, z]);
+      break;
+    }
+  }
+  // massifs : 3 grosses collines loin des bâtiments
+  const hills = [];
+  for (let k = 0; k < 3; k++) {
+    for (let t = 0; t < 40; t++) {
+      const a = r() * 6.2832, d = 70 + r() * 110, x = Math.cos(a) * d, z = Math.sin(a) * d, s = 28 + r() * 16;
+      if (coast(x, z) < 70 || sites.some((q) => Math.hypot(x - q.cx, z - q.cz) < s * 1.3 + Math.max(q.sx, q.sz)) || towers.some((q) => Math.hypot(x - q[0], z - q[1]) < s * 1.3 + 25)) continue;
+      hills.push([x, z, s, 12 + r() * 10]);
+      break;
+    }
+  }
+  // routes : arbre couvrant minimal entre les lieux (un coude par tronçon)
+  const roads = [], inTree = [0], rest = places.map((_, i) => i).slice(1);
+  while (rest.length) {
+    let bi = 0, bj = 0, bd = 1e9;
+    for (const i of inTree) for (const j of rest) {
+      const d = Math.hypot(places[i].x - places[j].x, places[i].z - places[j].z);
+      if (d < bd) { bd = d; bi = i; bj = j; }
+    }
+    const A = places[bi], B = places[bj], mx = (A.x + B.x) / 2 + (r() - 0.5) * 30, mz = (A.z + B.z) / 2 + (r() - 0.5) * 30;
+    roads.push([A.x, A.z, mx, mz], [mx, mz, B.x, B.z]);
+    inTree.push(bj); rest.splice(rest.indexOf(bj), 1);
+  }
+
   const zones = [];
   for (const s of sites) { const rf = Math.max(s.sx, s.sz) * 0.72 + 3; zones.push([s.cx, s.cz, rf, rf + 16]); }
   for (const [x, z] of towers) zones.push([x, z + 5, 12, 30]);
 
-  const hf = new Heightfield(HALF, seed, zones);
-  buildTerrainMesh(scene, hf);
+  const hf = new Heightfield(HALF, seed, zones, coast, hills);
+  buildTerrainMesh(scene, hf, roads);
 
   const w = new World(scene);
   w.groundY = (x, z) => hf.at(x, z);
@@ -57,11 +134,6 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   const lootPoints = [], poi = [], solids = [], buildingsInfo = [];
   const near = (x, z, m) => solids.some((s) => x > s[0] - m && x < s[2] + m && z > s[1] - m && z < s[3] + m);
 
-  // Enceinte (haute : le relief est plat contre elle)
-  const E = HALF + 2, WH = 20;
-  w.box(-E, -2, -E, E, WH, -HALF, 0x5a6472, 2); w.box(-E, -2, HALF, E, WH, E, 0x5a6472, 2);
-  w.box(-E, -2, -HALF, -HALF, WH, HALF, 0x5a6472, 2); w.box(HALF, -2, -HALF, E, WH, HALF, 0x5a6472, 2);
-
   // ---- 2. bâtiments ----
   for (const s of sites) {
     const [wall, trim] = WALLS[(r() * WALLS.length) | 0];
@@ -69,10 +141,15 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     for (const p of b.lootPoints) lootPoints.push(p);
     buildingsInfo.push(b);
     solids.push(b.solid);
-    poi.push([s.cx, s.cz]);
+  }
+  for (const p of places) if (p.name !== 'Phare') poi.push([p.x, p.z]);
+  for (const p of places) if (p.name === 'Phare') { // mât et feu au sommet du phare
+    const roof = buildingsInfo.find((b) => p.x > b.solid[0] && p.x < b.solid[2] && p.z > b.solid[1] && p.z < b.solid[3]);
+    if (roof) { w.box(p.x - 1, roof.roof, p.z - 1, p.x + 1, roof.roof + 4.5, p.z + 1, 0xd8d2c4, 0); w.deco(p.x - 1.3, roof.roof + 4.5, p.z - 1.3, p.x + 1.3, roof.roof + 5.6, p.z + 1.3, 0xffe9a0, 0); }
+    poi.push([p.x, p.z + 12]);
   }
 
-  // ---- 3. tours (escalier 13 marches de 0,5 m) reliées par une tyrolienne ----
+  // ---- 3. tours reliées par des tyroliennes ----
   const tops = [];
   for (const [x, z] of towers) {
     const H = 6.5;
@@ -84,23 +161,23 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     tops.push([x, z]);
   }
 
-  // ---- 4. couvertures : caisses, conteneurs, rochers ----
+  // ---- 4. couvertures : caisses, conteneurs, rochers (par lieu, puis dispersés) ----
   const rocks = [];
   const pick = (a) => a[(r() * a.length) | 0];
   const cell = (x0, z0, x1, z1) => {
     const g = [hf.at(x0, z0), hf.at(x1, z0), hf.at(x0, z1), hf.at(x1, z1)];
     return [Math.min(...g), Math.max(...g)];
   };
-  for (let i = 0; i < 90; i++) {
-    const x = (r() - 0.5) * 2 * (HALF - 8), z = (r() - 0.5) * 2 * (HALF - 8), k = r();
-    if (near(x, z, 3) || Math.hypot(x, z) < 6) continue;
-    if (k < 0.55) { // caisses (parfois empilées)
+  const decor = (x, z, wt) => {
+    const k = r();
+    if (coast(x, z) < 14 || near(x, z, 3) || Math.hypot(x, z) < 6 || roadDist(roads, x, z) < 3.5 || hf.slope(x, z) > 0.45) return;
+    if (k < wt[0]) { // caisses (parfois empilées)
       const s = 1.1 + r() * 1.3, [lo, hi] = cell(x, z, x + s, z + s);
       w.box(x, lo - 0.4, z, x + s, hi + s, z + s, pick(CRATE), 1);
       if (r() < 0.35) w.box(x + 0.2, hi + s, z + 0.2, x + s - 0.2, hi + s * 1.7, z + s - 0.2, pick(CRATE), 1);
       solids.push([x, z, x + s, z + s]);
       if (r() < 0.3) lootPoints.push([x + s + 1, z + s / 2, hf.at(x + s + 1, z + s / 2)]);
-    } else if (k < 0.7) { // conteneur
+    } else if (k < wt[0] + wt[1]) { // conteneur
       const alongX = r() < 0.5, lx = alongX ? 6 : 2.4, lz = alongX ? 2.4 : 6, [lo, hi] = cell(x, z, x + lx, z + lz);
       w.box(x, lo - 0.4, z, x + lx, hi + 2.6, z + lz, pick(CONTAINER), 3);
       solids.push([x, z, x + lx, z + lz]);
@@ -111,57 +188,98 @@ export function buildIsland(scene, seed = 1, opts = {}) {
       c.add(x - h, gy - 0.3, z - h, x + h, gy + ry * 1.2, z + h);
       solids.push([x - rx, z - rz, x + rx, z + rz]);
     }
+  };
+  for (const p of places) {
+    if (p.name === 'Phare') continue;
+    const wt = DECOR[p.name] || [0.5, 0.15, 0.35], n = Math.round(p.r / 3);
+    for (let i = 0; i < n; i++) {
+      const a = r() * 6.2832, d = Math.sqrt(r()) * p.r;
+      decor(p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, wt);
+    }
+  }
+  for (let i = 0; i < 90; i++) decor((r() - 0.5) * 2 * (HALF - 20), (r() - 0.5) * 2 * (HALF - 20), [0.35, 0.1, 0.55]);
+  // merlons de sacs/béton autour des bases militaires (4 côtés, passages tous les 18 m)
+  for (const p of places) {
+    if (p.name !== 'Base militaire') continue;
+    const S = 46;
+    for (let u = -S; u < S - 8; u += 18) {
+      for (const [x0, z0, x1, z1] of [[p.x + u, p.z - S, p.x + u + 12, p.z - S + 0.9], [p.x + u, p.z + S, p.x + u + 12, p.z + S + 0.9],
+        [p.x - S, p.z + u, p.x - S + 0.9, p.z + u + 12], [p.x + S, p.z + u, p.x + S + 0.9, p.z + u + 12]]) {
+        if (coast(x0, z0) < 12 || coast(x1, z1) < 12) continue;
+        const [lo, hi] = cell(x0, z0, x1, z1);
+        w.box(x0, lo - 0.4, z0, x1, hi + 1.3, z1, 0x9a9a8a, 0);
+        solids.push([x0, z0, x1, z1]);
+      }
+    }
   }
   makeRocks(scene, rocks);
 
-  // ---- 5. arbres (hors zones plates), tronc = collision ----
+  // ---- 5. forêts par amas (tronc = collision), arbres isolés, buissons, herbe ----
   const trees = [];
-  for (let i = 0; i < 260 && trees.length < 150; i++) {
-    const x = (r() - 0.5) * 2 * (HALF - 10), z = (r() - 0.5) * 2 * (HALF - 10);
-    if (hf.free(x, z) < 0.9 || hf.slope(x, z) > 0.45 || near(x, z, 4) || Math.hypot(x, z) < 10) continue;
+  const plant = (x, z) => {
+    if (trees.length >= 420 || hf.free(x, z) < 0.9 || hf.slope(x, z) > 0.45 || near(x, z, 4) || Math.hypot(x, z) < 10 || roadDist(roads, x, z) < 5) return;
     const gy = hf.at(x, z), k = 0.8 + r() * 0.8;
     trees.push([x, gy - 0.1, z, k, r()]);
     c.add(x - 0.3 * k, gy - 0.4, z - 0.3 * k, x + 0.3 * k, gy + 3.6 * k, z + 0.3 * k);
+  };
+  for (let f = 0; f < 18; f++) {
+    const a = r() * 6.2832, d = 20 + r() * 210, cx = Math.cos(a) * d, cz = Math.sin(a) * d, rad = 18 + r() * 20;
+    if (coast(cx, cz) < 18) continue;
+    for (let i = 0; i < 26; i++) {
+      const b = r() * 6.2832, e = Math.sqrt(r()) * rad;
+      plant(cx + Math.cos(b) * e, cz + Math.sin(b) * e);
+    }
   }
+  for (let i = 0; i < 90; i++) plant((r() - 0.5) * 2 * (HALF - 10), (r() - 0.5) * 2 * (HALF - 10));
   makeTrees(scene, trees);
-  const ok = (x, z, m) => hf.free(x, z) > 0.9 && hf.slope(x, z) < 0.5 && !near(x, z, m) && Math.hypot(x, z) > 6;
-  makeBushes(scene, hf, seed, ok);
-  makeGrass(scene, hf, seed, ok);
+  const ok = (x, z, m) => hf.free(x, z) > 0.9 && hf.slope(x, z) < 0.5 && !near(x, z, m) && Math.hypot(x, z) > 6 && roadDist(roads, x, z) > 3;
+  makeBushes(scene, hf, seed, ok, 150);
+  makeGrass(scene, hf, seed, ok, 10000);
 
   // ---- 5b. tyroliennes entre tours : câble à 9,2 m (pieds du joueur à 7,25 m, au-dessus du plateau) ; une ligne qui
   // toucherait relief, bâtiment ou arbre est refusée (échantillon tous les mètres)
   const top = 9.2, feet = top - 1.95;
   const clear = (a, b) => {
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len > 240) return false;
     for (let d = 0; d <= len; d += 1) {
       const x = a[0] + (b[0] - a[0]) * d / len, z = a[1] + (b[1] - a[1]) * d / len;
       if (hf.at(x, z) + 0.6 > feet || c.query(x, feet, z, 0.5, 1.9)) return false;
     }
     return true;
   };
-  for (const [p, q] of [[0, 1], [2, 3], [0, 2], [1, 3]]) if (clear(tops[p], tops[q])) w.zip(tops[p][0], top, tops[p][1], tops[q][0], top, tops[q][1]);
+  const pairs = [], deg = tops.map(() => 0);
+  for (let p = 0; p < tops.length; p++) for (let q = p + 1; q < tops.length; q++) pairs.push([p, q, Math.hypot(tops[p][0] - tops[q][0], tops[p][1] - tops[q][1])]);
+  pairs.sort((u, v) => u[2] - v[2]); // les lignes les plus courtes d'abord, 2 lignes au plus par tour
+  for (const [p, q] of pairs) {
+    if (deg[p] >= 2 || deg[q] >= 2 || !clear(tops[p], tops[q])) continue;
+    w.zip(tops[p][0], top, tops[p][1], tops[q][0], top, tops[q][1]); deg[p]++; deg[q]++;
+  }
 
   // ---- 6. jump pads vers le centre ----
-  for (let i = 0; i < 4; i++) {
-    const a = r() * 6.28, d = 40 + r() * 50, x = Math.cos(a) * d, z = Math.sin(a) * d;
-    if (near(x, z, 3)) continue;
-    w.pad(x, z, 18, -Math.cos(a), -Math.sin(a), 10);
+  for (let i = 0, k = 0; i < 20 && k < 6; i++) {
+    const a = r() * 6.2832, d = 70 + r() * 110, x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (near(x, z, 3) || coast(x, z) < 25 || hf.slope(x, z) > 0.3) continue;
+    w.pad(x, z, 18, -Math.cos(a), -Math.sin(a), 10); k++;
   }
 
-  // ---- 7. butin au sol, un peu partout ----
-  for (let i = 0; i < 110; i++) {
-    const x = (r() - 0.5) * 2 * (HALF - 6), z = (r() - 0.5) * 2 * (HALF - 6), g = hf.at(x, z);
-    if (!c.query(x, g, z, 0.5, 2)) lootPoints.push([x, z, g]);
+  // ---- 7. butin au sol, un peu partout (sur la terre ferme) ----
+  for (let i = 0, k = 0; i < 700 && k < 220; i++) {
+    const x = (r() - 0.5) * 2 * (HALF - 10), z = (r() - 0.5) * 2 * (HALF - 10);
+    if (coast(x, z) < 10) continue;
+    const g = hf.at(x, z);
+    if (!c.query(x, g, z, 0.5, 2)) { lootPoints.push([x, z, g]); k++; }
   }
 
-  // ---- 8. apparitions : candidats loin des bâtiments, pente douce (Match choisit les plus éloignés entre eux) ----
+  // ---- 8. apparitions : candidats sur la terre, loin des bâtiments, pente douce (Match choisit les plus éloignés entre eux) ----
   const spawns = [];
-  for (let i = 0; i < 160 && spawns.length < 90; i++) {
-    const a = r() * 6.2832, d = 35 + r() * 73, x = Math.cos(a) * d, z = Math.sin(a) * d, g = hf.at(x, z);
-    if (c.query(x, g, z, 1.5, 2) || hf.slope(x, z) > 0.4) continue;
+  for (let i = 0; i < 700 && spawns.length < 120; i++) {
+    const x = (r() - 0.5) * 2 * (HALF - 20), z = (r() - 0.5) * 2 * (HALF - 20), g = hf.at(x, z);
+    if (coast(x, z) < 25 || c.query(x, g, z, 1.5, 2) || hf.slope(x, z) > 0.4) continue;
     spawns.push({ x, z, yaw: Math.atan2(x, z) });
   }
   w.finalize();
-  w.half = HALF; w.lootPoints = lootPoints; w.poi = poi; w.spawns = spawns; w.rand = r; w.buildings = buildingsInfo;
+  w.half = HALF; w.ext = EXT; w.lootPoints = lootPoints; w.poi = poi; w.spawns = spawns; w.rand = r; w.buildings = buildingsInfo;
+  w.places = places; w.roads = roads; w.coast = coast;
   return w;
 }
