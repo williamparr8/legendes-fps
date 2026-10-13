@@ -35,10 +35,10 @@ const bx = (w, h, d, hex, x, y, z) => paint(new THREE.BoxGeometry(w, h, d).trans
 // Boîte unie (matériau d'accent/équipe).
 const pb = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
 // Cylindre vertical coloré (rayons haut/bas, hauteur).
-const cy = (r1, r2, h, hex, x, y, z, seg = 8) => paint(new THREE.CylinderGeometry(r1, r2, h, seg).translate(x, y, z), C.set(hex));
+const cy = (r1, r2, h, hex, x, y, z, seg = 10) => paint(new THREE.CylinderGeometry(r1, r2, h, seg).translate(x, y, z), C.set(hex));
 // Cylindre ovale (buste/ceinture) : faces plates devant/derrière, aplati en profondeur.
-const ov = (r1, r2, h, hex, x, y, z, sz = 0.7) => paint(new THREE.CylinderGeometry(r1, r2, h, 8).rotateY(Math.PI / 8).scale(1, 1, sz).translate(x, y, z), C.set(hex));
-const sp = (r, hex, x, y, z) => paint(new THREE.SphereGeometry(r, 7, 5).translate(x, y, z), C.set(hex));
+const ov = (r1, r2, h, hex, x, y, z, sz = 0.7) => paint(new THREE.CylinderGeometry(r1, r2, h, 12).rotateY(Math.PI / 12).scale(1, 1, sz).translate(x, y, z), C.set(hex));
+const sp = (r, hex, x, y, z) => paint(new THREE.SphereGeometry(r, 10, 7).translate(x, y, z), C.set(hex));
 // Plaque biseautée : profil [[x, y], …] extrudé sur l'épaisseur d, centrée en (x, y, z).
 function pl(pts, d, hex, x, y, z, bev = 0.012) {
   const s = new THREE.Shape(), t = d - 2 * bev;
@@ -50,13 +50,16 @@ const PANTS = 0x2a2e36, DARK = 0x1c1f25, VEST = 0x30353d, SKIN = 0xe0bc98, BOOT 
 const L1 = 0.33, L2 = 0.32; // bras : épaule → coude, coude → main
 const thighGeo = (s) => mergeGeometries([
   cy(0.095, 0.07, 0.44, PANTS, 0, -0.21, 0), sp(0.09, PANTS, 0, 0, 0), bx(0.035, 0.14, 0.12, PAD, s * 0.1, -0.19, 0), bx(0.04, 0.03, 0.12, DARK, s * 0.1, -0.1, 0),
+  bx(0.09, 0.14, 0.1, PACK, s * 0.075, -0.17, -0.1), bx(0.1, 0.02, 0.1, PAD, s * 0.075, -0.1, -0.1), // poche cargo
+  ...(s > 0 ? [bx(0.05, 0.2, 0.09, DARK, 0.125, -0.24, 0.02), bx(0.05, 0.03, 0.09, PAD, 0.125, -0.13, 0.02)] : []), // étui à la cuisse droite
 ]);
 const G = {
   thigh: [thighGeo(-1), thighGeo(1)],
   shin: mergeGeometries([
     cy(0.066, 0.05, 0.4, PANTS, 0, -0.2, 0), sp(0.07, PANTS, 0, 0, 0), pl([[-0.06, 0.04], [0.06, 0.04], [0.055, -0.07], [-0.055, -0.07]], 0.04, PAD, 0, 0, -0.085, 0.008),
     cy(0.062, 0.058, 0.1, BOOT, 0, -0.36, 0), bx(0.125, 0.07, 0.29, BOOT, 0, -0.385, -0.06), bx(0.12, 0.045, 0.07, PAD, 0, -0.39, -0.19),
-    bx(0.135, 0.025, 0.3, DARK, 0, -0.4075, -0.055),
+    bx(0.135, 0.025, 0.3, DARK, 0, -0.4075, -0.055), bx(0.06, 0.016, 0.13, PAD, 0, -0.345, -0.05), bx(0.06, 0.016, 0.1, PAD, 0, -0.375, -0.1), // lacets
+    cy(0.07, 0.07, 0.025, DARK, 0, -0.31, 0, 10), // haut de botte
   ]),
   body: mergeGeometries([
     ov(0.24, 0.24, 0.08, DARK, 0, 0.04, 0), bx(0.09, 0.1, 0.05, DARK, -0.13, 0.2, -0.2), bx(0.09, 0.1, 0.05, DARK, 0, 0.2, -0.2), bx(0.09, 0.1, 0.05, DARK, 0.13, 0.2, -0.2),
@@ -64,8 +67,12 @@ const G = {
     pl([[-0.18, 0], [0.18, 0], [0.2, 0.28], [0.13, 0.4], [-0.13, 0.4], [-0.2, 0.28]], 0.04, VEST, 0, 0.1, 0.165),
     pl([[-0.15, 0], [0.15, 0], [0.16, 0.36], [0.1, 0.42], [-0.1, 0.42], [-0.16, 0.36]], 0.14, PACK, 0, 0.12, 0.26, 0.02), bx(0.3, 0.08, 0.09, PAD, 0, 0.58, 0.27),
     cy(0.058, 0.065, 0.1, DARK, 0, 0.64, 0),
+    bx(0.1, 0.14, 0.06, PACK, -0.235, 0.06, -0.02), bx(0.1, 0.14, 0.06, PACK, 0.235, 0.06, -0.02), bx(0.1, 0.02, 0.07, PAD, -0.235, 0.13, -0.02), bx(0.1, 0.02, 0.07, PAD, 0.235, 0.13, -0.02), // sacoches de ceinture
+    bx(0.05, 0.12, 0.04, DARK, -0.2, 0.46, -0.17), cy(0.006, 0.006, 0.26, DARK, -0.2, 0.65, -0.17, 4),                                        // radio d'épaule + antenne
+    bx(0.03, 0.03, 0.02, 0x8a8f96, -0.09, 0.36, -0.2), bx(0.03, 0.03, 0.02, 0x8a8f96, 0.09, 0.36, -0.2), bx(0.2, 0.025, 0.02, PAD, 0, 0.35, -0.205),  // boucles et sangle
+    bx(0.04, 0.32, 0.03, PACK, -0.15, 0.3, 0.2), bx(0.04, 0.32, 0.03, PACK, 0.15, 0.3, 0.2), bx(0.3, 0.05, 0.04, PACK, 0, 0.1, 0.22),         // bretelles et sangle du sac
   ]),
-  torso: new THREE.CylinderGeometry(0.235, 0.19, 0.58, 8).rotateY(Math.PI / 8).scale(1, 1, 0.68).translate(0, 0.3, 0),
+  torso: new THREE.CylinderGeometry(0.235, 0.19, 0.58, 12).rotateY(Math.PI / 12).scale(1, 1, 0.68).translate(0, 0.3, 0),
   trim: mergeGeometries([
     pb(0.08, 0.3, 0.02, 0, 0.33, -0.205),
     new THREE.SphereGeometry(0.105, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.15, 0.7, 1.2).translate(-0.285, 0.58, 0),
@@ -73,18 +80,23 @@ const G = {
   ]),
   // tête : peau + cagoule sur le bas du visage + écouteurs (un seul maillage)
   head: mergeGeometries([
-    paint(new THREE.SphereGeometry(0.16, 10, 8).scale(0.92, 1.08, 1), C.set(SKIN)),
-    paint(new THREE.SphereGeometry(0.168, 10, 5, 0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.48).scale(0.95, 1.08, 1.03), C.set(DARK)),
-    paint(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 8).rotateZ(Math.PI / 2).translate(-0.175, -0.02, 0.02), C.set(DARK)),
-    paint(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 8).rotateZ(Math.PI / 2).translate(0.175, -0.02, 0.02), C.set(DARK)),
+    paint(new THREE.SphereGeometry(0.16, 16, 12).scale(0.92, 1.08, 1), C.set(SKIN)),
+    paint(new THREE.SphereGeometry(0.168, 16, 6, 0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.48).scale(0.95, 1.08, 1.03), C.set(DARK)),
+    paint(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12).rotateZ(Math.PI / 2).translate(-0.175, -0.02, 0.02), C.set(DARK)),
+    paint(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12).rotateZ(Math.PI / 2).translate(0.175, -0.02, 0.02), C.set(DARK)),
+    cy(0.17, 0.17, 0.05, DARK, 0, 0.05, 0, 16),                                                                                       // sangle des lunettes
+    bx(0.095, 0.05, 0.03, 0x5aa0c8, -0.055, 0.05, -0.16), bx(0.095, 0.05, 0.03, 0x5aa0c8, 0.055, 0.05, -0.16), bx(0.21, 0.018, 0.035, DARK, 0, 0.082, -0.158), // lunettes
+    bx(0.03, 0.03, 0.22, DARK, 0, 0.205, -0.02), bx(0.08, 0.05, 0.05, DARK, 0, 0.15, -0.185),                                       // rail et support de vision nocturne
+    cy(0.012, 0.012, 0.2, DARK, 0.2, 0.17, 0.0, 4),                                                                                    // antenne de casque
   ]),
-  helmet: new THREE.SphereGeometry(0.19, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55).translate(0, 0.02, 0),
-  visor: mergeGeometries([new THREE.CylinderGeometry(0.193, 0.193, 0.065, 10, 1, true, Math.PI - 0.95, 1.9), pb(0.03, 0.03, 0.3, 0, 0.21, 0)]),
-  uarm: new THREE.CylinderGeometry(0.056, 0.046, L1, 7).translate(0, -L1 / 2, 0),
+  helmet: new THREE.SphereGeometry(0.19, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).translate(0, 0.02, 0),
+  visor: mergeGeometries([new THREE.CylinderGeometry(0.193, 0.193, 0.065, 16, 1, true, Math.PI - 0.95, 1.9), pb(0.03, 0.03, 0.3, 0, 0.21, 0)]),
+  uarm: new THREE.CylinderGeometry(0.056, 0.046, L1, 10).translate(0, -L1 / 2, 0),
   // avant-bras + coude + gant (paume, doigts repliés), un seul maillage
   farm: mergeGeometries([
-    cy(0.047, 0.037, L2, DARK, 0, -L2 / 2, 0, 7), sp(0.05, DARK, 0, 0, 0),
+    cy(0.047, 0.037, L2, DARK, 0, -L2 / 2, 0, 10), sp(0.05, DARK, 0, 0, 0), sp(0.06, PAD, 0, 0, -0.01), cy(0.05, 0.05, 0.05, PAD, 0, -L2 + 0.07, 0, 10),   // coude (coudière) et bracelet
     bx(0.085, 0.09, 0.055, GLOVE, 0, -L2 - 0.03, 0), bx(0.085, 0.05, 0.065, GLOVE2, 0, -L2 - 0.1, -0.005), bx(0.07, 0.03, 0.02, PAD, 0, -L2 - 0.04, -0.035),
+    ...[0, 1, 2, 3].map((i) => bx(0.017, 0.06, 0.022, GLOVE2, -0.03 + i * 0.02, -L2 - 0.15, -0.012)),                                                  // doigts
   ]),
   flash: new THREE.BoxGeometry(0.07, 0.07, 0.14),
   canopy: new THREE.SphereGeometry(1.6, 12, 5, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1.5, 0.9, 1.5),
@@ -94,10 +106,27 @@ const G = {
     return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
   })(),
 };
+// Accessoires propres à chaque légende (matériau d'accent = couleur de la légende), indexés par rang dans legends.json.
+const LEXTRA = [
+  () => mergeGeometries([pb(0.16, 0.09, 0.07, 0.09, 0.3, -0.205), pb(0.012, 0.3, 0.012, 0.12, 0.78, 0.28)]),                                   // jumelles + antenne
+  () => mergeGeometries([new THREE.BoxGeometry(0.5, 0.06, 0.03).rotateZ(0.75).translate(0, 0.3, -0.21), pb(0.05, 0.08, 0.04, 0.12, 0.2, -0.215)]), // bandoulière de munitions
+  () => mergeGeometries([pb(0.2, 0.09, 0.24, -0.3, 0.63, 0), pb(0.2, 0.09, 0.24, 0.3, 0.63, 0), pb(0.2, 0.2, 0.02, 0, 0.28, -0.215)]),         // épaulières lourdes + plastron
+  () => mergeGeometries([pb(0.15, 0.42, 0.04, 0, 0.32, 0.36), pb(0.26, 0.07, 0.22, 0, 0.62, 0)]),                                             // écharpe + col
+  () => mergeGeometries([pb(0.2, 0.06, 0.02, 0, 0.3, 0.345), pb(0.06, 0.2, 0.02, 0, 0.3, 0.345)]),                                             // croix médicale sur le sac
+  () => mergeGeometries([pb(0.12, 0.12, 0.12, -0.27, 0.0, 0), pb(0.12, 0.12, 0.12, 0.27, 0.0, 0), pb(0.08, 0.06, 0.05, 0.22, 0.25, -0.215)]), // mines + détonateur
+];
+const ACCG = [];
+function accGeo(i) { // i = rang de la légende (-1 : aucune)
+  const li = i >= 0 ? i % LEXTRA.length : -1;
+  if (ACCG[li + 1]) return ACCG[li + 1];
+  const list = [[G.trim, 5, 0, 0.84, 0], [G.visor, 6, 0, 1.62, 0]];
+  if (li >= 0) list.push([LEXTRA[li](), 5, 0, 0.84, 0]);
+  return (ACCG[li + 1] = skin(list));
+}
 const lam = c => new THREE.MeshLambertMaterial({ color: c });
 const M = {
   friend: lam(0x4080e0), enemy: lam(0xd04040), dark: lam(DARK),
-  vc: new THREE.MeshLambertMaterial({ vertexColors: true }), canopy: new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide }), flash: new THREE.MeshBasicMaterial({ color: 0xffd070 }),
+  vc: new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 14, specular: 0x1c1c1c }), canopy: new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide }), flash: new THREE.MeshBasicMaterial({ color: 0xffd070 }),
   wpn: new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: 0x333333 }), cord: new THREE.LineBasicMaterial({ color: 0xe6e6e6 }),
 };
 const accents = new Map();
@@ -191,7 +220,8 @@ export class Rig {
     group.updateMatrixWorld(true);
     const skel = new THREE.Skeleton(bones), K = skins();
     const sk = (geo, mat) => { const o = new THREE.SkinnedMesh(geo, mat); o.boundingSphere = BS; group.add(o); return o; };
-    const ms = [sk(K.vc, M.vc), sk(K.team, team), sk(K.acc, accentMat(NEUTRAL))];
+    const ms = [sk(K.vc, M.vc), sk(K.team, team), sk(accGeo(-1), accentMat(NEUTRAL))];
+    this.leg = -1;
     group.updateMatrixWorld(true);
     for (const o of ms) o.bind(skel, o.matrixWorld);
     this.team = [ms[1]]; this.acc = ms[2]; this.vcMesh = ms[0]; this.pskin = 0; this.wskin = 0;
@@ -210,8 +240,10 @@ export class Rig {
   setFriendly(f) { const m = f ? M.friend : M.enemy; for (const o of this.team) o.material = m; }
 
   // Couleur d'accent (légende) : visière, crête du casque, bande de poitrine, épaulettes.
-  setAccent(hex) {
+  setAccent(hex, legend) {
     this.acc.material = accentMat(typeof hex === 'string' ? parseInt(hex.slice(1), 16) : hex);
+    const i = LEGS.indexOf(legend);
+    if (i !== this.leg) { this.leg = i; this.acc.geometry = accGeo(i); }
   }
 
   // Skins cosmétiques : indices + 1 dans skins.json (0 = défaut).

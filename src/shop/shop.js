@@ -94,7 +94,7 @@ class ShopView {
     this.t += dt;
     const w = WIDS[Math.floor(this.t / 5) % WIDS.length];
     this.a.wid = w;
-    if (legend !== this.legend && legends[legend]) { this.legend = legend; this.rig.setAccent(legends[legend].color); }
+    if (legend !== this.legend && legends[legend]) { this.legend = legend; this.rig.setAccent(legends[legend].color, legend); }
     const k = S.kind, i = S.sel;
     this.rig.setSkins(k === 'perso' ? i + 1 : profile.eq.perso, k === 'arme' ? i + 1 : profile.eq.arme);
     this.rig.animate(dt, 0, 0, this.a);

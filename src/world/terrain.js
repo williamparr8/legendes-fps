@@ -39,7 +39,7 @@ function grassTexture() {
 
 // Maillage du terrain : couleurs par altitude / pente / proximité des bâtiments, ombres reçues.
 export function buildTerrainMesh(scene, hf, roads = []) {
-  const seg = 272, size = hf.ext * 2;
+  const seg = 224, size = hf.ext * 2;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, cnt = pos.count;

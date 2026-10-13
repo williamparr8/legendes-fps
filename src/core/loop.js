@@ -9,7 +9,7 @@ export function startLoop(update, render, keepAlive) {
   function step(now) {
     let dt = (now - last) / 1000;
     last = now;
-    if (dt > 0.25) dt = 0.25;
+    if (dt > 0.1) dt = 0.1; // au plus 6 pas par image : une machine lente ralentit au lieu de se figer
     acc += dt;
     while (acc >= FIXED_DT) {
       update(FIXED_DT);

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Matériaux « peau » procéduraux : motif + relief (bump) calculés dans le shader à partir de la position monde
 // (pas de texture, pas d'étirement quelle que soit la taille de la boîte). Le relief perturbe la normale (dérivées d'écran),
 // atténué avec la distance ; les boîtes reçoivent aussi un assombrissement d'arête (occlusion factice).
-// Types : 0 béton / mur, 1 caisse en bois, 2 roche (boîtes), 3 tôle (toit), 4 feuillage, 5 écorce, 6 rocher instancié, 7 terrain, 8 verre
+// Types : 0 béton / mur, 1 caisse en bois, 2 roche (boîtes), 3 tôle (toit), 4 feuillage, 5 écorce, 6 rocher instancié, 7 terrain, 8 verre, 9 brique, 10 bardage bois, 11 tuiles
 const NOISE = `
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -65,6 +65,31 @@ const PATTERN = `
   #elif SKIN == 8
     k = 0.92 + 0.08 * vnoise(uv * 1.5);
     bk = 0.0;
+  #elif SKIN == 9
+    // brique : rangées de 7,5 cm, briques de 24 cm décalées une rangée sur deux, joints creux, teinte variable par brique
+    float row = floor(uv.y / 0.075), off = mod(row, 2.0) * 0.5;
+    vec2 bu = vec2(uv.x / 0.24 + off, uv.y / 0.075), bf = fract(bu), bi = floor(bu);
+    float mortar = max(step(bf.x, 0.05), step(bf.y, 0.15));
+    float det = mix(1.0, 0.62, mortar) * (0.8 + 0.34 * h21(bi + 17.0));
+    k = mix(0.86, det, fl) * (0.9 + 0.14 * vnoise(uv * 0.7));
+    if (an.y < 0.7) k *= 0.76 + 0.24 * smoothstep(0.0, 1.4, p.y);
+    bk = 1.6;
+  #elif SKIN == 10
+    // bardage bois : planches horizontales de 20 cm, ombre sous chaque planche, fil du bois
+    float pl2 = fract(uv.y / 0.2);
+    float gr = vnoise(vec2(uv.x * 1.3, uv.y * 38.0));
+    float edge = smoothstep(0.0, 0.1, pl2) * (1.0 - 0.28 * smoothstep(0.86, 1.0, pl2));
+    k = mix(0.84, (0.7 + 0.3 * edge) * (0.86 + 0.24 * gr), fl) * (0.93 + 0.12 * vnoise(uv * 0.5));
+    if (an.y < 0.7) k *= 0.8 + 0.2 * smoothstep(0.0, 1.2, p.y);
+    bk = 2.6;
+  #elif SKIN == 11
+    // tuiles : rangées de 30 cm parallèles au faîtage (repère local de l'instance), recouvrement, joints, teinte par tuile
+    vec2 tp = vec2(abs(vLP.x) / 0.30, vLP.z / 0.26);
+    tp.y += mod(floor(tp.x), 2.0) * 0.5;
+    vec2 tf = fract(tp), ti = floor(tp);
+    float tl = (0.66 + 0.34 * smoothstep(0.0, 0.4, tf.x)) * (1.0 - 0.3 * step(tf.y, 0.07)) * (0.82 + 0.3 * h21(ti + 3.0));
+    k = mix(0.84, tl, fl) * (0.92 + 0.12 * vnoise(vLP.xz * 0.4));
+    bk = 2.2;
   #else
     float n = vnoise(p.xz * 0.18) * 0.5 + vnoise(p.xz * 0.9) * 0.3 + (fl > 0.0 ? mix(0.5, vnoise(p.xz * 4.5), fl) : 0.5) * 0.2;
     k = 0.8 + 0.4 * n;
@@ -96,16 +121,16 @@ const cache = {};
 function patch(mat) {
   mat.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vLN; varying vec3 vED;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vLN; varying vec3 vED; varying vec3 vLP;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         { vec4 wp = vec4(transformed, 1.0); vec3 sc = vec3(1.0);
           #ifdef USE_INSTANCING
             wp = instanceMatrix * wp;
             sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
           #endif
-          vWP = (modelMatrix * wp).xyz; vLN = abs(normal); vED = (0.5 - abs(position)) * sc; }`);
+          vWP = (modelMatrix * wp).xyz; vLN = abs(normal); vED = (0.5 - abs(position)) * sc; vLP = position * sc; }`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vLN; varying vec3 vED;\n' + NOISE)
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vLN; varying vec3 vED; varying vec3 vLP;\n' + NOISE)
       .replace('#include <color_fragment>', '#include <color_fragment>\n' + PATTERN)
       .replace('#include <normal_fragment_maps>', BUMP);
   };

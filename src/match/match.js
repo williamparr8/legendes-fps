@@ -58,7 +58,8 @@ export class Match {
     this.squads = []; this.bots = [];
 
     shuffle(world.lootPoints, r);
-    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || 360);
+    const nBots = cfg.enemySquads * (cfg.mode === 'solo' ? 1 : cfg.squadSize || 3); // plus de bots → plus de butin
+    const nLoot = Math.min(world.lootPoints.length, cfg.lootCount || Math.min(650, 330 + 5 * nBots));
     for (let i = 0; i < nLoot; i++) loot.spawn(loot.roll(cfg.weapons), world.lootPoints[i][0], world.lootPoints[i][1], undefined, world.lootPoints[i][2]);
 
     // Échantillonnage du point le plus éloigné : escouades bien réparties sur la carte.

@@ -11,11 +11,11 @@ import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const MODES = {
-  solo: { title: 'Solo contre bots', bots: 11, label: 'Adversaires (bots)' },
-  squad: { title: 'Équipe contre bots', bots: 5, label: 'Escouades ennemies' },
-  custom: { title: 'Partie personnalisée', bots: 5, label: 'Escouades ennemies' },
+  solo: { title: 'Solo contre bots', bots: 24, label: 'Adversaires (bots)' },
+  squad: { title: 'Équipe contre bots', bots: 10, label: 'Escouades ennemies' },
+  custom: { title: 'Partie personnalisée', bots: 10, label: 'Escouades ennemies' },
   training: { title: 'Entraînement', bots: 0, label: '' },
-  online: { title: 'Salon en ligne', bots: 5, label: 'Escouades de bots' },
+  online: { title: 'Salon en ligne', bots: 6, label: 'Escouades de bots' },
 };
 const KEYS = [
   ['ZQSD / WASD', 'Déplacement'], ['Maj', 'Sprint'], ['Espace', 'Saut / escalade'], ['C / Ctrl', 'Accroupi ; en sprint : glissade'],
@@ -130,7 +130,7 @@ export class UI {
     const lChecks = LEGEND_IDS.map((k) => `<label class="chk"><input type="checkbox" class="lc" value="${k}" checked> ${LEGENDS[k].name}</label>`).join('');
     return `<div class="opts">
       <label>Difficulté des bots<select id="c-diff">${diff}</select></label>
-      <label>${m.label}<input type="number" id="c-bots" min="${online ? 0 : 1}" max="${mode === 'solo' ? 14 : 8}" value="${m.bots}"></label>
+      <label>${m.label}<input type="number" id="c-bots" min="${online ? 0 : 1}" max="${mode === 'solo' ? 60 : online ? 12 : 25}" value="${m.bots}"></label>
       ${mode === 'solo' ? '' : `<label>Taille des équipes<select id="c-size">${(custom ? [1, 2, 3] : [2, 3]).map((n) => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
       <label class="chk"><input type="checkbox" id="c-zone" checked> Zone qui se réduit</label>
       ${custom ? `<label>Limite de temps (min, 0 = aucune)<input type="number" id="c-time" min="0" max="60" value="0"></label>

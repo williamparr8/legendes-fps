@@ -263,7 +263,7 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   }
 
   // ---- 7. butin au sol, un peu partout (sur la terre ferme) ----
-  for (let i = 0, k = 0; i < 700 && k < 220; i++) {
+  for (let i = 0, k = 0; i < 1100 && k < 320; i++) {
     const x = (r() - 0.5) * 2 * (HALF - 10), z = (r() - 0.5) * 2 * (HALF - 10);
     if (coast(x, z) < 10) continue;
     const g = hf.at(x, z);

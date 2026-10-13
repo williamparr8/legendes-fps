@@ -1,7 +1,7 @@
 import items from './items.json';
 import { buildItemModel, makeBeacons, setBeacon } from './itemModels.js';
 
-const N = 400;
+const N = 700;
 
 // Objets au sol (pool de 400 emplacements). Chaque emplacement crée à la demande un modèle par type d'objet (puis le réutilise).
 // Ramassage avec E (même étage : écart de hauteur < 2,4 m) ; les armes remplacent l'arme tenue (l'ancienne tombe au sol).

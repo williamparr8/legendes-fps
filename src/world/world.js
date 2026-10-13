@@ -30,7 +30,8 @@ export class World {
     this.colliders = new Colliders();
     this.pads = [];
     this.zips = [];
-    this._boxes = [[], [], [], [], [], [], [], [], []];
+    this._boxes = Array.from({ length: 12 }, () => []); // solides (collision + ombres), un tableau par matériau
+    this._deco = Array.from({ length: 12 }, () => []);  // décors sans collision ni ombre portée
     this._shapes = new Map();   // 'forme|matériau' → [[x,y,z, qx,qy,qz,qw, sx,sy,sz, couleur], …]
     this.groundY = () => 0;
     this.sun = null;
@@ -41,12 +42,13 @@ export class World {
     this._boxes[kind].push(x0, y0, z0, x1, y1, z1, color);
   }
   // Boîte décorative (rendu seul, sans collision).
-  deco(x0, y0, z0, x1, y1, z1, color = 0x444a52, kind = 0) { this._boxes[kind].push(x0, y0, z0, x1, y1, z1, color); }
+  deco(x0, y0, z0, x1, y1, z1, color = 0x444a52, kind = 0) { this._deco[kind].push(x0, y0, z0, x1, y1, z1, color); }
 
   // Forme instanciée centrée en (x,y,z), dimensions (sx,sy,sz), rotation = quaternion q [x,y,z,w] ou ry (autour de y).
   // solid : [x0,y0,z0,x1,y1,z1] → boîte de collision ajoutée en plus.
-  shape(type, kind, x, y, z, sx, sy, sz, color, ry = 0, q = null, solid = null) {
-    const k = type + '|' + kind;
+  // shadow : projette une ombre (par défaut : seulement si solide).
+  shape(type, kind, x, y, z, sx, sy, sz, color, ry = 0, q = null, solid = null, shadow = null) {
+    const k = type + '|' + kind + '|' + ((shadow !== null ? shadow : !!solid) ? 1 : 0);
     if (!this._shapes.has(k)) this._shapes.set(k, []);
     const h = ry / 2;
     this._shapes.get(k).push([x, y, z, q ? q[0] : 0, q ? q[1] : Math.sin(h), q ? q[2] : 0, q ? q[3] : Math.cos(h), sx, sy, sz, color]);
@@ -66,7 +68,7 @@ export class World {
   gable(x0, z0, x1, z1, y0, h, color = 0x7a4b3a, kind = 3) {
     const w = x1 - x0, d = z1 - z0, alongX = w >= d;
     // arête sur z par défaut ; sur x : rotation de 90° autour de y (largeur ↔ longueur)
-    this.shape('prism', kind, (x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2, alongX ? d : w, h, alongX ? w : d, color, alongX ? Math.PI / 2 : 0);
+    this.shape('prism', kind, (x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2, alongX ? d : w, h, alongX ? w : d, color, alongX ? Math.PI / 2 : 0, null, null, true);
   }
 
   pad(x, z, vy, dx, dz, speed) {
@@ -92,37 +94,51 @@ export class World {
     cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / len, dy / len, dz / len));
     this.scene.add(cable);
   }
-  // À appeler une fois après avoir ajouté toutes les boîtes.
+  // À appeler une fois après avoir ajouté toutes les boîtes. Les instances sont regroupées par case de 80 m (une InstancedMesh par
+  // case × matériau × ombre) : le culling par frustum écarte ce qui est hors champ (caméra ET carte d'ombres), et seules les
+  // pièces solides projettent une ombre (cadres, vitres, mobilier, câbles : non).
   finalize() {
-    const m = new THREE.Matrix4(), c = new THREE.Color();
-    this._boxes.forEach((b, kind) => {
+    const CH = 80, BOX = new THREE.BoxGeometry(1, 1, 1);
+    const m = new THREE.Matrix4(), c = new THREE.Color(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+    const chunks = (n, xOf, zOf) => {
+      const g = new Map();
+      for (let i = 0; i < n; i++) { const k = Math.floor(xOf(i) / CH) * 1000 + Math.floor(zOf(i) / CH); if (!g.has(k)) g.set(k, []); g.get(k).push(i); }
+      return g.values();
+    };
+    const emit = (geo, mat, idx, put, shadow) => {
+      const mesh = new THREE.InstancedMesh(geo, mat, idx.length);
+      for (let i = 0; i < idx.length; i++) put(mesh, i, idx[i]);
+      mesh.castShadow = shadow; mesh.receiveShadow = true;
+      mesh.computeBoundingSphere();
+      this.scene.add(mesh);
+    };
+    const boxes = (lists, shadow) => lists.forEach((b, kind) => {
       const n = b.length / 7;
       if (!n) return;
-      const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skinMaterial(kind), n);
-      for (let i = 0; i < n; i++) {
-        const o = i * 7;
-        m.makeScale(b[o + 3] - b[o], b[o + 4] - b[o + 1], b[o + 5] - b[o + 2]);
-        m.setPosition((b[o] + b[o + 3]) / 2, (b[o + 1] + b[o + 4]) / 2, (b[o + 2] + b[o + 5]) / 2);
-        mesh.setMatrixAt(i, m);
-        mesh.setColorAt(i, c.setHex(b[o + 6]));
+      const mat = skinMaterial(kind);
+      for (const idx of chunks(n, (i) => (b[i * 7] + b[i * 7 + 3]) / 2, (i) => (b[i * 7 + 2] + b[i * 7 + 5]) / 2)) {
+        emit(BOX, mat, idx, (mesh, i, k) => {
+          const o = k * 7;
+          m.makeScale(b[o + 3] - b[o], b[o + 4] - b[o + 1], b[o + 5] - b[o + 2]);
+          m.setPosition((b[o] + b[o + 3]) / 2, (b[o + 1] + b[o + 4]) / 2, (b[o + 2] + b[o + 5]) / 2);
+          mesh.setMatrixAt(i, m);
+          mesh.setColorAt(i, c.setHex(b[o + 6]));
+        }, shadow && kind !== 8);
       }
-      mesh.frustumCulled = false;
-      mesh.castShadow = kind !== 8; mesh.receiveShadow = true;
-      this.scene.add(mesh);
     });
-    this._boxes = null;
-    const q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+    boxes(this._boxes, true); boxes(this._deco, false);
+    this._boxes = this._deco = null;
     for (const [key, list] of this._shapes) {
-      const [type, kind] = key.split('|');
-      const mesh = new THREE.InstancedMesh(shapeGeo(type), skinMaterial(+kind), list.length);
-      list.forEach((o, i) => {
-        p.set(o[0], o[1], o[2]); q.set(o[3], o[4], o[5], o[6]); s.set(o[7], o[8], o[9]);
-        m.compose(p, q, s); mesh.setMatrixAt(i, m);
-        mesh.setColorAt(i, c.setHex(o[10]));
-      });
-      mesh.frustumCulled = false;
-      mesh.castShadow = +kind !== 8; mesh.receiveShadow = true;
-      this.scene.add(mesh);
+      const [type, kind, sh] = key.split('|');
+      const mat = skinMaterial(+kind), geo = shapeGeo(type);
+      for (const idx of chunks(list.length, (i) => list[i][0], (i) => list[i][2])) {
+        emit(geo, mat, idx, (mesh, i, k) => {
+          const o = list[k];
+          p.set(o[0], o[1], o[2]); q.set(o[3], o[4], o[5], o[6]); s.set(o[7], o[8], o[9]);
+          m.compose(p, q, s); mesh.setMatrixAt(i, m);
+          mesh.setColorAt(i, c.setHex(o[10]));
+        }, sh === '1' && +kind !== 8);
+      }
     }
     this._shapes = null;
   }

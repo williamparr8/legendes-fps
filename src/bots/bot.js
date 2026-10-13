@@ -34,7 +34,7 @@ export class Bot extends Target {
     this.lootI = -1; this.lootT = 0; this.lootSince = 0; this.bad = []; // butin visé, minuteurs, objets inaccessibles
     this.coverX = 0; this.coverZ = 0; this.coverT = 0; this.wantCover = false;
     this.wx = 0; this.wz = 0; this.lastPx = x; this.lastPz = z; this.stuckT = 0;
-    if (LEGENDS[o.legend]) this.rig.setAccent(LEGENDS[o.legend].color);
+    if (LEGENDS[o.legend]) this.rig.setAccent(LEGENDS[o.legend].color, o.legend);
     ctx.abilities.applyPassive(this, o.legend);
     this.phase = 0; this.dropT = 0; this.tx = this.tz = 0; this.jumpD = 99; this.dropLead = null; // largage : 0 sol, 1 vaisseau, 2 chute, 3 parachute
     if (ctx.drop) { this.phase = 1; this.pickLanding(ctx.drop.ship); }

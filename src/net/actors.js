@@ -45,7 +45,7 @@ export class RemotePlayer extends Target {
     this.combat = null;
     this.gx = x; this.gz = z;
     this.addTag(this.name);
-    if (ent.legend && legends[ent.legend]) this.rig.setAccent(legends[ent.legend].color);
+    if (ent.legend && legends[ent.legend]) this.rig.setAccent(legends[ent.legend].color, ent.legend);
   }
 
   sendDamage(amount, zone, attacker) {

@@ -190,7 +190,7 @@ export function buildDecor(w, E) {
         const g = hf.at(s[0], s[1]);
         w.cyl(s[0], g, s[1], 0.9, 0.9, 0x8a8d92, 0, true);
         for (const dx of [-0.8, 0.8]) w.deco(s[0] + dx - 0.07, g, s[1] - 0.07, s[0] + dx + 0.07, g + 2.0, s[1] + 0.07, 0x6e5238, 1);
-        w.gable(s[0] - 1.1, s[1] - 1.1, s[0] + 1.1, s[1] + 1.1, g + 2.0, 0.8, 0x7a3f32, 3);
+        w.gable(s[0] - 1.1, s[1] - 1.1, s[0] + 1.1, s[1] + 1.1, g + 2.0, 0.8, 0x7a3f32, 11);
         solid(s[0] - 1, s[1] - 1, s[0] + 1, s[1] + 1);
       }
       for (let k = 0; k < 2; k++) { const f = spotIn(p, 8, p.r * 0.9, 7); if (f) fence(f[0] - 4, f[1] - 3, f[0] + 4, f[1] + 3); }

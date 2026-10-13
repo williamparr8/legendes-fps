@@ -12,12 +12,14 @@ const SHUTTER = [0x3f6b4f, 0x4c6a8a, 0x8a4a3a, 0x6b5a3a];
 const ROOF = [0x7a3f32, 0x5f4a40, 0x4d5560, 0x6e5a3c];
 const WOOD = [0xb08a60, 0xa07a50, 0x8a6a45, 0xc09a68];
 const CLOTH = [0x4f6a8a, 0x8a4f4f, 0x5a7a54, 0x7a6a8a];
+const BRICK = [0xb8624a, 0xa8553f, 0xc07a58, 0x9a5442, 0xb86a50];
+const SIDING = [0xd8d2c0, 0x8da0b0, 0x7a9476, 0xc0ae92, 0xb5877a];
 
-function wallPieces(w, axis, fixed, a0, a1, yb, h, gaps, col) {
+function wallPieces(w, axis, fixed, a0, a1, yb, h, gaps, col, kind = 0) {
   const piece = (a, b, y0, y1) => {
     if (b - a < 0.01 || y1 - y0 < 0.01) return;
-    if (axis === 'x') w.box(a, y0, fixed - T, b, y1, fixed + T, col);
-    else w.box(fixed - T, y0, a, fixed + T, y1, b, col);
+    if (axis === 'x') w.box(a, y0, fixed - T, b, y1, fixed + T, col, kind);
+    else w.box(fixed - T, y0, a, fixed + T, y1, b, col, kind);
   };
   let cur = a0;
   for (const g of gaps) {
@@ -67,7 +69,13 @@ const inR = (q, x, z, m) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < 
 export function buildBuilding(w, r, spec) {
   const { cx, cz, sx, sz, floors: n, style = 'default' } = spec;
   let col = spec.wall, trim = spec.trim;
+  // matière des murs : brique / bardage bois pour les habitations, tôle ondulée pour l'industrie, béton sinon
+  let wallKind = 0;
   if (style === 'phare') { col = 0xe9e6dc; trim = 0xb33a30; }
+  else if (style === 'house' || style === 'farm' || style === 'default' || style === 'ruin') {
+    const k = r();
+    if (k < 0.5) { wallKind = 9; col = BRICK[(r() * BRICK.length) | 0]; } else if (k < 0.8 && style !== 'ruin') { wallKind = 10; col = SIDING[(r() * SIDING.length) | 0]; }
+  } else if (style === 'industrial' || style === 'warehouse') wallKind = 3;
   const x0 = cx - sx / 2, x1 = cx + sx / 2, z0 = cz - sz / 2, z1 = cz + sz / 2, G = 3.6;
   const pitched = (style === 'house' || style === 'farm') && n <= 2 && r() < 0.8; // toit à pignon : pas d'accès au toit
   const top = pitched ? n - 1 : n;
@@ -142,8 +150,8 @@ export function buildBuilding(w, r, spec) {
     const gz1 = makeGaps(r, x0 - T, x1 + T, ground && dz === 1 ? doorX : null, wh);
     const gx0 = makeGaps(r, z0 - T, z1 + T, ground && dx === 2 ? doorZ : null, wh);
     const gx1 = makeGaps(r, z0 - T, z1 + T, ground && dx === 3 ? doorZ : null, wh);
-    wallPieces(w, 'x', z0, x0 - T, x1 + T, yb, wh, gz0, col); wallPieces(w, 'x', z1, x0 - T, x1 + T, yb, wh, gz1, col);
-    wallPieces(w, 'z', x0, z0 - T, z1 + T, yb, wh, gx0, col); wallPieces(w, 'z', x1, z0 - T, z1 + T, yb, wh, gx1, col);
+    wallPieces(w, 'x', z0, x0 - T, x1 + T, yb, wh, gz0, col, wallKind); wallPieces(w, 'x', z1, x0 - T, x1 + T, yb, wh, gz1, col, wallKind);
+    wallPieces(w, 'z', x0, z0 - T, z1 + T, yb, wh, gx0, col, wallKind); wallPieces(w, 'z', x1, z0 - T, z1 + T, yb, wh, gx1, col, wallKind);
     dress('x', z0, -1, gz0, yb, ground); dress('x', z1, 1, gz1, yb, ground); dress('z', x0, -1, gx0, yb, ground); dress('z', x1, 1, gx1, yb, ground);
     if (ground) {
       base('x', z0, -1, x0 - T, x1 + T, dz === 0 ? doorX : null); base('x', z1, 1, x0 - T, x1 + T, dz === 1 ? doorX : null);
@@ -193,7 +201,7 @@ export function buildBuilding(w, r, spec) {
   let zip = null;
   if (pitched) {
     const h = Math.min(sx, sz) * 0.3 + 0.5;
-    w.gable(x0 - T - 0.9, z0 - T - 0.9, x1 + T + 0.9, z1 + T + 0.9, ry, h, roofC, 3);
+    w.gable(x0 - T - 0.9, z0 - T - 0.9, x1 + T + 0.9, z1 + T + 0.9, ry, h, roofC, 11);
     const chx = cx + (r() < 0.5 ? -1 : 1) * sx * 0.28, chz = cz + (r() < 0.5 ? -1 : 1) * sz * 0.18;
     w.box(chx - 0.45, ry - 0.05, chz - 0.45, chx + 0.45, ry + h + 1.0, chz + 0.45, 0x7a5a4a, 0);
     w.deco(chx - 0.6, ry + h + 1.0, chz - 0.6, chx + 0.6, ry + h + 1.2, chz + 0.6, 0x4a4f55, 0);

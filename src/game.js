@@ -154,6 +154,7 @@ export class Game {
   // ---------- parties ----------
   start(cfg, net = null) {
     this.dispose();
+    this.ema = 0; this.playT = 0; this.slowT = 0;
     const training = cfg.map === 'training';
     const scene = new THREE.Scene();
     scene.add(this.camera);
@@ -193,6 +194,7 @@ export class Game {
   // Client : reconstruit le même monde (graine de l'hôte) ; le reste vient des snapshots.
   startClient(msg, net) {
     this.dispose();
+    this.ema = 0; this.playT = 0; this.slowT = 0;
     const scene = new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = settings.shadows;
@@ -273,8 +275,34 @@ export class Game {
     inp.endTick();
   }
 
+  // Qualité automatique : si la fluidité reste mauvaise (< ~25 images/s pendant 5 s), on coupe d'abord les ombres, puis les effets d'image.
+  autoQuality(dt) {
+    this.ema = this.ema ? this.ema * 0.97 + dt * 0.03 : dt;
+    this.playT = (this.playT || 0) + dt;
+    if (this.playT < 6) return;
+    this.slowT = Math.max(0, (this.slowT || 0) + (this.ema > 0.04 ? dt : -dt));
+    if (this.slowT < 5) return;
+    this.slowT = 0;
+    const r = this.renderer;
+    let msg = '';
+    if (r.shadowMap.enabled) {
+      r.shadowMap.enabled = false; settings.shadows = false;
+      this.m.scene.traverse((o) => { if (o.isDirectionalLight) o.castShadow = false; for (const mt of [].concat(o.material || [])) mt.needsUpdate = true; });
+      msg = 'Performances faibles : ombres désactivées';
+    } else if (settings.quality > 0) {
+      settings.quality = 0; this.post.setQuality(0); msg = "Performances faibles : effets d'image réduits (qualité Bas)";
+    } else return;
+    saveSettings();
+    const d = document.createElement('div');
+    d.textContent = msg;
+    d.style.cssText = 'position:fixed;top:14%;left:50%;transform:translateX(-50%);background:rgba(10,14,20,.88);color:#ffd070;padding:8px 16px;border:1px solid #556;border-radius:6px;z-index:50;font:14px sans-serif';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 6000);
+  }
+
   render(alpha, dt) {
     const m = this.m;
+    if (m && this.state === 'playing') this.autoQuality(dt);
     if (!m || this.state === 'menu') {
       if (this.ui.screen === 'shop') shopFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
       return;
