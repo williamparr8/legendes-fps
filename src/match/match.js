@@ -2,6 +2,7 @@ import { Bot } from '../bots/bot.js';
 import { Zone } from './zone.js';
 import { Ship, ZONE_DELAY } from './drop.js';
 import wdefs from '../combat/weapons.json';
+import skinData from '../shop/skins.json';
 
 // Escouade : les bots suivent un humain vivant de l'escouade (l'ancre) ; sans humain, le chef (premier bot vivant) choisit les destinations.
 class Squad {
@@ -32,6 +33,10 @@ class Squad {
   }
 }
 
+// Skins communs des bots (indices + 1 dans skins.json, 0 = défaut), choisis par la graine et le numéro : sans tirage dans le générateur du monde.
+const commons = (l) => [0, ...l.map((s, i) => (s.r === 0 ? i + 1 : 0)).filter((i) => i > 0)];
+const CP = commons(skinData.perso), CW = commons(skinData.arme);
+const hash = (a, b) => { let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35); h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); return (h ^ (h >>> 12)) >>> 0; };
 const shuffle = (a, r) => { for (let i = a.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 // Partie « battle royale » : apparitions, butin, zone, escouades de bots, éliminations, classement.
@@ -84,6 +89,8 @@ export class Match {
         const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player, loot, drop: this.drop },
           sp.x + ox, sp.z + oz, team, { name: 'Bot ' + (this.bots.length + 1), squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: null, yaw: sp.yaw });
         b.id = 100 + this.bots.length;
+        b.skinP = CP[hash(cfg.seed, this.bots.length) % CP.length]; b.skinW = CW[hash(cfg.seed + 77, this.bots.length) % CW.length];
+        b.rig.setSkins(b.skinP, b.skinW);
         combat.add(b);
         sq.members.push(b); this.bots.push(b);
       }
@@ -175,7 +182,7 @@ export class Match {
     for (const m of s.members) {
       if (!m.isHuman) continue;
       const local = m === this.ctx.combat.pp;
-      const res = { win, place, total: this.total, kills: this.kills(m), damage: Math.round(local ? this.stats.damage : m.damage), time: Math.round(this.t), squadSize: this.cfg.squadSize };
+      const res = { win, place, total: this.total, kills: this.kills(m), damage: Math.round(local ? this.stats.damage : m.damage), time: Math.round(this.t), squadSize: this.cfg.squadSize, humans: this.humans.length };
       if (local) { this.result = res; this.onEnd(res); } else this.ctx.net.sendResult(m, res);
     }
   }

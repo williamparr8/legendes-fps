@@ -301,6 +301,7 @@ export class Player {
     if (!this.rig) {
       const g = new THREE.Group(); scene.add(g);
       this.rig = { g, r: new Rig(g, true), a: { health: this.health, stance: 0, wid: null, shots: 0, reloading: false, pitch: 0 } };
+      this.rig.r.setSkins(this.skinP | 0, this.skinW | 0);
     }
     const R = this.rig, a = R.a;
     a.stance = this.phase ? this.phase + 3 : 0; a.pitch = this.pitch;

@@ -5,6 +5,8 @@ import { settings, saveSettings, applySettings } from './settings.js';
 import { transportKind, errorText, cleanCode } from '../net/transport.js';
 import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
+import { profile } from '../shop/profile.js';
+import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,7 +55,7 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
 
   joinOrHost() { return $('n-code') && $('n-code').value.trim() ? 'join' : 'host'; }
@@ -92,7 +94,9 @@ export class UI {
       case 'lstart': { this.mode = 'online'; g.session.start(this.readConfig()); break; }
       case 'lleave': g.quit(); break;
       case 'tolobby': g.session.backToLobby(); g.toLobby(); break;
+      case 'shop': shopOpen(); this.from = 'main'; this.show('shop'); break;
       case 'copylink': { const el = $('lb-link'); el.select(); try { navigator.clipboard.writeText(el.value); } catch (e) { document.execCommand('copy'); } $('lb-copied').textContent = 'Copié !'; break; }
+      default: shopAct(this, a, d);
     }
   }
 
@@ -103,8 +107,11 @@ export class UI {
       <button data-act="mode" data-mode="custom">Partie personnalisée</button>
       <button data-act="mode" data-mode="training">Entraînement</button>
       <button class="primary" data-act="online">Salon en ligne (amis)</button>
+      <button data-act="shop">Boutique <small>(${profile.pts} pts)</small></button>
       <button data-act="options">Options &amp; commandes</button></div></div>`;
   }
+
+  shop() { return shopHtml(); }
 
   legendCards() {
     return LEGEND_IDS.map((id) => {
@@ -226,6 +233,7 @@ export class UI {
         : '<button data-act="menu">Quitter</button><p style="margin:0;align-self:center">Retour au salon quand l\'hôte le décidera…</p>';
     return `<div class="panel narrow"><h2 style="text-align:center">${r.win ? 'VICTOIRE !' : 'Éliminé'}</h2>
       <div class="place">#${r.place}<small style="font-size:18px;opacity:.7"> / ${r.total}</small></div>
+      ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal)</p>` : ''}
       <div class="stats"><div><b>${r.kills}</b>Éliminations</div><div><b>${r.damage}</b>Dégâts infligés</div><div><b>${t}</b>Temps de survie</div><div><b>${LEGENDS[this.legend].name}</b>Légende</div></div>
       <div class="row">${buttons}</div></div>`;
   }

@@ -59,11 +59,13 @@ export class Target {
     this.group.add(sp); this.tag = sp;
   }
 
-  // Apparence reçue du réseau (voir packInfo) : arme, posture, rechargement, tirs, légende.
+  // Apparence reçue du réseau (voir packInfo) : arme, posture, rechargement, tirs, légende, skins.
   setInfo(i) {
     this.wid = WIDS[(i & 7) - 1] || null; this.stance = (i >> 3) & 7; this.reloading = !!((i >> 6) & 1); this.shots = (i >> 7) & 15;
     const lg = LEGS[(i >> 11) - 1];
     if (lg && lg !== this.legend) { this.legend = lg; this.rig.setAccent(legends[lg].color); }
+    const ps = (i >> 14) & 15, ws = (i >> 18) & 15;
+    if (ps !== (this.skinP | 0) || ws !== (this.skinW | 0)) { this.skinP = ps; this.skinW = ws; this.rig.setSkins(ps, ws); }
   }
 
   // Pose du modèle, étiquette et marqueur (appelé par tick).

@@ -14,6 +14,9 @@ const MAT = {
   olive: phong(0x4d5a3a, 30, 0x222222), orange: phong(0xd9792b, 60, 0x555555),
 };
 const ACCENT = { rifle: 0x4f8fc0, smg: 0x9b6fd0, shotgun: 0xd05a3a, sniper: 0x4fb070, launcher: 0xe09030 };
+// Emplacement de palette d'une matière (skins d'arme) : 0 metal, 1 dark, 2 steel, 3 poly, 4 wood (+ olive), 5 accent ; -1 = jamais recoloré.
+const SLOT_MATS = [MAT.metal, MAT.dark, MAT.steel, MAT.poly, MAT.wood];
+const slotOf = (mat, accent) => { const i = SLOT_MATS.indexOf(mat); return i >= 0 ? i : mat === MAT.olive ? 4 : mat === accent ? 5 : -1; };
 const GEO = {};
 const cache = (k, f) => GEO[k] || (GEO[k] = f());
 const boxGeo = (w, h, d) => cache(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
@@ -182,16 +185,17 @@ export function buildWeaponModel(id, hands = false) {
   const g = new THREE.Group();
   const accent = new THREE.MeshPhongMaterial({ color: ACCENT[id] || 0x888888, shininess: 50 });
   (BUILD[id] || BUILD.rifle)(g, accent);
+  g.userData.accent = accent;
   if (hands) addHands(g);
   return g;
 }
 
 // Arme fusionnée en un seul maillage (couleurs par sommet), partagée : acteurs et butin au sol. { geo, ud }.
-const MW = new Map();
+const MW = new Map(), SW = new Map(), SKM = new Map();
 export function mergedWeapon(id) {
   let w = MW.get(id);
   if (w) return w;
-  const src = buildWeaponModel(id), parts = [], c = new THREE.Color();
+  const src = buildWeaponModel(id), parts = [], sl = [], c = new THREE.Color();
   src.updateMatrixWorld(true);
   src.traverse((o) => {
     if (!o.isMesh) return;
@@ -203,7 +207,47 @@ export function mergedWeapon(id) {
     for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
     p.setAttribute('color', new THREE.BufferAttribute(col, 3));
     parts.push(p);
+    const s = slotOf(o.material, src.userData.accent);
+    sl.push(new Uint8Array(n).fill(s < 0 ? 255 : s));
   });
-  MW.set(id, w = { geo: mergeGeometries(parts), ud: src.userData });
+  let tot = 0;
+  for (const s of sl) tot += s.length;
+  const slots = new Uint8Array(tot);
+  for (let k = 0, o2 = 0; k < sl.length; o2 += sl[k++].length) slots.set(sl[k], o2);
+  MW.set(id, w = { geo: mergeGeometries(parts), ud: src.userData, slots });
   return w;
+}
+
+// Variante colorée d'une arme fusionnée (skin d'arme : metal, dark, steel, poly, wood, accent) : positions partagées, attribut color propre.
+// def = entrée de skins.json (null = arme d'origine). Les autres matières (verre, lunette, orange) ne changent pas.
+export function skinnedWeapon(id, def) {
+  const w = mergedWeapon(id);
+  if (!def) return w;
+  const key = id + '|' + def.id;
+  let s = SW.get(key);
+  if (s) return s;
+  const src = w.geo, a = new Float32Array(src.attributes.color.array), pal = def.w.map((h) => new THREE.Color(h));
+  for (let v = 0; v < w.slots.length; v++) {
+    const k = pal[w.slots[v]];
+    if (k) { a[v * 3] = k.r; a[v * 3 + 1] = k.g; a[v * 3 + 2] = k.b; }
+  }
+  const g = new THREE.BufferGeometry();
+  for (const k in src.attributes) g.setAttribute(k, src.attributes[k]);
+  g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  SW.set(key, s = { geo: g, ud: w.ud, slots: w.slots });
+  return s;
+}
+
+// Peint un modèle d'arme de la vue subjective (matières clonées par skin) ; def = null rétablit les matières d'origine.
+export function applyWeaponSkin(g, def) {
+  const acc = g.userData.accent;
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    const base = o.userData.m0 || (o.userData.m0 = o.material), s = slotOf(base, acc);
+    if (!def || s < 0) { o.material = base; return; }
+    const key = def.id + '|' + s;
+    let m = SKM.get(key);
+    if (!m) SKM.set(key, m = new THREE.MeshPhongMaterial({ color: def.w[s], shininess: base.shininess, specular: base.specular }));
+    o.material = m;
+  });
 }

@@ -21,6 +21,8 @@ import { HostSession, ClientSession } from './net/session.js';
 import { ClientMatch } from './net/clientMatch.js';
 import { cleanCode } from './net/transport.js';
 import { InventoryPanel } from './ui/inventory.js';
+import { profile, equippedDef, awardMatch } from './shop/profile.js';
+import { shopFrame } from './shop/shop.js';
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
@@ -162,6 +164,7 @@ export class Game {
     abilities.allowSwitch = training;
     const loot = new LootField(scene, world.rand || Math.random, world.groundY);
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
+    this.dress(combat, player, viewmodel);
     const m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match: null, cfg, net };
 
     if (training) {
@@ -198,6 +201,7 @@ export class Game {
     abilities.setLegend(msg.you.legend);
     const loot = new LootField(scene, Math.random, world.groundY);
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
+    this.dress(combat, player, viewmodel);
     player.team = msg.you.team;
     player.sx = msg.you.x; player.sz = msg.you.z; player.syaw = msg.you.yaw; player.spawn();
     const match = new ClientMatch(scene, world, combat, msg, net);
@@ -208,7 +212,15 @@ export class Game {
     this.input.lock();
   }
 
+  // Skins équipés (profil) : apparence réseau du joueur, modèle 3e personne et arme en vue subjective.
+  dress(combat, player, viewmodel) {
+    combat.pp.skinP = player.skinP = profile.eq.perso;
+    combat.pp.skinW = player.skinW = profile.eq.arme;
+    viewmodel.setSkin(equippedDef('arme'));
+  }
+
   endMatch(res) {
+    awardMatch(res); // points de la partie (une seule fois : res.pts sert de drapeau)
     this.state = 'results';
     this.chatting = false; this.chatIn.style.display = 'none';
     document.exitPointerLock();
@@ -257,7 +269,10 @@ export class Game {
 
   render(alpha, dt) {
     const m = this.m;
-    if (!m || this.state === 'menu') { this.renderer.render(this.menuScene, this.camera); return; }
+    if (!m || this.state === 'menu') {
+      if (this.ui.screen === 'shop') shopFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
+      return;
+    }
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));
     this.input.mx = this.input.my = 0;
     m.player.getCamera(alpha, this.camera, dt);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { mergedWeapon } from './models.js';
+import { mergedWeapon, skinnedWeapon } from './models.js';
+import skinData from '../shop/skins.json';
 import wdefs from './weapons.json';
 import legends from '../legends/legends.json';
 
@@ -13,9 +14,11 @@ export const WIDS = Object.keys(wdefs);
 export const LEGS = Object.keys(legends);
 export const CROUCH_HS = 1.0 / 1.8;
 
-// Apparence transmise par le réseau : arme (3 bits) | posture (3 : 0-2 au sol, 4 vaisseau, 5 chute libre, 6 parachute) | rechargement (1) | compteur de tirs (4) | légende (3).
+// Apparence transmise par le réseau : arme (3 bits) | posture (3 : 0-2 au sol, 4 vaisseau, 5 chute libre, 6 parachute) | rechargement (1) | compteur de tirs (4) | légende (3)
+// | skin de personnage (4, <<14) | skin d'arme (4, <<18) ; les skins sont des indices + 1 dans skins.json (0 = défaut).
 export const packInfo = (a, legend) =>
-  (WIDS.indexOf(a.wid) + 1) | ((a.stance || 0) << 3) | ((a.reloading ? 1 : 0) << 6) | ((a.shots & 15) << 7) | ((LEGS.indexOf(legend) + 1) << 11);
+  (WIDS.indexOf(a.wid) + 1) | ((a.stance || 0) << 3) | ((a.reloading ? 1 : 0) << 6) | ((a.shots & 15) << 7) | ((LEGS.indexOf(legend) + 1) << 11)
+  | (((a.skinP | 0) & 15) << 14) | (((a.skinW | 0) & 15) << 18);
 
 const C = new THREE.Color();
 // Peint une géométrie d'une couleur par sommet (non indexée : boîtes, cylindres et extrusions fusionnent sans conflit).
@@ -144,6 +147,33 @@ const skins = () => SK || (SK = {
   acc: skin([[G.trim, 5, 0, 0.84, 0], [G.visor, 6, 0, 1.62, 0]]),
 });
 
+// Skins de personnage : mêmes positions/os (attributs partagés), attribut color propre ; la palette (9 couleurs) remplace celle d'origine.
+// Les couleurs d'équipe (torse, casque, bras) et d'accent ne changent pas.
+const PAL = [PANTS, DARK, VEST, SKIN, BOOT, PAD, PACK, GLOVE, GLOVE2];
+let VI = null;
+const SG = [];
+function persoGeo(i) {
+  const K = skins(), def = skinData.perso[i - 1];
+  if (!def) return K.vc;
+  if (SG[i]) return SG[i];
+  const src = K.vc, col = src.attributes.color, n = col.count;
+  if (!VI) { // indice de palette de chaque sommet (couleurs identiques en flottants 32 bits)
+    const ref = PAL.map((h) => { C.set(h); return [Math.fround(C.r), Math.fround(C.g), Math.fround(C.b)]; });
+    VI = new Uint8Array(n);
+    for (let v = 0; v < n; v++) VI[v] = ref.findIndex((c) => c[0] === col.getX(v) && c[1] === col.getY(v) && c[2] === col.getZ(v));
+  }
+  const pal = def.p.map((h) => new THREE.Color(h)), o = col.array, a = new Float32Array(n * 3);
+  for (let v = 0; v < n; v++) {
+    const c = pal[VI[v]];
+    if (c) { a[v * 3] = c.r; a[v * 3 + 1] = c.g; a[v * 3 + 2] = c.b; }
+    else { a[v * 3] = o[v * 3]; a[v * 3 + 1] = o[v * 3 + 1]; a[v * 3 + 2] = o[v * 3 + 2]; }
+  }
+  const g = new THREE.BufferGeometry();
+  for (const k in src.attributes) g.setAttribute(k, src.attributes[k]);
+  g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return SG[i] = g;
+}
+
 export class Rig {
   constructor(group, friendly) {
     const joint = (parent, x, y, z) => { const j = new THREE.Group(); j.position.set(x, y, z); parent.add(j); return j; };
@@ -164,7 +194,7 @@ export class Rig {
     const ms = [sk(K.vc, M.vc), sk(K.team, team), sk(K.acc, accentMat(NEUTRAL))];
     group.updateMatrixWorld(true);
     for (const o of ms) o.bind(skel, o.matrixWorld);
-    this.team = [ms[1]]; this.acc = ms[2];
+    this.team = [ms[1]]; this.acc = ms[2]; this.vcMesh = ms[0]; this.pskin = 0; this.wskin = 0;
     this.wp = joint(this.aim, 0.1, -0.02, -0.2);
     this.wmesh = mesh(mergedWeapon(WIDS[0]).geo, M.wpn, this.wp); this.wmesh.scale.setScalar(WS);
     this.flash = mesh(G.flash, M.flash, this.wp); this.flash.visible = false;
@@ -184,9 +214,15 @@ export class Rig {
     this.acc.material = accentMat(typeof hex === 'string' ? parseInt(hex.slice(1), 16) : hex);
   }
 
+  // Skins cosmétiques : indices + 1 dans skins.json (0 = défaut).
+  setSkins(ps, ws) {
+    if (ps !== this.pskin) { this.pskin = ps; this.vcMesh.geometry = persoGeo(ps); }
+    if (ws !== this.wskin) { this.wskin = ws; if (this.wid) this.setWeapon(this.wid); }
+  }
+
   setWeapon(id) {
     this.wid = id;
-    const w = id ? mergedWeapon(id) : null;
+    const w = id ? skinnedWeapon(id, skinData.arme[this.wskin - 1]) : null;
     this.ud = w ? w.ud : null;
     if (w) this.wmesh.geometry = w.geo;
   }

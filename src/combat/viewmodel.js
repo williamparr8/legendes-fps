@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildWeaponModel } from './models.js';
+import { buildWeaponModel, applyWeaponSkin } from './models.js';
 
 // Armes en vue subjective : modèles détaillés rendus dans une scène à part (profondeur effacée, FOV fixe, éclairage propre),
 // dessinée par-dessus le monde par Game.render.
@@ -39,6 +39,9 @@ export class Viewmodel {
     this.root.add(this.mag);
     this.cur = null;
   }
+
+  // Skin d'arme cosmétique (entrée de skins.json ou null).
+  setSkin(def) { for (const id in this.models) applyWeaponSkin(this.models[id], def); }
 
   dispose() { this.scene.clear(); }
 
