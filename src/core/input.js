@@ -33,7 +33,8 @@ export class Input {
     });
     addEventListener('blur', () => { for (const c in this.k) this.k[c] = false; });
   }
-  lock() { this.canvas.requestPointerLock(); }
+  // Refusé par le navigateur sans geste de l'utilisateur (ex. départ de partie reçu du réseau) : l'interface propose alors un clic.
+  lock() { try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* refusé */ } }
   endTick() {
     this.wheel = 0;
     for (const c in this.pressed) this.pressed[c] = false;

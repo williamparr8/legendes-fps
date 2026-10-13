@@ -65,7 +65,12 @@ export class Game {
   }
 
   onLock(locked) {
-    if (locked) { this.inv.close(); this.ui.hide(); this.hud.show(true); return; }
+    if (locked) {
+      this.inv.close(); this.ui.hide(); this.hud.show(true);
+      const n = this.m && this.m.net;
+      if (n && n.role === 'client') n.setReady();
+      return;
+    }
     if (this.chatting || this.inv.open) return;
     this.hud.show(false);
     if (this.state === 'playing') this.ui.show('pause');
@@ -209,6 +214,7 @@ export class Game {
     this.state = 'playing';
     net.attach(this.m);
     this.chatLog.innerHTML = ''; this.chatShow(true);
+    this.ui.show('go'); // le départ vient du réseau : pas de geste utilisateur, donc la souris ne peut pas être capturée sans un clic
     this.input.lock();
   }
 

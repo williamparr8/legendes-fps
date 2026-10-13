@@ -87,7 +87,7 @@ export class UI {
       case 'menu': g.quit(); break;
       case 'options': this.from = this.screen; this.show('options'); break;
       case 'back': this.show(this.from === 'pause' ? 'pause' : 'main'); break;
-      case 'resume': g.input.lock(); break;
+      case 'resume': g.input.lock(); if (g.m && g.m.net && g.m.net.role === 'client') g.m.net.setReady(); break;
       case 'replay': g.start(this.lastCfg); break;
       case 'online': this.show('online'); break;
       case 'host': case 'join': this.connect(a); break;
@@ -223,6 +223,12 @@ export class UI {
     return `<div class="panel narrow"><h2>Pause</h2>${on ? '<p>En ligne : la partie continue pendant la pause.</p>' : ''}<div class="menu">
       <button class="primary" data-act="resume">Reprendre</button>
       <button data-act="options">Options</button><button data-act="menu">Quitter vers le menu</button></div></div>`;
+  }
+
+  // Départ d'une partie reçu du réseau : un clic est nécessaire pour capturer la souris (et débloquer le son).
+  go() {
+    return `<div class="panel narrow"><h2 style="text-align:center">La partie commence</h2><p>Cliquez pour prendre le contrôle (la souris est capturée ; Échap pour la libérer).</p>
+      <div class="menu"><button class="primary" data-act="resume">Jouer</button></div></div>`;
   }
 
   results(r) {

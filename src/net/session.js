@@ -284,7 +284,8 @@ export class ClientSession {
   send(o) { if (!this.left) this.link.send(o); }
   setLegend(l) { this.legend = l; this.send({ t: 'legend', legend: l }); }
   say(text) { this.send({ t: 'chat', text }); }
-  setReady() { this.send({ t: 'ready' }); }
+  // Une seule fois par partie, au clic « Jouer » (ou au verrouillage de la souris) : l'hôte attend ce signal (25 s au plus).
+  setReady() { if (this.readySent) return; this.readySent = true; this.send({ t: 'ready' }); }
 
   onMsg(m) {
     this.seen = performance.now();
@@ -313,7 +314,7 @@ export class ClientSession {
       pickDone: (i, on, amt) => this.send({ t: 'pk2', i, on: on ? 1 : 0, amt }),
       dropLoot: (ti, x, z, a, y) => this.send({ t: 'drop', ti, x: r1(x), z: r1(z), a, y: r1(y) }),
     };
-    this.setReady();
+    this.readySent = false; // « prêt » envoyé au clic sur l'écran « Jouer » (voir Game.startClient)
   }
 
   // Interface utilisée par ProxyActor
