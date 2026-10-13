@@ -71,6 +71,12 @@
 - Fait : `src/net/transport.js` : config ICE avec relais PeerJS rétablis + `src/net/turn.json` (liste `[{ "urls": [...], "username": "...", "credential": "..." }]`, vide par défaut) pour brancher un vrai relais ; sonde réseau en arrière-plan ; délai 15 → 25 s ; message d'erreur qui dit la vraie cause (réseau bloqué / NAT strict sans relais).
 - **Reste** : un relais TURN avec identifiants (compte gratuit Metered ou Cloudflare Realtime, à créer par l'utilisateur) à mettre dans `turn.json`, ou un relais de secours par courtier MQTT public (sans compte, mais trafic public et plus lent) — à décider.
 
+## Relais publics MQTT (2026-10-13, demandé : jouer depuis le réseau de l'école comme le jeu d'un ami)
+- `src/net/relay.js` : client MQTT 3.1.1 minimal sur WebSocket sécurisé vers 4 relais publics (EMQX 8084, HiveMQ 8884, Eclipse 443, Mosquitto 8081), sujets `legendes-fps/v1/<code>/…`. L'hôte écoute sur TOUS les relais ; le client se présente sur tous, le premier « ack » devient son chemin. Testament MQTT pour détecter les départs brusques ; sonde « taken » pour les codes en double.
+- `src/net/transport.js` : l'hôte écoute en WebRTC **et** en relais ; le client essaie WebRTC 6 s puis le relais (12 s max, 4,5 s sans réponse = salon introuvable). `?relay` force le relais seul (tests). Le message « délai dépassé » n'apparaît plus que si les deux voies échouent.
+- Testé (réseau réel depuis le PC de l'utilisateur) : relais seul : salon ouvert 1,8 s, connexion 0,9 s, aller-retour ≈ 190 ms, message de 4 ko, fermeture hôte/client détectée ; repli (hôte relais seul + client normal) 1,4 s ; code introuvable/déjà pris OK ; **jeu complet à 2 onglets via relais** : lobby, démarrage, snapshots (horloge, 11 proxys) OK. **Non testé** : 3+ joueurs, débit de l'hôte à 8 joueurs sur les relais publics (limites de débit possibles), vrai réseau d'école/4G.
+- Limites : relais publics sans authentification (trafic lisible par qui devine le code), latence ≈ +100 ms par sens, disponibilité non garantie.
+
 ## Multijoueur (H) — fonctionnement
 - **Hôte** : simule tout (monde, bots, zone, butin, escouades). Il garde la simulation active même onglet masqué (Worker dans `core/loop.js`). Si l'hôte quitte, le salon ferme pour tous (pas de migration d'hôte).
 - **Clients** : reconstruisent la même carte (graine) ; gèrent eux-mêmes leur déplacement, leur santé, leurs tirs et leurs habiletés. Les touches sont rapportées à l'hôte (`hit`) qui les applique (le tireur a raison, comme sur son écran). Les autres acteurs sont des `ProxyActor` interpolés (retard 100 ms).
