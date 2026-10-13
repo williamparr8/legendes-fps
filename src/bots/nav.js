@@ -22,7 +22,7 @@ export class NavGrid {
     const layers = this.layers = [];
     const areas = [];
     if (world) {
-      world.buildings.forEach((b, bi) => { const nf = Math.round(b.roof / FH); for (let f = 1; f <= nf; f++) areas.push({ r: b.solid, y: f * FH, bi, f, ti: -1 }); });
+      world.buildings.forEach((b, bi) => { const nf = b.top !== undefined ? b.top : Math.round(b.roof / FH); for (let f = 1; f <= nf; f++) areas.push({ r: b.solid, y: f * FH, bi, f, ti: -1 }); });
       (world.towers || []).forEach(([x, z], ti) => areas.push({ r: [x - 3.3, z - 3.3, x + 3.3, z + 3.3], y: 6.9, bi: -1, f: 1, ti }));
     }
     let off = N;

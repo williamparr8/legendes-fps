@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Matériaux « peau » procéduraux : motif + relief (bump) calculés dans le shader à partir de la position monde
 // (pas de texture, pas d'étirement quelle que soit la taille de la boîte). Le relief perturbe la normale (dérivées d'écran),
 // atténué avec la distance ; les boîtes reçoivent aussi un assombrissement d'arête (occlusion factice).
-// Types : 0 béton / mur, 1 caisse en bois, 2 roche (boîtes), 3 tôle (toit), 4 feuillage, 5 écorce, 6 rocher instancié, 7 terrain
+// Types : 0 béton / mur, 1 caisse en bois, 2 roche (boîtes), 3 tôle (toit), 4 feuillage, 5 écorce, 6 rocher instancié, 7 terrain, 8 verre
 const NOISE = `
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -62,6 +62,9 @@ const PATTERN = `
     float n = vnoise(vec2((p.x + p.z) * 14.0, p.y * 1.6)) * 0.6 + vnoise(vec2((p.x - p.z) * 30.0, p.y * 4.0)) * 0.4;
     k = 0.5 + 0.7 * n;
     bk = 3.0;
+  #elif SKIN == 8
+    k = 0.92 + 0.08 * vnoise(uv * 1.5);
+    bk = 0.0;
   #else
     float n = vnoise(p.xz * 0.18) * 0.5 + vnoise(p.xz * 0.9) * 0.3 + (fl > 0.0 ? mix(0.5, vnoise(p.xz * 4.5), fl) : 0.5) * 0.2;
     k = 0.8 + 0.4 * n;
@@ -112,7 +115,9 @@ function patch(mat) {
 export function skinMaterial(kind, flat = false) {
   const key = kind + (flat ? 'f' : '');
   if (cache[key]) return cache[key];
-  const mat = new THREE.MeshLambertMaterial({ flatShading: flat });
+  const mat = kind === 8 // verre : spéculaire + transparence
+    ? new THREE.MeshPhongMaterial({ specular: 0xbfd8e6, shininess: 90, transparent: true, opacity: 0.5, depthWrite: false })
+    : new THREE.MeshLambertMaterial({ flatShading: flat });
   mat.defines = { SKIN: kind };
   return (cache[key] = patch(mat));
 }
