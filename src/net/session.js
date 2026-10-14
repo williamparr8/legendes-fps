@@ -54,10 +54,16 @@ export class HostSession {
   }
 
   async open() {
-    for (let i = 0; i < 6; i++) {
-      const code = i === 0 ? myCode() : makeCode(); // d'abord le code ami (permanent) : les amis qui l'ont peuvent rejoindre sans lien
+    // D'abord le code ami (permanent) : les amis qui l'ont rejoignent sans lien. L'ancien salon met un instant à libérer son code
+    // (retour au menu) : on réessaie 4 fois avant de se rabattre sur un code aléatoire.
+    const tries = [myCode(), myCode(), myCode(), myCode(), makeCode(), makeCode(), makeCode()];
+    for (let i = 0; i < tries.length; i++) {
+      const code = tries[i];
       try { this.srv = await hostListen(code, (l) => this.onLink(l)); this.code = code; return; }
-      catch (e) { if (!e || e.type !== 'unavailable-id' || i === 5) throw e; }
+      catch (e) {
+        if (!e || e.type !== 'unavailable-id' || i === tries.length - 1) throw e;
+        if (i < 4) await new Promise((r) => setTimeout(r, 700));
+      }
     }
   }
 

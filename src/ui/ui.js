@@ -55,6 +55,7 @@ export class UI {
       if (id === 'o-sens') settings.sens = +e.target.value;
       else if (id === 'o-fov') settings.fov = +e.target.value;
       else if (id === 'o-vol') settings.volume = +e.target.value;
+      else if (id === 'o-room') { settings.autoRoom = e.target.checked; saveSettings(); if (settings.autoRoom) this.game.openMyRoom(); else this.game.closeMyRoom(); return; }
       else if (id === 'o-shadows') { settings.shadows = e.target.checked; saveSettings(); return; }
       else if (id === 'o-quality') { settings.quality = +e.target.value; saveSettings(); this.game.post.setQuality(settings.quality); return; }
       else return;
@@ -65,6 +66,9 @@ export class UI {
 
   show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; this.zoom = null; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
+
+  // Le salon personnel vient de s'ouvrir / se fermer : on redessine le hall.
+  roomChanged() { if (this.screen === 'main') this.show('main'); }
 
   // Graine choisie d'avance : le monde peut être construit pendant que le joueur règle sa partie.
   get seed() { if (this._seed == null) this._seed = (Math.random() * 1e6) | 0; return this._seed; }
@@ -84,7 +88,7 @@ export class UI {
       }
     } catch (e) {
       if (!$('n-msg')) return;
-      set(e && e.type === 'refused' ? e.why : errorText(e), true);
+      set(e && (e.type === 'refused' || e.type === 'busy') ? e.why : errorText(e), true);
       for (const b of this.root.querySelectorAll('button')) b.disabled = false;
     }
   }
@@ -137,7 +141,8 @@ export class UI {
       case 'back': this.show(this.from === 'pause' ? 'pause' : 'main'); break;
       case 'resume': g.input.lock(); if (g.m && g.m.net && g.m.net.role === 'client') g.m.net.setReady(); break;
       case 'replay': g.start(this.lastCfg); break;
-      case 'online': this.show('online'); break;
+      case 'reopenroom': this.game.openMyRoom(); break;
+      case 'online': if (this.game.session && this.game.session.role === 'host') this.show('lobby'); else this.show('online'); break;
       case 'host': case 'join': this.connect(a); break;
       case 'lstart': { this.mode = 'online'; g.session.start(this.readConfig()); break; }
       case 'lleave': g.quit(); break;
@@ -157,6 +162,11 @@ export class UI {
     const hasNew = false;
     const EV = eventInfo(), canClaim = dailyClaimable();
     const fr = friends().slice(0, 3);
+    const rs = this.game.session, rstate = this.game.roomState;
+    const roomChip = rs && rs.role === 'host'
+      ? `<button class="lo-room on" data-act="online" title="Ouvrir ton salon"><small>Ton salon est ouvert · code ami</small><b>${esc(rs.code)}</b><span>${rs.players.size ? rs.players.size + ' joueur' + (rs.players.size > 1 ? 's' : '') + ' avec toi' : 'tes amis peuvent te rejoindre sans lien'}</span></button>`
+      : rs ? '' : rstate === 'opening' ? '<div class="lo-room"><small>Salon</small><span>Ouverture de ton salon…</span></div>'
+        : rstate === 'failed' ? '<button class="lo-room" data-act="reopenroom"><small>Salon indisponible</small><span>Réseau bloqué ? Réessayer</span></button>' : '';
     const tab = (t, n, act, extra = '') => `<button class="lo-tab${(t === 'play' && !this.lobbyTab) || this.lobbyTab === t ? ' on' : ''}" data-act="${act}" data-t="${t}">${n}${extra}</button>`;
     const modeRows = Object.keys(MODES).map((k) => `<button class="lo-mrow${k === this.mode ? ' on' : ''}" data-act="lmode" data-mode="${k}" style="--a:${MODES[k].col}"><b>${MODES[k].title}</b><small>${MODES[k].desc}</small></button>`).join('');
     const qrows = (list) => list.map((q) => `<div class="lo-q${q.done ? ' done' : ''}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><i style="--p:${Math.round(100 * q.p / q.n)}%"></i><em>${q.done ? 'fait' : q.p + ' / ' + q.n} · +${q.reward} pts</em></div>`).join('');
@@ -275,6 +285,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
+        ${roomChip}
         ${fr.length ? `<div class="lo-fr2"><small>Amis récents</small>${fr.map((f) => f.code ? `<button data-act="joinfriend" data-c="${esc(f.code)}" data-n="${esc(f.n)}" title="Rejoindre le salon de ${esc(f.n)}"><b>${esc(f.n)}</b><span>${ago(f.d)} · rejoindre</span></button>` : `<button data-act="invite" title="Copier le lien d'invitation"><b>${esc(f.n)}</b><span>${ago(f.d)} · inviter</span></button>`).join('')}</div>` : ''}
       </div>
       <button class="lo-season" data-act="qopen" data-q="season" title="Défis de saison"><small>Saison ${SE.n}</small><b>${SE.name}</b><span>Palier ${SE.tier} / ${SE.tiers} · ${SE.daysLeft} j restants${SE.pass ? ' · PASS ✔' : ''}</span><div class="lo-xp wide"><i style="width:${SE.tier >= SE.tiers ? 100 : Math.round(100 * (SE.tierXp - SE.toNext) / SE.tierXp)}%"></i></div></button>
@@ -328,7 +339,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     if (this.screen === 'main') this.show('main');
     try { await g.joinRoom(settings.name || 'Joueur', code, this.legend); }
     catch (e) {
-      this.friendMsg = e && (e.type === 'peer-unavailable' || e.type === 'timeout' || e.type === 'network') ? name + " n'a pas de salon ouvert pour le moment (ou le réseau bloque la connexion)." : errorText(e);
+      this.friendMsg = e && (e.type === 'refused' || e.type === 'busy') ? name + ' : ' + e.why : e && (e.type === 'peer-unavailable' || e.type === 'timeout' || e.type === 'network') ? name + " n'a pas de salon ouvert pour le moment (ou le réseau bloque la connexion)." : errorText(e);
       if (this.screen === 'main') this.show('main');
     }
   }
@@ -349,7 +360,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
   play() {
     const m = this.mode;
     if (m === 'custom') this.show('setup');
-    else if (m === 'online') this.show('online');
+    else if (m === 'online') this.act('online', {});
     else this.game.start(this.readConfig());
   }
 
@@ -459,12 +470,13 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       <label>Champ de vision : <b id="v-fov">${settings.fov}</b><input type="range" id="o-fov" min="70" max="110" step="1" value="${settings.fov}"></label>
       <label>Volume : <b id="v-vol">${settings.volume}</b><input type="range" id="o-vol" min="0" max="1" step="0.05" value="${settings.volume}"></label>
       <label>Qualité graphique : <select id="o-quality">${QUALITY.map((n, i) => `<option value="${i}" ${settings.quality === i ? 'selected' : ''}>${n}</option>`).join('')}</select> <small>(Bloom, couleurs, vignette ; baisser si ça rame)</small></label>
+      <label class="chk"><input type="checkbox" id="o-room" ${settings.autoRoom ? 'checked' : ''}> Salon personnel ouvert en permanence (mes amis peuvent me rejoindre avec mon code ami)</label>
       <label class="chk"><input type="checkbox" id="o-shadows" ${settings.shadows ? 'checked' : ''}> Ombres du soleil (appliqué à la prochaine partie ; décocher si ça rame)</label></div>
       <table class="keys">${keys}</table><div class="row"><button data-act="back">Retour</button></div></div>`;
   }
 
   pause() {
-    const on = this.game.session;
+    const on = this.game.m && this.game.m.net;
     return `<div class="panel narrow"><h2>Pause</h2>${on ? '<p>En ligne : la partie continue pendant la pause.</p>' : ''}<div class="menu">
       <button class="primary" data-act="resume">Reprendre</button>
       <button data-act="options">Options</button><button data-act="menu">Quitter vers le menu</button></div></div>`;
@@ -478,7 +490,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
 
   results(r) {
     const t = `${Math.floor(r.time / 60)}:${String(r.time % 60).padStart(2, '0')}`;
-    const s = this.game.session;
+    const s = this.game.m && this.game.m.net ? this.game.session : null; // salon personnel en arrière-plan : pas une partie en ligne
     const buttons = !s ? '<button data-act="menu">Menu</button><button class="primary" data-act="replay">Rejouer</button>'
       : s.role === 'host' ? '<button data-act="menu">Quitter</button><button class="primary" data-act="tolobby">Retour au salon (termine la partie pour tous)</button>'
         : '<button data-act="menu">Quitter</button><p style="margin:0;align-self:center">Retour au salon quand l\'hôte le décidera…</p>';

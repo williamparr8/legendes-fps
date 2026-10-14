@@ -282,3 +282,7 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-fc{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#ffffff0f;padding:10px 12px;margin:8px 0}
 .lo-fc span{opacity:.7;font-size:12px;letter-spacing:.12em}.lo-fc b{font-size:24px;letter-spacing:.25em;color:#ffd070;font-family:ui-monospace,Consolas,monospace}
 .lo-code{font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;color:#ffd070}
+
+.lo-room{text-align:left!important;background:#0a0f32aa!important;padding:7px 10px!important;border-left:3px solid #6fe06f!important;font-size:12px;display:block;width:100%}
+.lo-room small{display:block;opacity:.7;letter-spacing:.1em}.lo-room b{display:block;font-size:20px;letter-spacing:.2em;color:#ffd070;font-family:ui-monospace,Consolas,monospace;text-transform:none}
+.lo-room span{font-size:11px;opacity:.8;text-transform:none;letter-spacing:.02em}.lo-room.on:hover{background:#2a3aa088!important}

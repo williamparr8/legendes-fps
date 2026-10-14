@@ -77,7 +77,7 @@ export class Game {
     });
     touchDay(); // série de connexion
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
-    if (invite) this.ui.show('online', { code: invite }); else this.ui.show('main');
+    if (invite) this.ui.show('online', { code: invite }); else { this.ui.show('main'); setTimeout(() => this.openMyRoom(), 1200); }
     startLoop((dt) => this.update(dt), (a, dt) => this.render(a, dt), () => !!this.m && !!this.m.net);
   }
 
@@ -94,8 +94,39 @@ export class Game {
   }
 
   // ---------- en ligne ----------
+  // Salon personnel : dès l'entrée dans le jeu, le joueur héberge un salon dont le code est son code ami ; ses amis le rejoignent sans lien.
+  // Fermé pendant une partie hors ligne (les arrivants sont refusés), rouvert au retour au menu.
+  async openMyRoom() {
+    if (!settings.autoRoom || this.session || this._opening || this.state === 'playing') return;
+    this._opening = true; this.roomState = 'opening';
+    let s = null;
+    try {
+      s = new HostSession(this, settings.name || 'Joueur', this.ui.legend);
+      await s.open();
+      if (this.session || !settings.autoRoom) { s.close(); return; }
+      s.preSeed = this.ui.seed; s.auto = true;
+      this.wire(s);
+      this.roomState = 'open';
+    } catch (e) {
+      if (s) clearInterval(s.timer);
+      this.roomState = 'failed';
+    } finally { this._opening = false; if (this.ui) this.ui.roomChanged(); }
+  }
+
+  closeMyRoom() {
+    if (this.session && this.session.auto) this.leaveSession();
+    this.roomState = 'off';
+    this.ui.roomChanged();
+  }
+
   async hostRoom(name, legend) {
     settings.name = name; saveSettings();
+    if (this.session && this.session.role === 'host') { // le salon personnel existe déjà : on l'ouvre
+      this.session.setName(name); this.session.setLegend(legend);
+      this.ui.show('lobby');
+      return;
+    }
+    if (this.session) this.leaveSession();
     const s = new HostSession(this, name, legend);
     await s.open();
     s.preSeed = this.ui.seed;
@@ -105,6 +136,10 @@ export class Game {
 
   async joinRoom(name, code, legend) {
     settings.name = name; saveSettings();
+    if (this.session) {
+      if (this.session.role === 'host' && this.session.players.size) throw { type: 'busy', why: 'Tu héberges déjà des joueurs : quitte ton salon avant d\'en rejoindre un autre.' };
+      this.leaveSession();
+    }
     const s = new ClientSession(this, name, legend);
     await s.join(code);
     this.wire(s);
@@ -113,7 +148,15 @@ export class Game {
 
   wire(s) {
     this.session = s;
-    s.onLobby = (r) => { this.ui.updateLobby(r); if (s.seed != null) setTimeout(() => this.prewarm(s.seed), 60); };
+    s.onLobby = (r) => {
+      this.ui.updateLobby(r);
+      if (s.seed != null) setTimeout(() => this.prewarm(s.seed), 60);
+      if (s.auto) { // quelqu'un rejoint mon salon personnel : prévenir et ouvrir le salon
+        const n = r.length;
+        if (n > (s._n || 1)) { this.banner(r[r.length - 1].name + ' a rejoint ton salon'); if (this.state === 'menu' && this.ui.screen === 'main') this.ui.show('lobby'); }
+        s._n = n;
+      }
+    };
     s.onChat = (from, text) => this.chatLine(from, text);
     s.onClosed = (text) => this.sessionLost(text);
     this.ui.chatBuf = [];
@@ -147,7 +190,7 @@ export class Game {
   initChat() {
     this.chatEl = document.getElementById('chat'); this.chatLog = document.getElementById('chat-log'); this.chatIn = document.getElementById('chat-in');
     addEventListener('keydown', (e) => {
-      if (e.code === 'Enter' && this.session && this.state === 'playing' && this.input.locked) { e.preventDefault(); this.openChat(); }
+      if (e.code === 'Enter' && this.session && this.m && this.m.net && this.state === 'playing' && this.input.locked) { e.preventDefault(); this.openChat(); }
     });
     this.chatIn.addEventListener('keydown', (e) => {
       e.stopPropagation();
@@ -187,6 +230,7 @@ export class Game {
     this.dispose();
     this.ema = 0; this.playT = 0; this.slowT = 0;
     const training = cfg.map === 'training';
+    if (!net && this.session && this.session.auto) this.session.state = 'game'; // salon personnel occupé : les arrivants sont refusés
     const ev = training ? null : eventById(cfg.event);
     const pre = training ? null : this.takeWorld(cfg.seed, ev);
     const scene = pre ? pre.scene : new THREE.Scene();
@@ -300,6 +344,7 @@ export class Game {
     if (document.pointerLockElement) document.exitPointerLock();
     this.hud.show(false); this.chatShow(false);
     this.ui.show('main');
+    this.openMyRoom();
   }
 
   update(dt) {
