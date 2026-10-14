@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { skinnedWeapon, mergedWeapon } from './models.js';
 import { weaponDetail } from '../world/pbr.js';
+import { skinFx, makeSkinUniforms, setSkinStyle } from '../shop/skinfx.js';
 import skinData from '../shop/skins.json';
 import wdefs from './weapons.json';
 import legends from '../legends/legends.json';
@@ -42,6 +43,19 @@ export function loadHuman(url, extras = []) {
 }
 
 const FRIEND = new THREE.MeshBasicMaterial({ color: 0x4080e0 }), ENEMY = new THREE.MeshBasicMaterial({ color: 0xd04040 });
+// motif d'arme : échelle/origine dans l'espace de l'objet (arme ≈ 1 m)
+const WSC = { k: { value: 2.2 }, o: { value: new THREE.Vector3() } };
+const WMAT = new Map();
+function weaponMat(def) {
+  if (!def || !def.s) return WPN;
+  let m = WMAT.get(def.id);
+  if (!m) {
+    const u = makeSkinUniforms(); setSkinStyle(u, def, 'w');
+    m = weaponDetail(new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5 + def.r * 0.1, roughness: 0.45 - def.r * 0.05 }), 'gunmetal', 0.22, 0.8);
+    skinFx(m, u, WSC); WMAT.set(def.id, m);
+  }
+  return m;
+}
 const WPN = weaponDetail(new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 }), 'gunmetal', 0.22, 0.8);
 const FLASH = new THREE.MeshBasicMaterial({ color: 0xffd070 });
 const CANOPY = new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide });
@@ -159,10 +173,18 @@ export class HumanRig {
         this.root.traverse((o) => { if (o.isSkinnedMesh) { o.material = o.material.clone(); this.mats.push(o.material); } });
       }
       // teinte franche (le jaune/vert/bleu du skin domine la texture) ; rares et au-delà : lueur de l'accent, éclat métallique
-      const c = new THREE.Color(0xffffff), em = new THREE.Color(0x000000);
-      let ei = 0, me = 0;
-      if (def) { c.set(def.p[2]).lerp(new THREE.Color(0xffffff), 0.12).multiplyScalar(1.7); ei = def.r >= 2 ? 0.55 : def.r === 1 ? 0.18 : 0; me = def.r >= 3 ? 0.55 : def.r >= 2 ? 0.3 : 0; em.set(def.p[5]); }
-      for (const m of this.mats) { m.color.copy(c); if (m.emissive) { m.emissive.copy(em); m.emissiveIntensity = ei; } if (me && m.metalness !== undefined) m.metalness = Math.max(m.metalness, me); }
+      // motif réel (camouflage, flammes, circuit…) + éclat métallique pour les skins épiques et au-delà
+      if (!this.sk) {
+        this.sk = makeSkinUniforms();
+        const bb = new THREE.Box3();
+        this.root.traverse((o) => { if (o.isSkinnedMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox); } });
+        const hgt = Math.max(bb.max.y - bb.min.y, 1e-3);
+        this.sc2 = { k: { value: 1.8 / hgt }, o: { value: new THREE.Vector3((bb.min.x + bb.max.x) / 2, bb.min.y, (bb.min.z + bb.max.z) / 2) } };
+        for (const m of this.mats) skinFx(m, this.sk, this.sc2);
+      }
+      setSkinStyle(this.sk, def, 'p');
+      const me = def ? (def.r >= 3 ? 0.55 : def.r >= 2 ? 0.3 : 0) : 0;
+      for (const m of this.mats) { if (m.userData.m0 === undefined) m.userData.m0 = m.metalness; m.metalness = Math.max(m.userData.m0, me); if (def && def.s === 5) { m.metalness = 0.95; m.roughness = 0.28; } }
     }
     if (ws !== this.wskin) { this.wskin = ws; if (this.wid) this.setWeapon(this.wid); }
   }
@@ -171,7 +193,7 @@ export class HumanRig {
     this.wid = id;
     const w = id ? skinnedWeapon(id, skinData.arme[this.wskin - 1]) : null;
     this.ud = w ? w.ud : null;
-    if (w) this.wmesh.geometry = w.geo;
+    if (w) { this.wmesh.geometry = w.geo; this.wmesh.material = weaponMat(skinData.arme[this.wskin - 1]); }
   }
 
   play(name, loop = true, fade = 0.18, scale = 1) {

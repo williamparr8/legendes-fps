@@ -22,6 +22,7 @@ import { HostSession, ClientSession } from './net/session.js';
 import { ClientMatch } from './net/clientMatch.js';
 import { cleanCode } from './net/transport.js';
 import { InventoryPanel } from './ui/inventory.js';
+import { MapView } from './ui/map.js';
 import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { shopFrame } from './shop/shop.js';
 
@@ -57,8 +58,11 @@ export class Game {
     this.input.onLock = (l) => this.onLock(l);
     this.initChat();
     this.inv = new InventoryPanel(this);
+    this.map = new MapView();
     addEventListener('keydown', (e) => {
       if (e.code === 'Tab') { if (this.state !== 'playing' || this.chatting) return; e.preventDefault(); if (!e.repeat) this.inv.toggle(); }
+      else if (e.code === 'KeyT' && !e.repeat && this.state === 'playing' && !this.chatting && this.m && this.m.match) this.map.toggle();
+      else if (e.code === 'Escape' && this.map.open) this.map.close();
       else if (e.code === 'Escape' && this.inv.open) { this.inv.close(); this.ui.show('pause'); }
     });
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
@@ -254,6 +258,7 @@ export class Game {
   }
 
   dispose() {
+    if (this.map) this.map.close();
     if (this.m) this.m.viewmodel.dispose(this.camera);
     this.m = null;
   }
@@ -332,6 +337,7 @@ export class Game {
     m.player.third(m.scene, dt);
     m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
+    this.map.draw(dt, m);
     if (m.world.sun && m.world.followSun(m.player.x, m.player.z)) this.renderer.shadowMap.needsUpdate = true;
     const r = this.renderer;
     if (this.post.on) { this.post.render(m.scene, this.camera, m.player.tp < 0.5 ? m.viewmodel : null, dt); return; }

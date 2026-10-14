@@ -41,7 +41,7 @@ export class Zone {
       if (ol > maxOff) { this.nx = this.cx + ox / ol * maxOff; this.nz = this.cz + oz / ol * maxOff; }
       if (!this.land || this.land(this.nx, this.nz)) break;
     }
-    this.t = P.wait; this.shrinking = false; this.dps = P.dps; this.P = P;
+    this.t = P.wait * 1.3; this.shrinking = false; this.dps = P.dps; this.P = P;
   }
 
   get done() { return this.phase >= PHASES.length - 1 && this.shrinking === false && this.r <= PHASES[PHASES.length - 1].r + 0.01; }
@@ -71,9 +71,9 @@ export class Zone {
     if (!this.enabled) return;
     this.t -= dt;
     if (!this.shrinking) {
-      if (this.t <= 0) { if (this.r <= this.nr + 0.01) { if (this.phase < PHASES.length - 1) this.next(); else this.t = 1e9; } else { this.shrinking = true; this.t = this.P.shrink; } }
+      if (this.t <= 0) { if (this.r <= this.nr + 0.01) { if (this.phase < PHASES.length - 1) this.next(); else this.t = 1e9; } else { this.shrinking = true; this.t = this.P.shrink * 1.3; } }
     } else {
-      const u = 1 - Math.max(0, this.t) / this.P.shrink;
+      const u = 1 - Math.max(0, this.t) / (this.P.shrink * 1.3);
       this.r = this.pr + (this.nr - this.pr) * u; this.cx = this.px + (this.nx - this.px) * u; this.cz = this.pz + (this.nz - this.pz) * u;
       if (this.t <= 0) { this.r = this.nr; this.cx = this.nx; this.cz = this.nz; if (this.phase < PHASES.length - 1) this.next(); else { this.shrinking = false; this.t = 1e9; } }
     }

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { weaponDetail } from '../world/pbr.js';
+import { skinFx, makeSkinUniforms, setSkinStyle } from '../shop/skinfx.js';
+const WSC = { k: { value: 2.2 }, o: { value: new THREE.Vector3() } };
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Modèles d'armes procéduraux : corps en profil latéral extrudé et biseauté (la lumière accroche les arêtes) + boîtes et cylindres.
@@ -252,7 +254,7 @@ export function applyWeaponSkin(g, def) {
     if (!def || s < 0) { o.material = base; return; }
     const key = def.id + '|' + s;
     let m = SKM.get(key);
-    if (!m) SKM.set(key, m = weaponDetail(new THREE.MeshStandardMaterial({ color: def.w[s], metalness: Math.min(1, base.metalness + (def.r >= 3 ? 0.5 : def.r >= 2 ? 0.3 : 0)), roughness: Math.max(0.15, base.roughness - def.r * 0.08), emissive: s >= 5 ? def.w[5] : 0x000000, emissiveIntensity: s >= 5 ? 0.25 + def.r * 0.45 : 0 }), s === 3 ? 'rubber' : 'gunmetal'));
+    if (!m) { const u = makeSkinUniforms(); setSkinStyle(u, def, 'w'); SKM.set(key, m = skinFx(weaponDetail(new THREE.MeshStandardMaterial({ color: def.w[s], metalness: Math.min(1, base.metalness + (def.r >= 3 ? 0.5 : def.r >= 2 ? 0.3 : 0)), roughness: Math.max(0.15, base.roughness - def.r * 0.08), emissive: s >= 5 ? def.w[5] : 0x000000, emissiveIntensity: s >= 5 ? 0.25 + def.r * 0.45 : 0 }), s === 3 ? 'rubber' : 'gunmetal'), u, WSC)); }
     o.material = m;
   });
 }

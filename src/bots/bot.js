@@ -6,7 +6,7 @@ import { SHIP_ALT, SHIP_SPEED, CHUTE_ALT } from '../match/drop.js';
 import wdefs from '../combat/weapons.json';
 
 const PREF = { rifle: 20, smg: 12, shotgun: 7, sniper: 45, launcher: 25 }; // distance de combat préférée
-const BASE_SPEED = 5.4, R = 0.4, H = 1.8, JUMP = 8.2, HEAL_CAP = 4;
+const BASE_SPEED = 5.4, R = 0.4, H = 1.8, JUMP = 8.2, HEAL_CAP = 6;
 const RANK = { launcher: 1, shotgun: 2, sniper: 2, smg: 3, rifle: 4 }; // un bot ne ramasse qu'une arme mieux classée
 // Quand un bot utilise une habileté : engage = ennemi en vue, hurt = sous le feu, heal = blessé au calme, revive = allié à terre.
 const USE = { pulse: 'never', revealAll: 'never', grenade: 'engage', wall: 'hurt', dash: 'never', heal: 'heal', mine: 'engage', rage: 'engage', fortress: 'hurt', teleport: 'never', revivePulse: 'revive', gas: 'engage' };
@@ -30,7 +30,7 @@ export class Bot extends Target {
     this.enemy = null; this.seen = false; this.seeFor = 0; this.sinceSeen = 99; this.lastX = x; this.lastZ = z;
     this.alertT = 0; this.thinkT = Math.random() * 0.2; this.strafeDir = Math.random() < 0.5 ? 1 : -1; this.strafeT = 1;
     this.tCd = 5 + Math.random() * 10; this.uCharge = Math.random() * 20;
-    this.healItems = o.weapon ? 1 + ((Math.random() * 2) | 0) : 0; this.healT = 0;
+    this.healItems = o.weapon ? 2 + ((Math.random() * 2) | 0) : 0; this.healT = 0;
     this.lootI = -1; this.lootT = 0; this.lootSince = 0; this.bad = []; // butin visé, minuteurs, objets inaccessibles
     this.coverX = 0; this.coverZ = 0; this.coverT = 0; this.wantCover = false;
     this.wx = 0; this.wz = 0; this.lastPx = x; this.lastPz = z; this.stuckT = 0;
@@ -175,11 +175,13 @@ export class Bot extends Target {
     const rotate = !z.safe(this.x, this.z);
     const mate = this.downedMate();
     let st;
-    if (e && this.wid && !(rotate && dist > 18)) st = 'engage';
+    const hurt = h.hp < d.coverHp && h.shield < 10 && this.healItems > 0 && this.sinceDamage > 1.2;
+    if (hurt && (!e || dist > 35 || !c.combat.los(this, e))) st = 'heal'; // à l'abri ou loin : on se soigne même en combat
+    else if (e && this.wid && !(rotate && dist > 18)) st = 'engage';
     else if (!this.wid && this.seekLoot()) st = 'loot'; // sans arme : d'abord s'armer
     else if (rotate) st = 'rotate';
     else if (mate && this.sinceSeen > 1.5) st = 'revive';
-    else if ((h.hp < d.healHp || h.shield < 10) && this.healItems > 0 && this.sinceSeen > d.healSafe) st = 'heal';
+    else if ((h.hp < d.healHp || h.shield < 10) && this.healItems > 0 && this.sinceSeen > d.healSafe * 0.6) st = 'heal';
     else if (this.sinceSeen > 3 && this.seekLoot()) st = 'loot';
     else if (this.sinceSeen < 8) st = 'search';
     else st = this.squad.isFollower(this) ? 'follow' : 'roam';
@@ -236,12 +238,26 @@ export class Bot extends Target {
   useAbilities(e, dist) {
     const L = LEGENDS[this.legend], ab = this.ctx.abilities;
     if (Math.random() > this.diff.ability) return;
-    const ok = (kind) => kind === 'engage' ? !!e && dist < 40 : kind === 'hurt' ? !!e && this.sinceDamage < 2.5
-      : kind === 'heal' ? !e && this.health.hp < 70 : kind === 'revive' ? !!this.downedMate() : false;
-    if (this.tCd <= 0 && ok(USE[L.tactical.type]) && ab.castFor(this, 'tactical', this.legend)) {
+    const hp = this.health.hp, tot = hp + this.health.shield, los = !!e && this.ctx.combat.los(this, e);
+    const ok = (type) => {
+      const kind = USE[type];
+      if (kind === 'engage') {
+        if (!e || dist > 40) return false;
+        if (type === 'grenade') return los && dist > 7;      // pas à bout portant, ligne de vue
+        if (type === 'rage') return los && dist < 30 && hp > 35;
+        if (type === 'gas') return dist > 8 && dist < 38;
+        if (type === 'mine') return dist < 28;
+        return true;
+      }
+      if (kind === 'hurt') return !!e && this.sinceDamage < 2.5 && (type === 'fortress' ? tot < 110 : true);
+      if (kind === 'heal') return (!e && hp < 70) || hp < 45;
+      if (kind === 'revive') return !!this.downedMate() || (hp < 40 && this.squad.members.length > 1);
+      return false;
+    };
+    if (this.tCd <= 0 && ok(L.tactical.type) && ab.castFor(this, 'tactical', this.legend)) {
       this.tCd = L.tactical.cooldown * (L.tactical.trap ? this.pv.trapMul : 1);
     }
-    if (this.uCharge >= L.ultimate.charge && ok(USE[L.ultimate.type]) && ab.castFor(this, 'ultimate', this.legend)) this.uCharge = 0;
+    if (this.uCharge >= L.ultimate.charge && ok(L.ultimate.type) && ab.castFor(this, 'ultimate', this.legend)) this.uCharge = 0;
   }
 
   // ---------- action (60 Hz) ----------
@@ -266,8 +282,8 @@ export class Bot extends Target {
       }
       if (moving && !mx && !mz) { mx = this.wx * speed; mz = this.wz * speed; }
     } else if (st === 'heal') {
-      if ((this.healT -= dt) <= 0) {
-        this.healItems--; this.health.hp = Math.min(this.health.maxHp, this.health.hp + 60); this.health.shield = Math.min(this.health.maxShield, this.health.shield + 30);
+      if ((this.healT -= dt) <= 0 && this.healItems > 0) {
+        this.healT = 3; this.healItems--; this.health.hp = Math.min(this.health.maxHp, this.health.hp + 60); this.health.shield = Math.min(this.health.maxShield, this.health.shield + 30);
       }
     } else if (st === 'revive') {
       const mate = this.downedMate();
@@ -335,7 +351,7 @@ export class Bot extends Target {
     if (this.mag <= 0) { this.reloadT = def.reload; return; }
     const dist = Math.hypot(dx, dz), moving = Math.hypot(this.vx, this.vz) > 2;
     const err = d.aimErr * (1 + dist / 50) * (moving ? 1.4 : 1) * (1 - 0.4 * Math.min(1, this.seeFor / 3));
-    this.ctx.combat.botShot(this, def, e.x, e.y + (this.aimHead ? 1.62 : 1.1) * e.hs, e.z, err, this.dmgMul * d.dmg * (e.isBot ? 0.6 : 1)); // duels bot/bot moins mortels : parties plus longues
+    this.ctx.combat.botShot(this, def, e.x, e.y + (this.aimHead ? 1.62 : 1.1) * e.hs, e.z, err, this.dmgMul * d.dmg * (e.isBot ? 0.4 : 1)); // duels bot/bot moins mortels : parties plus longues
     this.cd = 60 / def.rpm; this.mag--;
     if (--this.burst <= 0) {
       this.burst = def.auto ? 3 + ((Math.random() * 5) | 0) : 1;
