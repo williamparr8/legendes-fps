@@ -38,6 +38,15 @@ function grassTexture() {
 }
 
 // Maillage du terrain : couleurs par altitude / pente / proximité des bâtiments, ombres reçues.
+// Cartes (thèmes) : 0 île verte, 1 désert, 2 toundra enneigée. Choisi depuis la graine (même thème côté hôte et clients).
+export const THEMES = [
+  { name: 'Île verte', grass: 0x4f7d3a, dry: 0x9a9a52, rock: 0x7d786f, dirt: 0x8c7c60, sand: 0xcdbb8c, snow: 0, arid: 0, water: 0x1f6f8c, peak: 0.62 },
+  { name: 'Désert', grass: 0xb99a5c, dry: 0xd2b274, rock: 0xa4623e, dirt: 0xa7825a, sand: 0xe0c48a, snow: 0, arid: 1, water: 0x2a8f94, peak: 2 },
+  { name: 'Toundra', grass: 0xdfe8ee, dry: 0xc2ccd4, rock: 0x7f858e, dirt: 0x9a9690, sand: 0xe6edf3, snow: 1, arid: 0, water: 0x3a7a9a, peak: 0.35 },
+];
+export const THEME = { ...THEMES[0] };
+export function setTheme(i) { Object.assign(THEME, THEMES[((i % 3) + 3) % 3]); }
+
 export function buildTerrainMesh(scene, hf, roads = []) {
   const seg = 224, size = hf.ext * 2;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
@@ -46,8 +55,8 @@ export function buildTerrainMesh(scene, hf, roads = []) {
   for (let i = 0; i < cnt; i++) pos.setY(i, hf.at(pos.getX(i), pos.getZ(i)));
   geo.computeVertexNormals();
   const nor = geo.attributes.normal, col = new Float32Array(cnt * 3), splat = new Float32Array(cnt * 4);
-  const grass = new THREE.Color(0x4f7d3a), dry = new THREE.Color(0x9a9a52), rock = new THREE.Color(0x7d786f), dirt = new THREE.Color(0x8c7c60);
-  const sand = new THREE.Color(0xcdbb8c), wet = new THREE.Color(0x8d8466), bed = new THREE.Color(0x5f7a70), road = new THREE.Color(0x8f836a);
+  const grass = new THREE.Color(THEME.grass), dry = new THREE.Color(THEME.dry), rock = new THREE.Color(THEME.rock), dirt = new THREE.Color(THEME.dirt);
+  const sand = new THREE.Color(THEME.sand), wet = new THREE.Color(0x8d8466), bed = new THREE.Color(0x5f7a70), road = new THREE.Color(0x8f836a);
   const c = new THREE.Color();
   for (let i = 0; i < cnt; i++) {
     const x = pos.getX(i), z = pos.getZ(i), h = pos.getY(i), f = hf.free(x, z), ny = nor.getY(i), m = hf.coast(x, z);
@@ -104,7 +113,7 @@ function waveNormals() {
 export function buildWater(scene) {
   const nm = waveNormals();
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x1f6f8c, roughness: 0.06, metalness: 0.0, transparent: true, opacity: 0.88, side: THREE.DoubleSide,
+    color: THEME.water, roughness: 0.06, metalness: 0.0, transparent: true, opacity: 0.88, side: THREE.DoubleSide,
     normalMap: nm, normalScale: new THREE.Vector2(0.55, 0.55), envMapIntensity: 1.1,
   });
   // deux couches de vagues d'échelles et de sens différents (casse la répétition), mouvement par un uniforme de temps
@@ -142,7 +151,7 @@ export function buildMountains(scene, seed) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = y + 0.5; // 0 = pied, 1 = sommet
     const k = 1 + (hash(Math.round(x * 9), Math.round(y * 7), Math.round(z * 9)) - 0.5) * 0.55 * (1 - t * 0.5);
     pos.setXYZ(i, x * k, y + (hash(Math.round(x * 5), 3, Math.round(z * 5)) - 0.5) * 0.08 * (1 - t), z * k);
-    const snow = Math.min(1, Math.max(0, (t - 0.62) / 0.14));
+    const snow = Math.min(1, Math.max(0, (t - THEME.peak) / 0.14));
     c.setRGB(0.36, 0.34, 0.32).lerp(new THREE.Color(0.30, 0.38, 0.26), Math.max(0, 0.5 - t) * 0.9).lerp(new THREE.Color(0.95, 0.96, 0.98), snow);
     col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }

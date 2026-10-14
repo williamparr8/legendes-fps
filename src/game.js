@@ -303,7 +303,11 @@ export class Game {
     this.ema = this.ema ? this.ema * 0.97 + dt * 0.03 : dt;
     this.playT = (this.playT || 0) + dt;
     if (this.playT < 6) return;
-    this.slowT = Math.max(0, (this.slowT || 0) + (this.ema > 0.04 ? dt : -dt));
+    // résolution dynamique : vise ~58 images/s en réduisant doucement le nombre de pixels (jusqu'à 55 %), la remonte quand il y a de la marge
+    this.dynT = (this.dynT || 0) + dt;
+    if (this.dynT > 1.5 && this.ema > 1 / 54 && this.post.sc > 0.56) { this.dynT = 0; this.post.setScale(Math.max(0.55, this.post.sc - 0.1)); }
+    else if (this.dynT > 8 && this.ema < 1 / 57 && this.post.sc < 1) { this.dynT = 0; this.post.setScale(Math.min(1, this.post.sc + 0.05)); }
+    this.slowT = Math.max(0, (this.slowT || 0) + (this.ema > 0.04 && this.post.sc <= 0.6 ? dt : -dt));
     if (this.slowT < 5) return;
     this.slowT = 0;
     const r = this.renderer;

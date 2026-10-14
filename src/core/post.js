@@ -43,7 +43,7 @@ const FINAL = `uniform sampler2D tS, tB1, tB2, tB3; uniform float bloom, vig, sa
 
 export class Post {
   constructor(renderer) {
-    this.r = renderer; this.q = 0; this.on = false; this.built = false;
+    this.r = renderer; this.sc = 1; this.q = 0; this.on = false; this.built = false;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
   }
@@ -51,13 +51,16 @@ export class Post {
   setQuality(q) {
     const r = this.r;
     this.q = q; this.on = q > 0;
-    r.setPixelRatio(Math.min(devicePixelRatio, PIXEL_CAP[q]));
+    r.setPixelRatio(Math.min(devicePixelRatio, PIXEL_CAP[q]) * this.sc);
     r.setSize(innerWidth, innerHeight);
     if (!this.on) return;
     if (!this.built) this.build();
     this.u.bloom.value = BLOOM[q];
     this.resize();
   }
+
+  // Échelle de résolution dynamique (0,55–1) : appliquée au ratio de pixels courant.
+  setScale(s) { if (Math.abs(s - this.sc) < 0.01) return; this.sc = s; this.setQuality(this.q); }
 
   build() {
     this.built = true;

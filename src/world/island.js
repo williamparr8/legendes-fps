@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, HORIZON } from './terrain.js';
+import { setTheme, Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, HORIZON } from './terrain.js';
 import { buildBuilding } from './buildings.js';
 import { buildDecor } from './decor.js';
 import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
@@ -18,6 +18,7 @@ const DECOR = { Port: [0.35, 0.55, 0.1], Usine: [0.35, 0.55, 0.1], Ferme: [0.6, 
 // usine, ferme, port, ruines, hameau, phare) reliés par des routes, forêts par amas, massifs, tours + tyroliennes, jump pads.
 // Générée uniquement depuis la graine. opts.shadows : ombres du soleil (suit le joueur, voir World.followSun).
 export function buildIsland(scene, seed = 1, opts = {}) {
+  setTheme(Math.abs(seed | 0) % 3);
   const r = rng(seed);
   scene.background = new THREE.Color(HORIZON);
   scene.fog = new THREE.Fog(HORIZON, 80, 440);

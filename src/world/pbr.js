@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { THEME } from './terrain.js';
 
 // Matériaux PBR à textures photo (ambientCG, CC0 ; préparées par tools/make_textures.mjs : <nom>_c.jpg couleur, <nom>_n.jpg normale xy + rugosité).
 // Projection « boîte » par la position monde (aucune UV nécessaire, pas d'étirement quelle que soit la taille de la boîte), normale
@@ -106,7 +107,7 @@ export function terrainPbr() {
   const uni = {
     uG: { value: tex('grass', true) }, uGN: { value: tex('grass', false) }, uD: { value: tex('soil', true) }, uM: { value: tex('moss', true) },
     uS: { value: tex('gravel', true) }, uR: { value: tex('rock', true) },
-    uDN: { value: tex('soil', false) }, uSN: { value: tex('gravel', false) }, uRN: { value: tex('rock', false) },
+    uSnow: { value: THEME.snow }, uArid: { value: THEME.arid }, uDN: { value: tex('soil', false) }, uSN: { value: tex('gravel', false) }, uRN: { value: tex('rock', false) },
   };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uni);
@@ -115,7 +116,7 @@ export function terrainPbr() {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP2 = (modelMatrix * vec4(transformed, 1.0)).xyz; vSplat = splat;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform sampler2D uG, uGN, uD, uS, uR, uDN, uSN, uRN, uM;
+        uniform sampler2D uG, uGN, uD, uS, uR, uDN, uSN, uRN, uM; uniform float uSnow, uArid;
         vec2 tuv2;
         varying vec3 vWP2; varying vec4 vSplat;
         vec2 tuv;` + NORMAL_FN)
@@ -133,6 +134,9 @@ export function terrainPbr() {
           // variation à grande échelle : casse la répétition
           float big = 0.85 + 0.3 * texture2D(uG, vWP2.xz / 41.0).g;
           vec3 t = (g * w.x + d * w.y + s * w.z + r * w.w) * big;
+          float tl = dot(t, vec3(0.3, 0.59, 0.11));
+          t = mix(t, vec3(tl * 2.1 + 0.25), uSnow * (0.8 * (w.x + w.y + w.z) + 0.35 * w.w)); // neige : le motif reste, la couleur blanchit
+          t = mix(t, vec3(tl * 1.5 + 0.12, tl * 1.25 + 0.1, tl * 0.9 + 0.06), uArid * (w.x * 0.85 + w.y * 0.5)); // désert : herbe jaunie
           float L = dot(vColor, vec3(0.3, 0.59, 0.11));
           vec3 tint = mix(vec3(1.0), vColor / max(L, 0.05), 0.55 + 0.35 * vSplat.z) * (0.7 + 0.6 * L);
           diffuseColor.rgb *= t * tint;
