@@ -3,6 +3,7 @@ import { makeRig, WIDS } from '../combat/humanoid.js';
 import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile } from '../shop/profile.js';
+import { thumbTick } from '../shop/thumbs.js';
 
 // Décor 3D du hall (menu principal) : fond dessiné en canvas (dégradé, alvéoles, grand titre, sol en perspective), opérateur
 // équipé (tenue + arme du profil) sur un socle lumineux au centre ; le DOM (ui.js) est superposé et transparent.
@@ -99,6 +100,7 @@ LobbyView.FACE = Math.PI; // orientation de face (à ajuster : dépend du modèl
 let view = null;
 export function lobbyFrame(game, dt) {
   if (!view) view = new LobbyView();
+  thumbTick(game.renderer); // miniatures (Pass) : avant le rendu principal
   view.frame(dt, game.ui.legend);
   game.renderer.render(view.scene, view.cam);
 }

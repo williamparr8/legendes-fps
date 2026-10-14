@@ -7,8 +7,9 @@ import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
 import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } from '../shop/quests.js';
-import { premium, buyUrl, priceText, redeem, buyPass, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
+import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
 import { LIST } from '../shop/profile.js';
+import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
 const $ = (id) => document.getElementById(id);
@@ -59,7 +60,7 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
 
   // Graine choisie d'avance : le monde peut être construit pendant que le joueur règle sa partie.
@@ -146,7 +147,7 @@ export class UI {
     } else if (this.lobbyTab === 'pass') {
       const reward = (t) => {
         const r = premium(t);
-        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk"><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id}</span>`; }).join('');
+        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk">${thumbImg(k, id, 'lo-th')}<span><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id}</span></span>`; }).join('');
         return `<div class="lo-tr${t <= SE.tier ? ' got' : ''}"><b>${t}</b><div class="lo-fr">Gratuit<br>+${freeReward(t)} pts</div><div class="lo-pr${SE.pass ? '' : ' lock'}">${sk}${r.title ? `<span class="lo-ti">« ${r.title} »</span>` : ''}<span>+${r.pts} pts</span></div></div>`;
       };
       let t = '';
@@ -161,10 +162,12 @@ export class UI {
     } else if (this.lobbyTab === 'gems') {
       const url = buyUrl();
       modal = `<h2>${GEM} Éclats</h2><p>Solde : <b>${profile.gems} ${GEM}</b> — la monnaie premium : le Pass de saison (${PASS_PRICE} ${GEM}) et les skins uniques de la Boutique.</p>
-        <div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()}, paiement par PayPal.</small></div>
+${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()} — paiement par PayPal ou carte : les Éclats arrivent automatiquement dès que le paiement est confirmé.</small></div>
+            <div id="paypal-btn" class="lo-pp">Chargement de PayPal…</div></div>`
+        : `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()}, paiement par PayPal.</small></div>
           <button class="primary" data-act="gemsbuy" ${url ? '' : 'disabled'}>${url ? 'Acheter avec PayPal' : 'Achat bientôt disponible'}</button></div>
         <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code. 3. Colle-le ici :</p>
-        <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>
+        <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>`}
         <small class="lo-msg">${esc(this.gemMsg || '')}</small>`;
     } else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
     const name = esc(settings.name || 'Joueur');
@@ -196,6 +199,18 @@ export class UI {
       </div>
       ${modal ? `<div class="lo-modal" data-act="lclose"><div class="lo-mp${this.lobbyTab === 'pass' ? ' pass' : ''}" data-stop="1">${modal}<div class="row"><button class="primary" data-act="lclose">Fermer</button></div></div></div>` : ''}
     </div>`;
+  }
+
+  // Boutons PayPal (fenêtre Éclats) : crédit automatique après la commande.
+  mountPay() {
+    if (!hasCheckout()) return;
+    setTimeout(() => {
+      const el = $('paypal-btn');
+      if (el) mountCheckout(el, (r) => {
+        this.gemMsg = r === 'used' ? 'Cette commande a déjà été créditée.' : r === 'error' ? "Le paiement a échoué ou a été annulé : rien n'a été débité." : '+' + r.gems + ' ' + GEM + ' reçus ! Merci !';
+        if (this.screen === 'main') this.show('main');
+      });
+    }, 0);
   }
 
   async redeemCode() {

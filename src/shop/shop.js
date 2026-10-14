@@ -4,6 +4,7 @@ import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
 import { buySkin, GEM } from './pass.js';
+import { thumbImg, thumbTick } from './thumbs.js';
 
 // Écran Boutique : cartes de skins (personnage / arme), aperçu 3D à droite (rendu par Game.render via shopFrame), sauvegarde.
 const S = { kind: 'perso', sel: -1, msg: '', saveOpen: false }; // sel : indice du skin affiché (-1 = tenue par défaut)
@@ -13,15 +14,21 @@ export function shopOpen() { S.sel = profile.eq[S.kind] - 1; S.msg = ''; S.saveO
 
 export function shopHtml() {
   const k = S.kind, list = LIST[k], eq = profile.eq[k] - 1, cards = [];
-  const card = (i, name, rar, pal, st) => `<div class="sc${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${rar ? rar.c : '#5a6573'}">
-      <b>${name}</b><small style="color:${rar ? rar.c : '#9aa5b1'}">${rar ? rar.n : 'Par défaut'}</small>
+  const card = (i, name, rar, pal, st, th = '') => `<div class="sc${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${rar ? rar.c : '#5a6573'}">
+      ${th}<b>${name}</b><small style="color:${rar ? rar.c : '#9aa5b1'}">${rar ? rar.n : 'Par défaut'}</small>
       <span class="sw">${pal ? pal.map((c) => `<s style="background:${c}"></s>`).join('') : ''}</span>${st}</div>`;
-  cards.push(card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`));
+  // sections : points ◆ (gratuit + points), Éclats ✦ (premium), Pass (paliers)
+  const groups = { pts: [card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`, '<div class="th th-none">Par défaut</div>')], gems: [], pass: [] };
   list.forEach((d, i) => {
     const c = price(d);
-    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">${c} pts</em>`;
-    cards.push(card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], d.p || d.w, st));
+    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">◆ ${c} pts</em>`;
+    const html = card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], d.p || d.w, st, thumbImg(k, d.id));
+    (d.pass ? groups.pass : d.gems ? groups.gems : groups.pts).push(html);
   });
+  const sec = (cls, title, sub, arr) => (arr.length ? `<div class="sgrp ${cls}"><b>${title}</b><span>${sub}</span></div>${arr.join('')}` : '');
+  cards.push(sec('pts', '◆ Boutique en points', 'Gagnés en jouant (parties, défis, paliers de saison)', groups.pts),
+    sec('gems', `${GEM} Boutique premium`, 'Skins uniques, achetés avec des Éclats', groups.gems),
+    sec('pass', '★ Exclusifs du Pass de saison', 'Débloqués par paliers avec le Pass (pas à vendre)', groups.pass));
   // action pour le skin sélectionné
   let act;
   if (S.sel === -1) act = eq === -1 ? '<button disabled>Équipé</button>' : '<button class="primary" data-act="seq" data-i="-1">Équiper la tenue d\'origine</button>';
@@ -125,6 +132,7 @@ let view = null;
 // Appelé par Game.render quand l'écran Boutique est affiché : rend l'aperçu à la place du décor de menu.
 export function shopFrame(game, dt) {
   if (!view) view = new ShopView();
+  thumbTick(game.renderer); // miniatures des cartes : avant le rendu principal
   view.frame(dt, game.ui.legend);
   game.renderer.render(view.scene, view.cam);
 }
