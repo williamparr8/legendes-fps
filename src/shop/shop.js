@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rig, WIDS } from '../combat/humanoid.js';
+import { makeRig, WIDS } from '../combat/humanoid.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
 
@@ -85,7 +85,7 @@ class ShopView {
     this.g = new THREE.Group(); this.scene.add(this.g);
     this.g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.06, 32).translate(0, -0.03, 0), new THREE.MeshLambertMaterial({ color: 0x1b2d40 })));
     const m = new THREE.Group(); this.g.add(m);
-    this.rig = new Rig(m, true);
+    this.rig = makeRig(m, true);
     this.a = { health: { downed: false }, stance: 0, wid: WIDS[0], shots: 0, reloading: false, pitch: 0 };
     this.t = 0; this.legend = '';
   }

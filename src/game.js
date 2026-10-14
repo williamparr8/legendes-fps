@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { startLoop } from './core/loop.js';
 import { Post } from './core/post.js';
+import { loadHuman, human } from './combat/humanrig.js';
 import { bakeSky } from './world/terrain.js';
 import { Input } from './core/input.js';
 import { Hud } from './core/hud.js';
@@ -37,6 +38,7 @@ export class Game {
     bakeSky(this.renderer, new THREE.Vector3(60, 100, 30).normalize());
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
+    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb'); // personnage animé ; en attendant, silhouette procédurale
     this.menuScene = new THREE.Scene();
     this.menuScene.background = new THREE.Color(0x0b0f14);
     addEventListener('resize', () => {
@@ -310,6 +312,7 @@ export class Game {
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));
     this.input.mx = this.input.my = 0;
     m.player.getCamera(alpha, this.camera, dt);
+    human.cam.copy(this.camera.position);
     m.player.third(m.scene, dt);
     m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);

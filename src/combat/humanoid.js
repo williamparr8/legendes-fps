@@ -4,6 +4,7 @@ import { mergedWeapon, skinnedWeapon } from './models.js';
 import skinData from '../shop/skins.json';
 import wdefs from './weapons.json';
 import legends from '../legends/legends.json';
+import { human, HumanRig } from './humanrig.js';
 
 // Silhouette d'opérateur tactique procédurale (face = -Z, origine aux pieds, ~1,82 m), articulée :
 // bassin → cuisses/genoux, buste → tête, épaules → bras à deux segments (cinématique inverse) → arme tenue à deux mains.
@@ -202,6 +203,9 @@ function persoGeo(i) {
   g.setAttribute('color', new THREE.BufferAttribute(a, 3));
   return SG[i] = g;
 }
+
+// Personnage humain animé (glTF) s'il est chargé, sinon silhouette procédurale.
+export const makeRig = (group, friendly) => (human.ready ? new HumanRig(group, friendly) : new Rig(group, friendly));
 
 export class Rig {
   constructor(group, friendly) {

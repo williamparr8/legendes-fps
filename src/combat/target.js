@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { rayAabb, raySphere } from './ray.js';
 import { Health } from './health.js';
-import { Rig, WIDS, LEGS, CROUCH_HS } from './humanoid.js';
+import { makeRig, WIDS, LEGS, CROUCH_HS } from './humanoid.js';
 import legends from '../legends/legends.json';
 
 const markG = new THREE.BoxGeometry(0.85, 1.95, 0.6);
@@ -33,7 +33,7 @@ export class Target {
     this.dmgMul = 1; this.takenMul = 1; this.moveMul = 1; this.pv = defaultPv();
     this.lastAttacker = null; this.sinceDamage = 99;
     this.group = new THREE.Group();
-    this.rig = new Rig(this.group, friendly);
+    this.rig = makeRig(this.group, friendly);
     this.markT = 0;
     this.marker = new THREE.Mesh(markG, markMat);
     this.marker.position.y = 0.95; this.marker.renderOrder = 998; this.marker.visible = false;

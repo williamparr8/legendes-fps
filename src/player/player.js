@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { tickPlayerDrop } from '../match/drop.js';
-import { Rig } from '../combat/humanoid.js';
+import { makeRig } from '../combat/humanoid.js';
 import { MOVE as M } from './config.js';
 import { Health } from '../combat/health.js';
 
@@ -301,7 +301,7 @@ export class Player {
     if (this.tp < 0.3) { if (this.rig) this.rig.g.visible = false; return; }
     if (!this.rig) {
       const g = new THREE.Group(); scene.add(g);
-      this.rig = { g, r: new Rig(g, true), a: { health: this.health, stance: 0, wid: null, shots: 0, reloading: false, pitch: 0 } };
+      this.rig = { g, r: makeRig(g, true), a: { health: this.health, stance: 0, wid: null, shots: 0, reloading: false, pitch: 0 } };
       this.rig.r.setSkins(this.skinP | 0, this.skinW | 0);
     }
     const R = this.rig, a = R.a;
