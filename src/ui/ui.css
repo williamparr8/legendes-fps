@@ -167,3 +167,10 @@ details.save{margin-top:6px;font-size:13px}details.save summary{cursor:pointer;o
 .lo-lv{margin-top:14px!important;color:#ffd070}
 @media(max-height:720px){.lo-mode{height:110px}.lo-slot{height:64px;width:72px}.lo-season b{font-size:26px}}
 @media(max-width:900px){.lo-br,.lo-season,.lo-stat{display:none}.lo-bl{width:220px}.lo-tab{padding:20px 9px!important;font-size:14px}.lo-id{min-width:0}.lo-xp,.lo-id small{display:none}}
+button.lo-season{position:absolute;right:20px;top:84px;text-align:right!important;background:#0a0f3299!important;padding:8px 14px!important;border-right:4px solid #ffd070!important;clip-path:polygon(4% 0,100% 0,100% 100%,0 100%)}
+button.lo-season:hover{background:#2a3aa088!important}
+.lo-xp.wide{width:100%;margin:6px 0 0}
+.lo-qts{display:flex;gap:6px;margin:8px 0 12px}
+.lo-qt{padding:8px 14px!important;background:#ffffff14!important;font-size:14px;opacity:.75}.lo-qt.on{opacity:1;background:#e0452f!important}
+.lo-tier{background:#ffffff0f;padding:10px 14px;margin-bottom:6px}.lo-tier b{font-size:18px;color:#ffd070}
+.lo-mp h3{margin:14px 0 2px;font-size:14px;letter-spacing:.12em;opacity:.7}

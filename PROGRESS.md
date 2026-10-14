@@ -207,3 +207,8 @@
 - JOUER : solo / Ã©quipe / entraÃ®nement dÃ©marrent tout de suite avec les rÃ©glages par dÃ©faut (`readConfig` : bots du mode, zone active hors entraÃ®nement) ; Â« Options de la partie Â» ouvre l'ancien Ã©cran ; personnalisÃ©e â†’ Ã©cran de prÃ©paration ; en ligne â†’ salon. Le monde est prÃ©chargÃ© dÃ¨s l'affichage du hall (solo/Ã©quipe).
 - VÃ©rifiÃ© dans le navigateur (1280Ã—720 Ã©mulÃ©) : rendu, onglets, fenÃªtre DÃ©fis, changement de lÃ©gende, lancement d'une partie (monde rendu). Non vÃ©rifiÃ© : Ã©cran rÃ©ellement en 16:9 plein Ã©cran, mobile, FPS du hall.
 - Correctif hall/boutique : le rig 3D était créé avant la fin du chargement de swat.glb (silhouette procédurale en cubes pour toujours) ; LobbyView/ShopView se reconstruisent maintenant quand le modèle ou un corps de skin finit de charger (signature human.ready + corps).
+
+### Saison et défis hebdomadaires (2026-10-14, local, NON poussé)
+- `src/shop/quests.js` : défis du jour (3), hebdomadaires (4, renouvelés le lundi, graine = n° de semaine) et de saison (6 défis cumulés fixes) ; saison de 12 semaines depuis le 2026-10-01 (noms : Éveil, Braise, Givre, Tempête, Aurore, Spectre) ; 20 paliers de 200 XP de saison (XP = points de partie + défis), récompense 40 pts par palier, 250 tous les 5. Stockage localStorage `legendes-fps-quests` (hors code de sauvegarde : un changement de navigateur remet défis/saison à zéro).
+- Hall : carte « Saison N » en haut à droite (palier, jours restants), fenêtre Défis à 3 onglets, pastille = défis jour + semaine restants ; écran de résultats : défis, paliers accomplis.
+- Testé dans le navigateur local : accomplissement multiple, idempotence, rendu de la fenêtre. Pas de test sur plusieurs jours (changement de jour/semaine/saison non simulé).

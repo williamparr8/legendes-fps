@@ -6,7 +6,7 @@ import { transportKind, errorText, cleanCode } from '../net/transport.js';
 import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
-import { levelInfo, dailies } from '../shop/quests.js';
+import { levelInfo, dailies, weeklies, season, pending } from '../shop/quests.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
 const $ = (id) => document.getElementById(id);
@@ -89,6 +89,8 @@ export class UI {
       case 'mode': this.mode = d.mode; this.show('setup'); break;
       case 'play': this.play(); break;
       case 'ltab': this.lobbyTab = this.lobbyTab === d.t || d.t === 'play' ? null : d.t; this.show('main'); break;
+      case 'qopen': this.qTab = d.q; this.lobbyTab = 'quests'; this.show('main'); break;
+      case 'qtab': this.qTab = d.q; this.show('main'); break;
       case 'lclose': this.lobbyTab = null; this.show('main'); break;
       case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
       case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
@@ -113,14 +115,23 @@ export class UI {
 
   // Hall (menu principal) : barre d'onglets en haut, opérateur 3D au centre (lobby.js), modes à gauche, bouton JOUER en bas.
   main() {
-    const L = levelInfo(), D = dailies(), M = MODES[this.mode], LG = LEGENDS[this.legend];
-    const left = D.filter((q) => !q.done).length, nextQ = D.find((q) => !q.done);
+    const L = levelInfo(), D = dailies(), W = weeklies(), SE = season(), M = MODES[this.mode], LG = LEGENDS[this.legend];
+    const left = pending(), nextQ = D.concat(W).find((q) => !q.done);
     const tab = (t, n, act, extra = '') => `<button class="lo-tab${(t === 'play' && !this.lobbyTab) || this.lobbyTab === t ? ' on' : ''}" data-act="${act}" data-t="${t}">${n}${extra}</button>`;
     const modeRows = Object.keys(MODES).map((k) => `<button class="lo-mrow${k === this.mode ? ' on' : ''}" data-act="lmode" data-mode="${k}" style="--a:${MODES[k].col}"><b>${MODES[k].title}</b><small>${MODES[k].desc}</small></button>`).join('');
-    const dq = D.map((q) => `<div class="lo-q${q.done ? ' done' : ''}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><i style="--p:${Math.round(100 * q.p / q.n)}%"></i><em>${q.done ? 'fait' : q.p + ' / ' + q.n} · +${q.reward} pts</em></div>`).join('');
+    const qrows = (list) => list.map((q) => `<div class="lo-q${q.done ? ' done' : ''}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><i style="--p:${Math.round(100 * q.p / q.n)}%"></i><em>${q.done ? 'fait' : q.p + ' / ' + q.n} · +${q.reward} pts</em></div>`).join('');
+    const qt = this.qTab || 'day';
+    const qtab = (k, n) => `<button class="lo-qt${qt === k ? ' on' : ''}" data-act="qtab" data-q="${k}">${n}</button>`;
     let modal = '';
-    if (this.lobbyTab === 'quests') modal = `<h2>Défis du jour</h2><p>Trois nouveaux défis chaque jour ; la récompense est créditée dès qu'un défi est accompli.</p>${dq}<p class="lo-lv">Niveau ${L.level} — ${L.xp} / ${L.need} XP</p>`;
-    else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
+    if (this.lobbyTab === 'quests') {
+      const body = qt === 'week' ? `<p>Quatre défis, renouvelés chaque lundi.</p>${qrows(W)}`
+        : qt === 'season' ? `<p>Saison ${SE.n} « ${SE.name} » · il reste ${SE.daysLeft} jour${SE.daysLeft > 1 ? 's' : ''}. L'XP de saison vient des points gagnés en partie et des défis.</p>
+          <div class="lo-tier"><b>Palier ${SE.tier} / ${SE.tiers}</b><div class="lo-xp wide"><i style="width:${SE.tier >= SE.tiers ? 100 : Math.round(100 * (SE.tierXp - SE.toNext) / SE.tierXp)}%"></i></div>
+          <small>${SE.tier >= SE.tiers ? 'Tous les paliers sont atteints' : SE.toNext + ' XP avant le palier ' + (SE.tier + 1) + ' (+' + SE.nextReward + ' pts)'}</small></div>
+          <h3>Défis de saison</h3>${qrows(SE.list)}`
+        : `<p>Trois défis, renouvelés chaque jour ; la récompense est créditée dès qu'un défi est accompli.</p>${qrows(D)}`;
+      modal = `<h2>Défis</h2><div class="lo-qts">${qtab('day', 'Du jour')}${qtab('week', 'Hebdomadaires')}${qtab('season', 'De saison')}</div>${body}<p class="lo-lv">Niveau ${L.level} — ${L.xp} / ${L.need} XP</p>`;
+    } else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
     const name = esc(settings.name || 'Joueur');
     return `<div class="lo">
       <div class="lo-top">
@@ -133,7 +144,7 @@ export class UI {
         <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
         <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
       </div>
-      <div class="lo-season"><small>Saison</small><b>Légendes</b><span>${LG.name} · ${LG.role}</span></div>
+      <button class="lo-season" data-act="qopen" data-q="season" title="Défis de saison"><small>Saison ${SE.n}</small><b>${SE.name}</b><span>Palier ${SE.tier} / ${SE.tiers} · ${SE.daysLeft} j restants</span><div class="lo-xp wide"><i style="width:${SE.tier >= SE.tiers ? 100 : Math.round(100 * (SE.tierXp - SE.toNext) / SE.tierXp)}%"></i></div></button>
       <div class="lo-bl">
         <div class="lo-stat"><b>Carrière</b><span>${profile.games} parties · ${profile.kills} éliminations · ${profile.wins} victoires</span></div>
         ${this.modesOpen ? `<div class="lo-mlist">${modeRows}</div>` : ''}
@@ -145,7 +156,7 @@ export class UI {
         ${this.mode === 'solo' || this.mode === 'squad' ? `<button class="lo-link" data-act="mode" data-mode="${this.mode}">Options de la partie</button>` : ''}
       </div>
       <div class="lo-br">
-        <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis du jour</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
+        <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis (jour · semaine)</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
         <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
       </div>
       ${modal ? `<div class="lo-modal" data-act="lclose"><div class="lo-mp" data-stop="1">${modal}<div class="row"><button class="primary" data-act="lclose">Fermer</button></div></div></div>` : ''}
