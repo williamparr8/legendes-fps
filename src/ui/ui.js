@@ -7,7 +7,7 @@ import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
 import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } from '../shop/quests.js';
-import { info as passInfo, premium, buyUrl, priceText, activate as passActivate, ready as passReady, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
+import { premium, buyUrl, priceText, redeem, buyPass, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
 import { LIST } from '../shop/profile.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
@@ -32,7 +32,6 @@ export class UI {
     this.game = game; this.root = $('ui');
     this.legend = LEGEND_IDS[0]; this.mode = 'solo'; this.lastCfg = null;
     this.chatBuf = [];
-    passReady.then(() => { if (this.screen === 'main') { passSync(); this.show('main'); } }); // pass mémorisé : vérifié de façon asynchrone
     this.root.addEventListener('click', (e) => {
       const el = e.target.closest('[data-act]');
       if (el && el.classList.contains('lo-modal') && e.target !== el) return; // clic dans la fenêtre : ne la ferme pas
@@ -94,8 +93,16 @@ export class UI {
       case 'ltab': this.lobbyTab = this.lobbyTab === d.t || d.t === 'play' ? null : d.t; this.show('main'); break;
       case 'qopen': this.qTab = d.q; this.lobbyTab = 'quests'; this.show('main'); break;
       case 'qtab': this.qTab = d.q; this.show('main'); break;
-      case 'passbuy': { const u = buyUrl(); if (u) window.open(u, '_blank', 'noopener'); break; }
-      case 'passact': this.activatePass(); break;
+      case 'passbuy': {
+        const n = season().n;
+        if (confirm('Dépenser ' + PASS_PRICE + ' ' + GEM + ' pour le Pass de la saison ' + n + ' ?')) {
+          if (buyPass(n)) { const got = passSync(); this.passMsg = got.length ? got.length + ' récompense(s) déjà débloquée(s).' : ''; } else this.passMsg = "Pas assez d'Éclats.";
+        }
+        this.show('main'); break;
+      }
+      case 'gemsopen': this.lobbyTab = 'gems'; this.show('main'); break;
+      case 'gemsbuy': { const u = buyUrl(); if (u) window.open(u, '_blank', 'noopener'); break; }
+      case 'gemsredeem': this.redeemCode(); break;
       case 'lclose': this.lobbyTab = null; this.show('main'); break;
       case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
       case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
@@ -137,7 +144,6 @@ export class UI {
         : `<p>Trois défis, renouvelés chaque jour ; la récompense est créditée dès qu'un défi est accompli.</p>${qrows(D)}`;
       modal = `<h2>Défis</h2><div class="lo-qts">${qtab('day', 'Du jour')}${qtab('week', 'Hebdomadaires')}${qtab('season', 'De saison')}</div>${body}<p class="lo-lv">Niveau ${L.level} — ${L.xp} / ${L.need} XP</p>`;
     } else if (this.lobbyTab === 'pass') {
-      const pi = passInfo(), url = buyUrl();
       const reward = (t) => {
         const r = premium(t);
         const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk"><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id}</span>`; }).join('');
@@ -145,21 +151,28 @@ export class UI {
       };
       let t = '';
       for (let i = 1; i <= PASS_TIERS; i++) t += reward(i);
+      const need = PASS_PRICE - profile.gems;
       const buy = SE.pass
-        ? `<p class="lo-passok">✔ Pass actif — merci ${esc(pi.buyer)} ! Les récompenses premium se débloquent à chaque palier (palier ${SE.tier} atteint).</p>`
-        : `<div class="lo-buy"><div><b class="lo-price">${priceText()}</b><small>Une fois, pour toute la saison ${SE.n}. 7 skins animés introuvables ailleurs, 3 titres, bonus de points à chaque palier.</small></div>
-            <button class="primary" data-act="passbuy" ${url ? '' : 'disabled'}>${url ? 'Acheter avec PayPal' : 'Achat bientôt disponible'}</button></div>
-            <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code d'activation. 3. Colle-le ici :</p>
-            <div class="linkrow"><input class="t" id="pass-code" placeholder="Code d'activation (commence par LP.)" autocomplete="off"><button data-act="passact">Activer</button></div>
+        ? `<p class="lo-passok">✔ Pass actif — les récompenses premium se débloquent à chaque palier (palier ${SE.tier} atteint).</p>`
+        : `<div class="lo-buy"><div><b class="lo-price">${GEM} ${PASS_PRICE}</b><small>Une fois, pour toute la saison ${SE.n}. 7 skins animés introuvables ailleurs, 3 titres, bonus de points à chaque palier. Ton solde : ${GEM} ${profile.gems}.</small></div>
+            ${need <= 0 ? '<button class="primary" data-act="passbuy">Acheter le Pass</button>' : `<button class="primary" data-act="gemsopen">Il manque ${need} ${GEM} — Obtenir des Éclats</button>`}</div>
             <small class="lo-msg">${esc(this.passMsg || '')}</small>`;
       modal = `<h2>Pass de saison ${SE.n} — ${SE.name}</h2>${buy}<div class="lo-track">${t}</div><p class="lo-how">Les paliers avancent avec l'XP de saison (parties et défis). Les skins du Pass sont aussi visibles dans la Boutique.</p>`;
+    } else if (this.lobbyTab === 'gems') {
+      const url = buyUrl();
+      modal = `<h2>${GEM} Éclats</h2><p>Solde : <b>${profile.gems} ${GEM}</b> — la monnaie premium : le Pass de saison (${PASS_PRICE} ${GEM}) et les skins uniques de la Boutique.</p>
+        <div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()}, paiement par PayPal.</small></div>
+          <button class="primary" data-act="gemsbuy" ${url ? '' : 'disabled'}>${url ? 'Acheter avec PayPal' : 'Achat bientôt disponible'}</button></div>
+        <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code. 3. Colle-le ici :</p>
+        <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>
+        <small class="lo-msg">${esc(this.gemMsg || '')}</small>`;
     } else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
     const name = esc(settings.name || 'Joueur');
     return `<div class="lo">
       <div class="lo-top">
         <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${titleFor(SE.tier, SE.n)} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
         <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
-        <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
+        <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gems" data-act="gemsopen" title="Obtenir des Éclats">${GEM} ${profile.gems} <i>+</i></button><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
       </div>
       <div class="lo-left">
         <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
@@ -185,11 +198,10 @@ export class UI {
     </div>`;
   }
 
-  async activatePass() {
-    const el = $('pass-code');
-    const v = await passActivate(el ? el.value : '');
-    this.passMsg = v ? '' : 'Code invalide (copié en entier ? autre saison ?).';
-    if (v) { const got = passSync(); this.passMsg = got.length ? 'Pass activé : ' + got.length + ' récompense(s) déjà débloquée(s).' : ''; }
+  async redeemCode() {
+    const el = $('gem-code');
+    const r = await redeem(el ? el.value : '');
+    this.gemMsg = r === 'used' ? 'Ce code a déjà été utilisé sur cet appareil.' : r ? '+' + r.gems + ' ' + GEM + ' ajoutés. Merci !' : 'Code invalide (copié en entier ?).';
     if (this.screen === 'main') this.show('main');
   }
 

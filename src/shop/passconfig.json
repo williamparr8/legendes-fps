@@ -1,4 +1,5 @@
 {
+  "gems": 1000,
   "amount": "1.99",
   "currency": "CAD",
   "paypalMe": ""

@@ -13,14 +13,14 @@ export const RAR = data.rarities;
 export const price = (def) => RAR[def.r].prix;
 
 // own : masque de bits des skins possédés (bit i = LIST[kind][i]) ; eq : skin équipé = indice + 1 (0 = tenue par défaut).
-export const profile = { pts: 0, own: { perso: 0, arme: 0 }, eq: { perso: 0, arme: 0 }, games: 0, kills: 0, wins: 0, earned: 0 };
+export const profile = { pts: 0, own: { perso: 0, arme: 0 }, eq: { perso: 0, arme: 0 }, games: 0, kills: 0, wins: 0, earned: 0, gems: 0, pass: 0 };
 
 const sum = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
 const b64 = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = (s) => atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
 
 export function exportCode() {
-  const p = profile, body = [1, p.pts, p.own.perso, p.own.arme, p.eq.perso, p.eq.arme, p.games, p.kills, p.wins, p.earned].join('.');
+  const p = profile, body = [2, p.pts, p.own.perso, p.own.arme, p.eq.perso, p.eq.arme, p.games, p.kills, p.wins, p.earned, p.gems, p.pass].join('.');
   return 'LF' + b64(body + '~' + sum(SALT + body));
 }
 
@@ -32,12 +32,12 @@ function decode(code) {
     const [body, cs] = unb64(s.slice(2)).split('~');
     if (!body || cs !== sum(SALT + body)) return null;
     const v = body.split('.').map(Number);
-    if (v[0] !== 1 || v.length !== 10 || v.some((n) => !Number.isInteger(n) || n < 0)) return null;
-    const [, pts, op, oa, ep, ea, games, kills, wins, earned] = v;
+    if (!((v[0] === 1 && v.length === 10) || (v[0] === 2 && v.length === 12)) || v.some((n) => !Number.isInteger(n) || n < 0)) return null;
+    const [, pts, op, oa, ep, ea, games, kills, wins, earned, gems = 0, pass = 0] = v;
     if (ep > LIST.perso.length || ea > LIST.arme.length) return null;
     if (ep && !(op >> (ep - 1) & 1)) return null;
     if (ea && !(oa >> (ea - 1) & 1)) return null;
-    return { pts, own: { perso: op, arme: oa }, eq: { perso: ep, arme: ea }, games, kills, wins, earned };
+    return { pts, own: { perso: op, arme: oa }, eq: { perso: ep, arme: ea }, games, kills, wins, earned, gems, pass };
   } catch (e) { return null; }
 }
 
@@ -71,7 +71,7 @@ export const equippedDef = (kind) => LIST[kind][profile.eq[kind] - 1] || null;
 
 export function buy(kind, i) {
   const def = LIST[kind][i];
-  if (!def || def.pass || owns(kind, i)) return false; // les skins du Pass se débloquent par paliers
+  if (!def || def.pass || def.gems || owns(kind, i)) return false; // Pass : par paliers ; premium : en Éclats (pass.js)
   const c = price(def);
   if (profile.pts < c) return false;
   profile.pts -= c; profile.own[kind] |= 1 << i;

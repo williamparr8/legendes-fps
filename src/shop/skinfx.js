@@ -2,9 +2,9 @@ import * as THREE from 'three';
 
 // Styles de skin (motifs réels sur le modèle, pas seulement une teinte) : 1 camouflage, 2 rayures, 3 flammes, 4 circuit néon,
 // 5 or / chrome à paillettes, 6 galaxie, 7 fibre de carbone hexagonale, 8 camouflage numérique ; exclusifs du Pass (animés) :
-// 9 aurore boréale, 10 magma, 11 prisme, 12 hologramme, 13 éveil (veines d'énergie).
+// 9 aurore boréale, 10 magma, 11 prisme, 12 hologramme, 13 éveil (veines d'énergie) ; boutique premium : 14 foudre, 15 toxique, 16 or liquide.
 // Le motif est calculé dans le fragment shader à partir de la position de repos (avant déformation du squelette) en mètres.
-export const STYLE_NAMES = ['Uni', 'Camouflage', 'Rayures', 'Flammes', 'Circuit néon', 'Or à paillettes', 'Galaxie', 'Carbone', 'Pixels', 'Aurore', 'Magma', 'Prisme', 'Hologramme', 'Éveil'];
+export const STYLE_NAMES = ['Uni', 'Camouflage', 'Rayures', 'Flammes', 'Circuit néon', 'Or à paillettes', 'Galaxie', 'Carbone', 'Pixels', 'Aurore', 'Magma', 'Prisme', 'Hologramme', 'Éveil', 'Foudre', 'Toxique', 'Or liquide'];
 
 // Temps partagé par tous les matériaux animés (secondes).
 const SKT = { value: 0 };
@@ -72,12 +72,30 @@ const GLSL_COLOR = `
       float band = smoothstep(0.0, 0.1, sc) * (1.0 - smoothstep(0.55, 0.6, sc));
       float flick = 0.85 + 0.15 * sin(uSkT * 31.0);
       col = mix(uSk3, uSk1, band) * flick; gl = band * 1.1 * flick + step(0.985, skH(floor(q * 40.0 + uSkT))) * 1.5;
-    } else {                                      // éveil : veines d'énergie dorées / violettes
+    } else if (uSkStyle < 13.5) {                 // éveil : veines d'énergie dorées / violettes
       float v = sin(q.x * 9.0 + skF(q * 2.5) * 8.0 + uSkT * 1.2) * sin(q.y * 7.0 + skF(q * 3.0 + 5.0) * 6.0 - uSkT * 0.8);
       float vein = 1.0 - smoothstep(0.0, 0.18, abs(v));
       col = mix(uSk3, uSk2, 0.3 + 0.7 * skF(q * 5.0));
       col = mix(col, mix(uSk1, vec3(1.0, 0.95, 0.7), vein), vein);
       gl = vein * 1.7 + 0.15 * skF(q * 6.0 + uSkT);
+    } else if (uSkStyle < 14.5) {                 // foudre : arcs électriques qui sautent
+      float f = skF(q * 5.0 + vec3(0.0, floor(uSkT * 6.0) * 1.7, 0.0));
+      float arc = 1.0 - smoothstep(0.0, 0.05, abs(f - 0.5));
+      float on = step(0.35, skH(vec3(floor(uSkT * 6.0), 1.0, 2.0)));
+      col = mix(uSk3, uSk2, 0.25 + 0.5 * skF(q * 3.0));
+      col = mix(col, mix(uSk1, vec3(1.0), 0.6), arc * on);
+      gl = arc * on * 2.0 + 0.1;
+    } else if (uSkStyle < 15.5) {                 // toxique : liquide acide qui bouillonne
+      float b = skF(q * 3.0 + vec3(0.0, -uSkT * 0.35, 0.0));
+      float bub = smoothstep(0.62, 0.68, skF(q * 7.0 + vec3(0.0, -uSkT * 0.8, 0.0)));
+      col = mix(uSk3, uSk1, smoothstep(0.35, 0.7, b));
+      col = mix(col, uSk2, bub);
+      gl = smoothstep(0.4, 0.8, b) * 0.9 + bub * 1.2;
+    } else {                                      // or liquide : vagues dorées brillantes
+      float w = sin(q.y * 9.0 + skF(q * 2.0) * 5.0 + uSkT * 0.8) * 0.5 + 0.5;
+      float s2 = sin(q.x * 6.0 - q.y * 4.0 + uSkT * 0.5) * 0.5 + 0.5;
+      col = mix(uSk3, uSk1, 0.4 + 0.6 * w); col = mix(col, uSk2, pow(s2, 5.0));
+      gl = pow(w, 6.0) * 0.8 + step(0.97, skH(floor(q * 60.0 + uSkT * 3.0))) * 1.6;
     }
     diffuseColor.rgb = mix(diffuseColor.rgb, col * (0.5 + 0.95 * lum), 0.92);
     skGlow = uSkGl * gl;

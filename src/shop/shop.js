@@ -3,6 +3,7 @@ import { makeRig, WIDS } from '../combat/humanoid.js';
 import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
+import { buySkin, GEM } from './pass.js';
 
 // Écran Boutique : cartes de skins (personnage / arme), aperçu 3D à droite (rendu par Game.render via shopFrame), sauvegarde.
 const S = { kind: 'perso', sel: -1, msg: '', saveOpen: false }; // sel : indice du skin affiché (-1 = tenue par défaut)
@@ -18,21 +19,25 @@ export function shopHtml() {
   cards.push(card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`));
   list.forEach((d, i) => {
     const c = price(d);
-    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">${c} pts</em>`;
-    cards.push(card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : RAR[d.r], d.p || d.w, st));
+    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">${c} pts</em>`;
+    cards.push(card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], d.p || d.w, st));
   });
   // action pour le skin sélectionné
   let act;
   if (S.sel === -1) act = eq === -1 ? '<button disabled>Équipé</button>' : '<button class="primary" data-act="seq" data-i="-1">Équiper la tenue d\'origine</button>';
   else if (owns(k, S.sel)) act = eq === S.sel ? '<button disabled>Équipé</button>' : `<button class="primary" data-act="seq" data-i="${S.sel}">Équiper</button>`;
   else if (list[S.sel].pass) act = `<button disabled>Exclusif au Pass de saison — palier ${list[S.sel].pass}</button>`;
-  else {
+  else if (list[S.sel].gems) {
+    const c = list[S.sel].gems;
+    act = profile.gems >= c ? `<button class="primary" data-act="sgem" data-i="${S.sel}">Acheter — ${GEM} ${c}</button>`
+      : `<button class="primary" data-act="gemsopen">Il manque ${c - profile.gems} ${GEM} — Obtenir des Éclats</button>`;
+  } else {
     const c = price(list[S.sel]);
     act = profile.pts >= c ? `<button class="primary" data-act="sbuy" data-i="${S.sel}">Acheter — ${c} pts</button>` : `<button disabled>Il manque ${c - profile.pts} pts (${c})</button>`;
   }
   const tab = (t, n) => `<button class="tab${S.kind === t ? ' sel' : ''}" data-act="stab" data-k="${t}">${n}</button>`;
   const total = LIST.perso.length + LIST.arme.length, got = ['perso', 'arme'].reduce((n, t) => n + LIST[t].filter((_, i) => owns(t, i)).length, 0);
-  return `<div class="panel shop"><h2>Boutique <span class="pts">${profile.pts} pts</span></h2>
+  return `<div class="panel shop"><h2>Boutique <span class="pts">${profile.pts} pts</span> <span class="pts" style="color:#ffe27a">${GEM} ${profile.gems}</span></h2>
     <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}</div>
     <div class="scards">${cards.join('')}</div>
     <div class="row sact"><span class="smsg">${S.msg}</span>${act}</div>
@@ -52,6 +57,7 @@ export function shopAct(ui, a, d) {
     case 'stab': S.kind = d.k; S.sel = profile.eq[d.k] - 1; break;
     case 'spick': S.sel = +d.i; break;
     case 'seq': equip(S.kind, +d.i + 1); break;
+    case 'sgem': if (buySkin(S.kind, +d.i)) S.msg = 'Acheté et équipé !'; else S.msg = "Pas assez d'Éclats."; break;
     case 'sbuy': if (buy(S.kind, +d.i)) S.msg = 'Acheté et équipé !'; else S.msg = 'Pas assez de points.'; break;
     case 'svcopy': {
       const el = $('sv-out');
