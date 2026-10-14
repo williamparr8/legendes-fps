@@ -53,6 +53,7 @@ export class Inventory {
       if (this.useT <= 0) {
         const it = items.healing[this.useKey];
         this.heal[this.useKey]--;
+        this.healUsed = (this.healUsed | 0) + 1; // soins utilisés (succès « Ascète »)
         h.hp = Math.min(h.maxHp, h.hp + it.hp);
         h.shield = Math.min(h.maxShield, h.shield + it.shield);
         this.cancel(player);

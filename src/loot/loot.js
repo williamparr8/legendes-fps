@@ -19,6 +19,7 @@ export class LootField {
     this.near = null;
     this.t = 0;
     this.dirty = new Set(); // emplacements modifiés depuis le dernier envoi réseau (hôte)
+    this.rareBoost = 1;     // événement « Jackpot » : poids des raretés multiplié
     this.net = null;        // client : { pick(i), pickDone(i,on,amount), dropLoot(ti,x,z,amount,y) }
     this.pendT = 0;
   }
@@ -49,8 +50,9 @@ export class LootField {
   // Tirage pondéré ; `weapons` = liste d'armes autorisées.
   roll(weapons) {
     const t = items.table.filter((e) => e.kind !== 'weapon' || !weapons || weapons.includes(e.key));
-    let r = this.rand() * t.reduce((s, e) => s + e.w, 0);
-    for (const e of t) { if ((r -= e.w) < 0) return e; }
+    const wt = (e) => (e.rar ? e.w * this.rareBoost : e.w);
+    let r = this.rand() * t.reduce((s, e) => s + wt(e), 0);
+    for (const e of t) { if ((r -= wt(e)) < 0) return e; }
     return t[0];
   }
 

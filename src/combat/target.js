@@ -21,7 +21,7 @@ export function zoneRay(a, ox, oy, oz, dx, dy, dz, maxT) {
   return best;
 }
 
-export const defaultPv = () => ({ markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1, chute: 0 });
+export const defaultPv = () => ({ markOnHit: 0, reloadMul: 1, moveMul: 1, regen: 0, regenDelay: 5, reviveMul: 1, trapMul: 1, chute: 0, headMul: 1 });
 
 // Cible/mannequin. Les bots en héritent. État à terre = hauteur ÷ 2.
 export class Target {

@@ -6,7 +6,7 @@ import { getSkyEnv } from '../world/terrain.js';
 // dessinée par-dessus le monde par Game.render.
 const SCALE = 0.62; // les modèles sont à taille réelle ; la vue subjective les réduit un peu
 
-const MAGZ = { rifle: -0.05, smg: 0.01, shotgun: -0.08, sniper: -0.04, launcher: -0.04 }; // z du chargeur animé
+const MAGZ = { rifle: -0.05, smg: 0.01, shotgun: -0.08, sniper: -0.04, launcher: -0.04, pistol: 0.0, lmg: 0.02 }; // z du chargeur animé
 const sstep = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
 export class Viewmodel {

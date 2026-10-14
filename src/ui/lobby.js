@@ -101,6 +101,7 @@ let view = null;
 export function lobbyFrame(game, dt) {
   if (!view) view = new LobbyView();
   thumbTick(game.renderer); // miniatures (Pass) : avant le rendu principal
-  view.frame(dt, game.ui.legend);
+  const u = game.ui;
+  view.frame(dt, u.lobbyTab === 'legends' && u.view ? u.view : u.legend); // « Mes légendes » : aperçu de la légende regardée
   game.renderer.render(view.scene, view.cam);
 }

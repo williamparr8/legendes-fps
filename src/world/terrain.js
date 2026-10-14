@@ -44,8 +44,17 @@ export const THEMES = [
   { name: 'Désert', grass: 0xb99a5c, dry: 0xd2b274, rock: 0xa4623e, dirt: 0xa7825a, sand: 0xe0c48a, snow: 0, arid: 1, water: 0x2a8f94, peak: 2, top: [0.28,0.45,0.78], mid: [0.72,0.78,0.86], hor: [0.95,0.84,0.66], cloud: 0.72, fog: 0xecd7ae, fogFar: 380 },
   { name: 'Toundra', grass: 0xdfe8ee, dry: 0xc2ccd4, rock: 0x7f858e, dirt: 0x9a9690, sand: 0xe6edf3, snow: 1, arid: 0, water: 0x3a7a9a, peak: 0.35, top: [0.42,0.52,0.64], mid: [0.66,0.72,0.79], hor: [0.84,0.88,0.92], cloud: 0.32, fog: 0xd3dbe3, fogFar: 340 },
 ];
+// 3 Crépuscule (soleil bas, ciel orangé) · 4 Nuit (ciel étoilé, lune, très sombre). hemi : [ciel, sol, intensité], sun : [couleur, intensité].
+THEMES.push(
+  { name: 'Crépuscule', grass: 0x6b6a38, dry: 0x9a7a44, rock: 0x7a5a52, dirt: 0x7c6246, sand: 0xc9a070, snow: 0, arid: 0.3, water: 0x2a5878, peak: 0.7,
+    top: [0.20, 0.18, 0.46], mid: [0.78, 0.42, 0.40], hor: [1.0, 0.62, 0.30], cloud: 0.55, fog: 0xd9a070, fogFar: 400,
+    hemi: [0xffc99a, 0x4a3a50, 0.95], sun: [0xff9a50, 1.7], sunPos: [160, 36, 60], stars: 0.0 },
+  { name: 'Nuit', grass: 0x35604a, dry: 0x586a48, rock: 0x5a5f72, dirt: 0x5a4e40, sand: 0x948f7c, snow: 0, arid: 0, water: 0x102c48, peak: 0.6,
+    top: [0.01, 0.02, 0.07], mid: [0.04, 0.07, 0.16], hor: [0.10, 0.14, 0.25], cloud: 0.25, fog: 0x0e1626, fogFar: 300,
+    hemi: [0x9db4f0, 0x3a4660, 1.0], sun: [0xb4c6ff, 1.0], sunPos: [-80, 110, -40], stars: 1.0 },
+);
 export const THEME = { ...THEMES[0] };
-export function setTheme(i) { Object.assign(THEME, THEMES[((i % 3) + 3) % 3]); }
+export function setTheme(i) { Object.assign(THEME, THEMES[((i % THEMES.length) + THEMES.length) % THEMES.length]); }
 
 export function buildTerrainMesh(scene, hf, roads = []) {
   const seg = 224, size = hf.ext * 2;
@@ -175,9 +184,9 @@ export const HORIZON = 0xd4e3f0; // = couleur du brouillard
 function skyMaterial(sunDir, th) {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { sun: { value: sunDir.clone().normalize() }, uTop: { value: new THREE.Vector3(...th.top) }, uMid: { value: new THREE.Vector3(...th.mid) }, uHor: { value: new THREE.Vector3(...th.hor) }, uCl: { value: th.cloud } },
+    uniforms: { sun: { value: sunDir.clone().normalize() }, uStars: { value: th.stars || 0 }, uTop: { value: new THREE.Vector3(...th.top) }, uMid: { value: new THREE.Vector3(...th.mid) }, uHor: { value: new THREE.Vector3(...th.hor) }, uCl: { value: th.cloud } },
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `varying vec3 vD; uniform vec3 sun, uTop, uMid, uHor; uniform float uCl;
+    fragmentShader: `varying vec3 vD; uniform vec3 sun, uTop, uMid, uHor; uniform float uCl, uStars;
       vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
       float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -194,7 +203,13 @@ function skyMaterial(sunDir, th) {
         float lit = fbm(q + vec2(3.0, 1.0) + sun.xz * 0.08);
         vec3 cc = mix(lin(vec3(0.62,0.68,0.78)), lin(vec3(1.0,0.98,0.95)), clamp(0.55 + (n - lit) * 3.0, 0.0, 1.0));
         c = mix(c, cc, cl * 0.9);
-        c += lin(vec3(1.0,0.88,0.62)) * (pow(s, 1200.0) * 40.0 + pow(s, 60.0) * 0.6 + pow(s, 7.0) * 0.14);
+        c += lin(vec3(1.0,0.88,0.62)) * (pow(s, 1200.0) * 40.0 + pow(s, 60.0) * 0.6 + pow(s, 7.0) * 0.14) * (1.0 - 0.9 * uStars);
+        if (uStars > 0.0) { // étoiles scintillantes (nuit)
+          vec2 sq = d.xz / (abs(d.y) + 0.25) * 70.0;
+          float st = step(0.9965, h21(floor(sq))) * smoothstep(0.05, 0.35, d.y);
+          c += vec3(0.9, 0.95, 1.0) * st * uStars * (0.6 + 0.4 * h21(floor(sq) + 7.0));
+          c += lin(vec3(0.7, 0.75, 0.9)) * pow(max(dot(d, normalize(vec3(-0.5, 0.55, -0.35))), 0.0), 220.0) * 4.0 * uStars; // lune
+        }
         c = mix(c, hor, (1.0 - smoothstep(0.0, 0.12, h)) * 0.8); // voile d'horizon
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>

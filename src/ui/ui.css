@@ -261,3 +261,20 @@ button.lo-season:hover{background:#2a3aa088!important}
 #h-kill{position:absolute;left:50%;top:60%;transform:translateX(-50%);font:700 24px sans-serif;letter-spacing:.12em;color:#ffd040;text-shadow:0 2px 6px #000;opacity:0;white-space:nowrap;text-transform:uppercase}
 #h-low{position:absolute;inset:0;box-shadow:inset 0 0 130px 35px rgba(220,0,0,.5);opacity:0;animation:lowp 1.1s ease-in-out infinite;pointer-events:none}
 @keyframes lowp{0%,100%{filter:brightness(.7)}50%{filter:brightness(1.4)}}
+
+/* Profil, succès, amis, événement, bonus quotidien */
+.lo-sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:6px 0 14px}
+.lo-sbox{background:#ffffff0f;padding:10px 12px;border-left:3px solid #6a78ff}
+.lo-sbox b{display:block;font-size:20px;color:#ffd070;text-transform:none}.lo-sbox span{font-size:11px;opacity:.7;letter-spacing:.1em}
+.lo-chart{width:100%;max-width:520px;height:90px;background:#ffffff08;border-radius:4px}
+.lo-fr2{display:flex;flex-direction:column;gap:5px;margin-top:6px}.lo-fr2 small{opacity:.6;font-size:11px;letter-spacing:.14em}
+.lo-fr2 button{text-align:left!important;background:#0a0f32aa!important;padding:6px 10px!important;border-left:3px solid #40d0ff!important;display:flex;flex-direction:column}
+.lo-fr2 button:hover{background:#2a3aa088!important}.lo-fr2 b{font-size:13px}.lo-fr2 span{font-size:11px;opacity:.7;text-transform:none}
+.lo-lg.locked{opacity:.65}
+.lo-lock{background:#3a1a1a;border:1px solid #ff7a7a;padding:10px 12px;margin:10px 0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.lo-tile.ev{background:linear-gradient(120deg,#0a0f32e6,#1a4a6acc)!important;border-color:#40c0ff60!important}
+.lo-tile.ev.on{background:linear-gradient(120deg,#2a0a4ae6,#c0501ecc)!important;border-color:#ffb02e!important}
+.lo-tile.daily.on{background:linear-gradient(120deg,#0a3a1ae6,#2a8a4acc)!important;border-color:#6fe06f!important;cursor:pointer}
+.lo-tile.daily:not(.on){cursor:default;opacity:.8}
+.lo-br{gap:6px!important}.lo-br .lo-tile{padding:8px 14px!important}.lo-br .lo-tile b{font-size:16px}.lo-br .lo-tile span{display:block;max-width:260px}
+@media(max-height:760px){.lo-br .lo-tile span{display:none}}

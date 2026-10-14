@@ -159,5 +159,71 @@
       "splashDmg": 90
     },
     "ammo": "rocket"
+  },
+  "pistol": {
+    "name": "Pistolet",
+    "auto": false,
+    "dmg": 22,
+    "rpm": 380,
+    "mag": 14,
+    "reload": 1.4,
+    "spread": 0.012,
+    "adsSpread": 0.003,
+    "bloom": 0.004,
+    "bloomMax": 0.02,
+    "range": 120,
+    "headMult": 1.8,
+    "legMult": 0.9,
+    "adsFov": 82,
+    "adsSpeed": 0.95,
+    "adsTime": 0.09,
+    "recoil": {
+      "pitch": 0.008,
+      "yaw": 0.002,
+      "recover": 7
+    },
+    "pattern": [
+      0,
+      0.3,
+      -0.3,
+      0.2
+    ],
+    "ammo": "light"
+  },
+  "lmg": {
+    "name": "Mitrailleuse légère",
+    "auto": true,
+    "dmg": 12,
+    "rpm": 660,
+    "mag": 60,
+    "reload": 4,
+    "spread": 0.017,
+    "adsSpread": 0.006,
+    "bloom": 0.0007,
+    "bloomMax": 0.02,
+    "range": 220,
+    "headMult": 1.5,
+    "legMult": 0.9,
+    "adsFov": 74,
+    "adsSpeed": 0.62,
+    "adsTime": 0.22,
+    "recoil": {
+      "pitch": 0.0045,
+      "yaw": 0.0035,
+      "recover": 4.5
+    },
+    "pattern": [
+      0,
+      0.3,
+      0.7,
+      0.4,
+      -0.2,
+      -0.6,
+      -0.9,
+      -0.4,
+      0.2,
+      0.5
+    ],
+    "ammo": "light"
   }
 }

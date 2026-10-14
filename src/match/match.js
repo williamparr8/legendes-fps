@@ -1,8 +1,9 @@
-import { Bot } from '../bots/bot.js';
+import { Bot, PERS_NAMES } from '../bots/bot.js';
 import { Zone } from './zone.js';
 import { Ship, ZONE_DELAY } from './drop.js';
 import wdefs from '../combat/weapons.json';
 import skinData from '../shop/skins.json';
+import { eventById } from './events.js';
 
 // Escouade : les bots suivent un humain vivant de l'escouade (l'ancre) ; sans humain, le chef (premier bot vivant) choisit les destinations.
 class Squad {
@@ -10,6 +11,7 @@ class Squad {
     this.team = team; this.members = [];
     this.leader = null; this.anchor = null; this.ax = 0; this.az = 0; this.ay = NaN; this.gx = 0; this.gz = 0; this.goalT = 0; this.place = 0; this.alive = true;
     this.hasHuman = false; this.done = false;
+    this.pingGoal = null; this.pers = 'balanced'; // marqueur d'un humain : { x, y, z, type, t, id } ; personnalité des bots
   }
   isFollower(b) { return this.anchor !== null || (this.leader !== null && this.leader !== b); }
   pickGoal(world, zone) {
@@ -23,6 +25,7 @@ class Squad {
   }
   update(dt) {
     this.goalT -= dt;
+    if (this.pingGoal) this.pingGoal.t -= dt;
     this.leader = null; this.anchor = null;
     for (const m of this.members) {
       if (m.isBot) { if (this.leader === null && m.health.alive) this.leader = m; }
@@ -46,6 +49,8 @@ export class Match {
     const { world, combat, scene, loot, player } = ctx;
     const r = world.rand;
     this.t = 0; this.ended = false; this.result = null; this.checkT = 0; this.pi = 0;
+    this.event = cfg.event ? eventById(cfg.event) : null;
+    this.zoneMul = (this.event && this.event.zone) || 1; // événement « Zone express »
     this.stats = { kills: 0, damage: 0 };
     this.feed = []; this.outFeed = []; // outFeed : lignes à diffuser aux clients
     this.hold = false;
@@ -77,6 +82,8 @@ export class Match {
     }
     const mk = (team, count, sp, hs) => {
       const sq = new Squad(team);
+      const rr = hash(cfg.seed, 900 + team) % 100;
+      sq.pers = rr < 38 ? 'balanced' : rr < 62 ? 'rusher' : rr < 82 ? 'camper' : 'looter';
       for (let i = 0; i < count; i++) {
         const ox = Math.cos(i * 2.1) * (i ? 2.2 : 0), oz = Math.sin(i * 2.1) * (i ? 2.2 : 0);
         if (hs[i]) {
@@ -88,7 +95,7 @@ export class Match {
         }
         const legend = cfg.legends[(r() * cfg.legends.length) | 0];
         const b = new Bot({ scene, combat, abilities: ctx.abilities, nav: ctx.nav, zone: this.zone, world, player, loot, drop: this.drop },
-          sp.x + ox, sp.z + oz, team, { name: 'Bot ' + (this.bots.length + 1), squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: null, yaw: sp.yaw });
+          sp.x + ox, sp.z + oz, team, { name: PERS_NAMES[sq.pers].name + ' ' + (this.bots.length + 1), pers: sq.pers, squad: sq, index: i, difficulty: cfg.difficulty, legend, weapon: null, yaw: sp.yaw });
         b.id = 100 + this.bots.length;
         b.skinP = CP[hash(cfg.seed, this.bots.length) % CP.length]; b.skinW = CW[hash(cfg.seed + 77, this.bots.length) % CW.length];
         b.rig.setSkins(b.skinP, b.skinW);
@@ -112,6 +119,12 @@ export class Match {
     combat.onDeath = (t, att) => this.handleDeath(t, att);
     combat.onDown = (t, att) => this.addFeed(this.name(att) + ' ➜ ' + t.name + ' (à terre)');
     combat.onDamage = (t, amount, att) => { if (t.team !== att.team) (att === combat.pp ? this.stats : att).damage += amount; };
+  }
+
+  // Un humain de l'escouade pose un marqueur : ses bots s'y rendent (type : 0 lieu, 1 ennemi, 2 danger, 3 objet).
+  squadPing(team, x, y, z, type) {
+    const sq = this.squads.find((s) => s.team === team);
+    if (sq) sq.pingGoal = { x, y, z, type, t: 30, id: (sq.pingGoal ? sq.pingGoal.id : 0) + 1 };
   }
 
   pickWeapon(allowed, r) {
@@ -141,7 +154,7 @@ export class Match {
     this.drop.t = this.t; this.drop.ship.at(this.t);
     for (const f of this.feed) f.t -= dt;
     while (this.feed.length && this.feed[0].t <= 0) this.feed.shift();
-    this.zone.tick(dt, combat);
+    this.zone.tick(dt * this.zoneMul, combat);
     for (const s of this.squads) s.update(dt);
     const n = this.bots.length;
     for (let k = 0; k < n; k++) {

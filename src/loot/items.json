@@ -342,6 +342,76 @@
       "name": "Sac à dos légendaire",
       "color": "#ffb02e",
       "w": 0.5
+    },
+    {
+      "kind": "weapon",
+      "key": "pistol",
+      "amount": 1,
+      "name": "Pistolet",
+      "color": "#cfd6dd",
+      "w": 3.72
+    },
+    {
+      "kind": "weapon",
+      "key": "pistol",
+      "rar": 1,
+      "amount": 1,
+      "name": "Pistolet (rare)",
+      "color": "#4aa3ff",
+      "w": 1.44
+    },
+    {
+      "kind": "weapon",
+      "key": "pistol",
+      "rar": 2,
+      "amount": 1,
+      "name": "Pistolet (épique)",
+      "color": "#b266ff",
+      "w": 0.66
+    },
+    {
+      "kind": "weapon",
+      "key": "pistol",
+      "rar": 3,
+      "amount": 1,
+      "name": "Pistolet (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.18
+    },
+    {
+      "kind": "weapon",
+      "key": "lmg",
+      "amount": 1,
+      "name": "Mitrailleuse légère",
+      "color": "#cfd6dd",
+      "w": 1.86
+    },
+    {
+      "kind": "weapon",
+      "key": "lmg",
+      "rar": 1,
+      "amount": 1,
+      "name": "Mitrailleuse légère (rare)",
+      "color": "#4aa3ff",
+      "w": 0.72
+    },
+    {
+      "kind": "weapon",
+      "key": "lmg",
+      "rar": 2,
+      "amount": 1,
+      "name": "Mitrailleuse légère (épique)",
+      "color": "#b266ff",
+      "w": 0.33
+    },
+    {
+      "kind": "weapon",
+      "key": "lmg",
+      "rar": 3,
+      "amount": 1,
+      "name": "Mitrailleuse légère (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.09
     }
   ],
   "rarities": [

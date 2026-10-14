@@ -25,9 +25,16 @@ import { InventoryPanel } from './ui/inventory.js';
 import { MapView } from './ui/map.js';
 import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
+import { achMatch } from './shop/achievements.js';
+import { touchDay } from './shop/profile.js';
 import { shopFrame } from './shop/shop.js';
 import { lobbyFrame } from './ui/lobby.js';
 import { Pings } from './combat/pings.js';
+import { MOVE } from './player/config.js';
+import { eventById, currentEvent } from './match/events.js';
+import items from './loot/items.json';
+const _cv = new THREE.Vector3();
+const BASE_GRAVITY = MOVE.gravity;
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
@@ -68,6 +75,7 @@ export class Game {
       else if (e.code === 'Escape' && this.map.open) this.map.close();
       else if (e.code === 'Escape' && this.inv.open) { this.inv.close(); this.ui.show('pause'); }
     });
+    touchDay(); // série de connexion
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
     if (invite) this.ui.show('online', { code: invite }); else this.ui.show('main');
     startLoop((dt) => this.update(dt), (a, dt) => this.render(a, dt), () => !!this.m && !!this.m.net);
@@ -164,27 +172,29 @@ export class Game {
   // ---------- parties ----------
   // Construit le monde d'avance (salon / préparation) : le lancement ne coûte plus la génération.
   prewarm(seed) {
-    const sh = settings.shadows;
-    if (this.pre && this.pre.seed === seed && this.pre.sh === sh) return;
+    const sh = settings.shadows, ev = currentEvent(), key = ev ? ev.id : '';
+    if (this.pre && this.pre.seed === seed && this.pre.sh === sh && this.pre.ev === key) return;
     const scene = new THREE.Scene();
-    try { this.pre = { seed, sh, scene, world: buildIsland(scene, seed, { shadows: sh }) }; } catch (e) { this.pre = null; }
+    try { this.pre = { seed, sh, ev: key, scene, world: buildIsland(scene, seed, { shadows: sh, theme: ev ? ev.theme : undefined }) }; } catch (e) { this.pre = null; }
   }
 
-  takeWorld(seed, scene) {
+  takeWorld(seed, ev = null) {
     const p = this.pre; this.pre = null;
-    return p && p.seed === seed && p.sh === settings.shadows ? p : null;
+    return p && p.seed === seed && p.sh === settings.shadows && p.ev === (ev ? ev.id : '') ? p : null;
   }
 
   start(cfg, net = null) {
     this.dispose();
     this.ema = 0; this.playT = 0; this.slowT = 0;
     const training = cfg.map === 'training';
-    const pre = training ? null : this.takeWorld(cfg.seed);
+    const ev = training ? null : eventById(cfg.event);
+    const pre = training ? null : this.takeWorld(cfg.seed, ev);
     const scene = pre ? pre.scene : new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = !training && settings.shadows;
     this.renderer.shadowMap.autoUpdate = false; // ombres statiques : voir World.followSun
-    const world = pre ? pre.world : training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows });
+    const world = pre ? pre.world : training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows, theme: ev ? ev.theme : undefined });
+    MOVE.gravity = BASE_GRAVITY * ((ev && ev.gravity) || 1); // événement « Gravité lunaire »
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     player.allowRespawn = training;
@@ -193,6 +203,7 @@ export class Game {
     abilities.setLegend(cfg.legend);
     abilities.allowSwitch = training;
     const loot = new LootField(scene, world.rand || Math.random, world.groundY);
+    loot.rareBoost = (ev && ev.rare) || 1;
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
     this.dress(combat, player, viewmodel);
     const m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match: null, cfg, net, pings: new Pings(scene) };
@@ -200,7 +211,7 @@ export class Game {
     if (training) {
       for (const [x, z] of [[-6, -5], [5, -6], [0, -22], [14, -3], [-14, -12]]) combat.addTarget(x, z, 1);
       combat.addTarget(4, -2, 0);
-      ['rifle', 'smg', 'shotgun', 'sniper', 'launcher'].forEach((w, i) => loot.spawnWeapon(w, -6 + i * 2, 9));
+      ['rifle', 'smg', 'shotgun', 'sniper', 'launcher', 'pistol', 'lmg'].forEach((w, i) => loot.spawnWeapon(w, -7 + i * 2, 9));
       for (let i = 0; i < 6; i++) loot.spawn(loot.roll(), -6 + i * 2, 11);
       combat.weapons.give('rifle');
       inv.ammo.light = 120; inv.heal.syringe = 3; inv.heal.cell = 2;
@@ -212,7 +223,7 @@ export class Game {
     this.m = m;
     try { this.renderer.compile(scene, this.camera); } catch (e) { /* ignoré */ } // compile les shaders avant le 1er rendu (évite le pic au premier tick)
     this.state = 'playing';
-    if (world.theme) this.banner('Carte : ' + world.theme);
+    if (world.theme) this.banner('Carte : ' + world.theme + (ev ? ' · ' + ev.name : ''));
     if (net) { net.beginMatch(m); this.chatLog.innerHTML = ''; this.chatShow(true); }
     this.input.lock();
   }
@@ -221,12 +232,14 @@ export class Game {
   startClient(msg, net) {
     this.dispose();
     this.ema = 0; this.playT = 0; this.slowT = 0;
-    const pre = this.takeWorld(msg.cfg.seed);
+    const ev = eventById(msg.cfg.event);
+    const pre = this.takeWorld(msg.cfg.seed, ev);
     const scene = pre ? pre.scene : new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = settings.shadows;
     this.renderer.shadowMap.autoUpdate = false;
-    const world = pre ? pre.world : buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows });
+    const world = pre ? pre.world : buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows, theme: ev ? ev.theme : undefined });
+    MOVE.gravity = BASE_GRAVITY * ((ev && ev.gravity) || 1);
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     const combat = new Combat(scene, world, player, this.input, inv, {});
@@ -242,7 +255,7 @@ export class Game {
     this.m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match, cfg: msg.cfg, net, pings: new Pings(scene) };
     try { this.renderer.compile(scene, this.camera); } catch (e) { /* ignoré */ } // compile les shaders avant le 1er rendu (évite le pic au premier tick)
     this.state = 'playing';
-    if (world.theme) this.banner('Carte : ' + world.theme);
+    if (world.theme) this.banner('Carte : ' + world.theme + (ev ? ' · ' + ev.name : ''));
     net.attach(this.m);
     this.chatLog.innerHTML = ''; this.chatShow(true);
     this.ui.show('go'); // le départ vient du réseau : pas de geste utilisateur, donc la souris ne peut pas être capturée sans un clic
@@ -258,8 +271,14 @@ export class Game {
   }
 
   endMatch(res) {
+    const m = this.m;
+    if (m && res.ms === undefined) { // statistiques locales de la partie + contexte (légende, événement)
+      res.ms = Object.assign({}, m.combat.mstat, { heals: m.inv.healUsed | 0 });
+      res.leg = this.ui.legend; res.event = m.cfg && m.cfg.event ? m.cfg.event : null;
+    }
     awardMatch(res); // points de la partie (une seule fois : res.pts sert de drapeau)
-    questsMatch(res); // défis quotidiens
+    questsMatch(res); // défis quotidiens, hebdomadaires, saison
+    achMatch(res); // succès
     this.state = 'results';
     this.chatting = false; this.chatIn.style.display = 'none';
     document.exitPointerLock();
@@ -267,6 +286,7 @@ export class Game {
   }
 
   dispose() {
+    MOVE.gravity = BASE_GRAVITY; // fin d'un événement « Gravité lunaire »
     if (this.map) this.map.close();
     if (this.m) this.m.viewmodel.dispose(this.camera);
     this.m = null;
@@ -298,15 +318,23 @@ export class Game {
     } else if (this.state !== 'playing' || !inp.locked) return;
     const { player, abilities, inv, loot, combat, match } = m;
     player.tick(dt);
-    // clic molette : marqueur visible par les coéquipiers (événement réseau 5 : x, y, z, équipe, ennemi)
+    // marqueurs : clic molette = lieu / ennemi / objet (selon la visée), V = danger, viser le marqueur d'un coéquipier = répondre.
+    // Événement 5 : x, y, z, équipe, type (0 lieu, 1 ennemi, 2 danger, 3 objet), propriétaire, retrait, indice d'objet ; 6 : réponse.
     if (m.pings) {
-      if (inp.pressed.Mouse1 && player.health.alive && m.pings.cd <= 0) {
+      const want = inp.pressed.Mouse1 ? 'ping' : inp.pressed.KeyV ? 'danger' : null;
+      if (want && player.health.alive && m.pings.cd <= 0) {
         m.pings.cd = 0.4;
-        const r = combat.pingRay(player);
-        if (r) {
-          const me = net ? net.id : 0, res = m.pings.add(r.x, r.y, r.z, r.enemy ? 2 : 0, me, true);
-          // événement 5 : x, y, z, équipe, ennemi, propriétaire, retrait
-          if (combat.fx.emit) combat.fx.emit(5, r.x, r.y, r.z, player.team, r.enemy ? 1 : 0, me, res === 'removed' ? 1 : 0);
+        const me = net ? net.id : 0, em = combat.fx.emit;
+        const asked = want === 'ping' ? m.pings.aimedAt(player, me) : null;
+        if (asked) { m.pings.ack(asked.owner); if (em) em(6, asked.owner, me, player.team); }
+        else {
+          const r = combat.pingRay(player, loot);
+          if (r) {
+            const type = want === 'danger' ? 2 : r.enemy ? 1 : r.ti >= 0 ? 3 : 0;
+            const res = m.pings.add(r.x, r.y, r.z, type, me, true, type === 3 ? items.table[r.ti].name : '', '');
+            if (em) em(5, r.x, r.y, r.z, player.team, type, me, res === 'removed' ? 1 : 0, r.ti);
+            if (res !== 'removed' && match && match.squadPing) match.squadPing(player.team, r.x, r.y, r.z, type);
+          }
         }
       }
       m.pings.tick(dt, player.x, player.y, player.z);
@@ -316,8 +344,24 @@ export class Game {
     loot.tick(dt, player, inv, combat.weapons, inp);
     if (match) match.tick(dt);
     combat.tick(dt);
+    this.specTick(m);
     if (net) net.tick(dt);
     inp.endTick();
+  }
+
+  // Spectateur : mort avec des coéquipiers encore en vie → on suit l'un d'eux (clic / Espace : suivant, clic droit : précédent).
+  specTick(m) {
+    const p = m.player;
+    if (!p.health.dead || !m.match || (m.cfg && m.cfg.map === 'training')) { m.spec = null; return; }
+    const sq = m.match.playerSquad;
+    const mem = sq ? sq.members.filter((t) => t !== m.combat.pp && !t.health.dead) : [];
+    if (!mem.length) { m.spec = null; return; }
+    let i = mem.indexOf(m.spec);
+    if (i < 0) i = 0;
+    const pr = this.input.pressed;
+    if (pr.Mouse0 || pr.Space) i = (i + 1) % mem.length; else if (pr.Mouse2) i = (i - 1 + mem.length) % mem.length;
+    m.spec = mem[i];
+    p.prompt = 'Spectateur · ' + (m.spec.name || 'coéquipier') + (mem.length > 1 ? ' — clic : suivant · clic droit : précédent' : '');
   }
 
   // Qualité automatique : si la fluidité reste mauvaise (< ~25 images/s pendant 5 s), on coupe d'abord les ombres, puis les effets d'image.
@@ -369,14 +413,21 @@ export class Game {
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));
     this.input.mx = this.input.my = 0;
     m.player.getCamera(alpha, this.camera, dt);
+    if (m.spec) { // vue à la 3e personne sur le coéquipier suivi (lissée)
+      const t = m.spec, sy = Math.sin(t.yaw || 0), cy = Math.cos(t.yaw || 0), tx = t.x + sy * 3.4, tz = t.z + cy * 3.4;
+      _cv.set(tx, Math.max(t.y + 2.1, m.world.groundY(tx, tz) + 0.7), tz);
+      this.camera.position.lerp(_cv, Math.min(1, dt * 6));
+      this.camera.lookAt(t.x, t.y + 1.3, t.z);
+    }
     human.cam.copy(this.camera.position);
     m.player.third(m.scene, dt);
     m.viewmodel.update(dt, this.camera.aspect);
     this.hud.update(m.player, dt, m.combat, m.abilities, m.inv, m.match);
     this.map.draw(dt, m);
-    if (m.world.sun && m.world.followSun(m.player.x, m.player.z)) this.renderer.shadowMap.needsUpdate = true;
+    const fx = m.spec || m.player;
+    if (m.world.sun && m.world.followSun(fx.x, fx.z)) this.renderer.shadowMap.needsUpdate = true;
     const r = this.renderer;
-    if (this.post.on) { this.post.render(m.scene, this.camera, m.player.tp < 0.5 ? m.viewmodel : null, dt); return; }
+    if (this.post.on) { this.post.render(m.scene, this.camera, m.player.tp < 0.5 && !m.spec ? m.viewmodel : null, dt); return; }
     r.render(m.scene, this.camera);
     r.autoClear = false; r.clearDepth();
     if (m.player.tp < 0.5) r.render(m.viewmodel.scene, m.viewmodel.cam);

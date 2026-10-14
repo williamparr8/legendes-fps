@@ -26,6 +26,7 @@ export class Combat {
     this.onDown = null; this.onDeath = null; this.onDamage = null;
     this.hitmark = 0; this.hitKind = 0; this.dmgSum = 0; this.dmgT = 0; this.hurt = 0;
     this.revive = 0; this.deadT = 0;
+    this.mstat = { shots: 0, hits: 0, hs: 0, wk: {} }; // statistiques de la partie (voir profile.awardMatch)
     this.dmgDirs = []; this.killMsg = null; this.heartT = 0; // retours de jeu : directions des dégâts, confirmation d'élimination, cœur
   }
 
@@ -98,6 +99,8 @@ export class Combat {
       const kill = (dead && !wasDead) || (down && !wasDown);
       this.hitKind = kill ? 2 : zone === 0 ? 1 : 0;
       this.hitmark = 0.18; sfx.hit(this.hitKind);
+      if (t.team !== this.player.team) { this.mstat.hits++; if (zone === 0) this.mstat.hs++; }
+      if (kill && t.team !== this.player.team) { const wi = Object.keys(defs).indexOf(this.weapons.id); if (wi >= 0) this.mstat.wk[wi] = (this.mstat.wk[wi] | 0) + 1; }
       if (kill) { this.killMsg = { text: (dead && !wasDead ? 'ÉLIMINÉ' : 'ASSOMMÉ') + (t.name ? ' · ' + t.name : ''), t: 1.8 }; sfx.kill(); }
       this.dmgSum += amount; this.dmgT = 1;
       const mk = this.player.pv.markOnHit;
@@ -127,18 +130,32 @@ export class Combat {
     const tg = this.hitTarget;
     if (tg) {
       const z = this.hitZone;
-      this.applyDamage(tg, d.dmg * mul * (z === 0 ? d.headMult : z === 2 ? d.legMult : 1), z, att);
+      const apv = att === this.pp ? this.player.pv : att.pv; // légende « Chasseur » : bonus à la tête
+      this.applyDamage(tg, d.dmg * mul * (z === 0 ? d.headMult * ((apv && apv.headMul) || 1) : z === 2 ? d.legMult : 1), z, att);
       this.fx.impact(hx, hy, hz, z === 0 ? 2 : 1);
     } else if (t < d.range) this.fx.impact(hx, hy, hz, 0);
   }
 
   // Point visé par le joueur (marqueur) : { x, y, z, enemy } ou null si rien n'est touché à moins de 250 m.
-  pingRay(p) {
+  pingRay(p, loot = null) {
     const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), sp = Math.sin(p.pitch), cp = Math.cos(p.pitch);
     const fx = -sy * cp, fy = sp, fz = -cy * cp, ox = p.x, oy = p.y + p.eye, oz = p.z;
-    if (!this.trace(ox, oy, oz, fx, fy, fz, 250, this.pp, p.team)) return null;
-    const t = this.hitT, tg = this.hitTarget;
-    return { x: ox + fx * t, y: oy + fy * t, z: oz + fz * t, enemy: !!tg && tg.team !== p.team };
+    const hit = this.trace(ox, oy, oz, fx, fy, fz, 250, this.pp, p.team);
+    const t = hit ? this.hitT : 250, tg = hit ? this.hitTarget : null;
+    // un objet au sol proche du rayon (et pas derrière le point touché) : marqueur d'objet
+    if (loot) {
+      let best = null, bd = 0.9;
+      for (const l of loot.list) {
+        if (!l.on) continue;
+        const vx = l.x - ox, vy = l.y + 0.3 - oy, vz = l.z - oz, al = vx * fx + vy * fy + vz * fz;
+        if (al < 0.5 || al > t + 1.5) continue;
+        const perp = Math.sqrt(Math.max(0, vx * vx + vy * vy + vz * vz - al * al));
+        if (perp < bd) { bd = perp; best = l; }
+      }
+      if (best) return { x: best.x, y: best.y, z: best.z, enemy: false, ti: best.ti };
+    }
+    if (!hit) return null;
+    return { x: ox + fx * t, y: oy + fy * t, z: oz + fz * t, enemy: !!tg && tg.team !== p.team, ti: -1 };
   }
 
   // Tir du joueur (appelé par Weapons.shoot).
@@ -152,6 +169,7 @@ export class Combat {
     const a = p.ads || 0, sx = 0.25 * (1 - a), sd = 0.2 * (1 - a) + 0.07 * a; // en ADS l'arme est centrée : la traçante part du canon
     const mx = ox + fx * 0.8 + rx * sx - ux * sd, my = oy + fy * 0.8 - uy * sd, mz = oz + fz * 0.8 + rz * sx - uz * sd;
     const n = d.pellets || 1;
+    this.mstat.shots += n;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.2832, rad = Math.sqrt(Math.random()) * spread;
       const ca = Math.cos(a) * rad, sa = Math.sin(a) * rad;

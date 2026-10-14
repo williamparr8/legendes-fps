@@ -10,6 +10,12 @@ const clean = (s, d) => String(s || '').replace(/[<>&"']/g, '').trim().slice(0, 
 
 // Applique un effet reçu du réseau (traçante, impact, explosion, mur, nuage) sur une partie locale.
 // Événements : [0,x0,y0,z0,x1,y1,z1] [1,x,y,z,type] [2,x,y,z,rayon] [3,x0,y0,z0,x1,y1,z1,durée] [4,x,y,z,rayon,durée] [5,x,y,z,équipe,ennemi,propriétaire,retrait]
+// Nom du joueur propriétaire d'un marqueur (hôte : table des acteurs ; client : acteurs répliqués).
+function pingName(m, id) {
+  const a = (m.net && m.net.byId && m.net.byId.get(id)) || (m.match && m.match.proxies && m.match.proxies.get(id));
+  return a && a.name ? a.name : '';
+}
+
 function applyEvent(m, e) {
   const fx = m.combat.fx, ab = m.abilities;
   switch (e[0]) {
@@ -18,9 +24,17 @@ function applyEvent(m, e) {
     case 2: fx.explosion(e[1], e[2], e[3], e[4], true); m.combat.shakeAt(e[1], e[2], e[3], e[4]); break;
     case 3: ab.setWall(e[1], e[2], e[3], e[4], e[5], e[6], e[7]); break;
     case 4: ab.showGas(e[1], e[2], e[3], e[4], e[5]); break;
-    case 5: // marqueur d'un coéquipier (un seul par joueur ; e[7] = retrait)
-      if (m.pings && e[4] === m.player.team) { if (e[7]) m.pings.remove(e[6]); else m.pings.add(e[1], e[2], e[3], e[5] ? 2 : 1, e[6]); }
+    case 5: // marqueur d'un coéquipier : [x, y, z, équipe, type, propriétaire, retrait, indice d'objet]
+      if (m.pings && e[4] === m.player.team) {
+        if (e[7]) m.pings.remove(e[6]);
+        else {
+          const it = e[8] >= 0 ? items.table[e[8]] : null;
+          m.pings.add(e[1], e[2], e[3], e[5], e[6], false, it ? it.name : '', pingName(m, e[6]));
+          if (m.match && m.match.squadPing) m.match.squadPing(e[4], e[1], e[2], e[3], e[5]); // hôte : les bots de l'escouade s'y rendent
+        }
+      }
       break;
+    case 6: if (m.pings && e[3] === m.player.team) m.pings.ack(e[1]); break; // réponse à un marqueur
   }
 }
 
@@ -159,7 +173,7 @@ export class HostSession {
       const r = p.actor;
       p.link.send({
         t: 'start',
-        cfg: { seed: c.seed, zone: c.zone, squadSize: c.squadSize, timeLimit: c.timeLimit, killLimit: c.killLimit },
+        cfg: { seed: c.seed, zone: c.zone, squadSize: c.squadSize, timeLimit: c.timeLimit, killLimit: c.killLimit, event: c.event || null },
         you: { id: p.id, team: r.team, x: r.spawn.x, z: r.spawn.z, yaw: r.spawn.yaw, legend: p.legend, name: p.name },
         actors: actors.filter((a) => a.id !== p.id),
       });

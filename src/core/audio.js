@@ -65,8 +65,9 @@ function burst(g, f0, f1, dur, type = 'lowpass', q = 0.8, thump = 0) {
 }
 const SHOT = { // [niveau, f0, f1, durée, coup grave]
   rifle: [0.5, 5200, 500, 0.16, 140], smg: [0.38, 6500, 800, 0.1, 170], shotgun: [0.8, 4200, 260, 0.28, 90], sniper: [0.9, 3600, 200, 0.5, 70],
+  pistol: [0.34, 4600, 700, 0.1, 190], lmg: [0.58, 4300, 380, 0.22, 100],
 };
-export function shotKind(d) { return d.pellets > 1 ? 'shotgun' : d.dmg >= 40 ? 'sniper' : d.rpm >= 900 ? 'smg' : 'rifle'; }
+export function shotKind(d) { return d.pellets > 1 ? 'shotgun' : d.dmg >= 40 ? 'sniper' : d.rpm >= 900 ? 'smg' : d.mag <= 16 && !d.auto ? 'pistol' : d.mag >= 50 ? 'lmg' : 'rifle'; }
 Object.assign(sfx, {
   shot(x, y, z, kind) {
     if (!gate((kind.length * 31 + Math.round(x) * 7 + Math.round(z) * 13) | 0, kind === 'shotgun' ? 0.06 : 0.025)) return;

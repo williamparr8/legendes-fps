@@ -9,6 +9,7 @@ export const PASSIVES = {
   speedBoost: (s, p) => { s.pv.moveMul = p.mul; },
   regen: (s, p) => { s.pv.regen = p.rate; s.pv.regenDelay = p.delay; s.pv.reviveMul = p.reviveMul; },
   trapBoost: (s, p) => { s.pv.trapMul = p.mul; },
+  headMul: (s, p) => { s.pv.headMul = p.mul; },
 };
 
 function mark(s, radius, dur) {
@@ -56,6 +57,19 @@ export const TACTICALS = {
   },
 
   mine: (s, p) => s.placeMine(p),
+
+  // Onde de choc : dégâts décroissants avec la distance + repoussement des ennemis proches.
+  slam: (s, p) => {
+    const a = s.actor, cb = s.cb;
+    for (const t of cb.all) {
+      if (t.team === a.team || t.health.dead || t.stance >= 4) continue;
+      const dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz);
+      if (d > p.radius) continue;
+      cb.applyDamage(t, p.dmg * (1 - 0.5 * d / p.radius), 1, s.owner);
+      if (t.vx !== undefined) { const k = p.push / (d || 1); t.vx += dx * k; t.vz += dz * k; t.vy = Math.max(t.vy || 0, 4); t.grounded = false; }
+    }
+    cb.fx.explosion(a.x, a.y + 0.3, a.z, p.radius * 0.5);
+  },
 };
 
 export const ULTIMATES = {

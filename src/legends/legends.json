@@ -1,38 +1,239 @@
 {
   "scout": {
-    "name": "Éclaireur", "role": "Reconnaissance", "color": "#40c0ff",
-    "passive":   { "name": "Instinct", "desc": "Les ennemis que vous touchez restent marqués 3 s", "type": "markOnHit", "duration": 3 },
-    "tactical":  { "name": "Sonar", "desc": "Révèle les ennemis à 40 m pendant 5 s", "type": "pulse", "cooldown": 20, "radius": 40, "duration": 5 },
-    "ultimate":  { "name": "Vision totale", "desc": "Révèle tous les ennemis pendant 8 s", "type": "revealAll", "charge": 60, "duration": 8 }
+    "name": "Éclaireur",
+    "role": "Reconnaissance",
+    "color": "#40c0ff",
+    "passive": {
+      "name": "Instinct",
+      "desc": "Les ennemis que vous touchez restent marqués 3 s",
+      "type": "markOnHit",
+      "duration": 3
+    },
+    "tactical": {
+      "name": "Sonar",
+      "desc": "Révèle les ennemis à 40 m pendant 5 s",
+      "type": "pulse",
+      "cooldown": 20,
+      "radius": 40,
+      "duration": 5
+    },
+    "ultimate": {
+      "name": "Vision totale",
+      "desc": "Révèle tous les ennemis pendant 8 s",
+      "type": "revealAll",
+      "charge": 60,
+      "duration": 8
+    },
+    "price": 0
   },
   "assault": {
-    "name": "Assaut", "role": "Offensif", "color": "#ff6040",
-    "passive":   { "name": "Adrénaline", "desc": "Rechargement 20 % plus rapide", "type": "reloadBoost", "mul": 0.8 },
-    "tactical":  { "name": "Grenade", "desc": "Lance une grenade explosive à l'impact", "type": "grenade", "cooldown": 14, "speed": 20, "gravity": 14, "life": 3, "splashRadius": 5, "splashDmg": 75 },
-    "ultimate":  { "name": "Rage", "desc": "8 s : +30 % dégâts, +15 % vitesse", "type": "rage", "charge": 70, "duration": 8, "dmgMul": 1.3, "moveMul": 1.15 }
+    "name": "Assaut",
+    "role": "Offensif",
+    "color": "#ff6040",
+    "passive": {
+      "name": "Adrénaline",
+      "desc": "Rechargement 20 % plus rapide",
+      "type": "reloadBoost",
+      "mul": 0.8
+    },
+    "tactical": {
+      "name": "Grenade",
+      "desc": "Lance une grenade explosive à l'impact",
+      "type": "grenade",
+      "cooldown": 14,
+      "speed": 20,
+      "gravity": 14,
+      "life": 3,
+      "splashRadius": 5,
+      "splashDmg": 75
+    },
+    "ultimate": {
+      "name": "Rage",
+      "desc": "8 s : +30 % dégâts, +15 % vitesse",
+      "type": "rage",
+      "charge": 70,
+      "duration": 8,
+      "dmgMul": 1.3,
+      "moveMul": 1.15
+    },
+    "price": 0
   },
   "bulwark": {
-    "name": "Rempart", "role": "Défensif", "color": "#60d070",
-    "passive":   { "name": "Carapace", "desc": "+25 de bouclier maximum", "type": "shieldBoost", "extra": 25 },
-    "tactical":  { "name": "Mur de bouclier", "desc": "Dresse un mur indestructible pendant 12 s", "type": "wall", "cooldown": 25, "duration": 12, "width": 5, "height": 2.6 },
-    "ultimate":  { "name": "Forteresse", "desc": "Bouclier restauré, dégâts subis −50 % pendant 10 s", "type": "fortress", "charge": 80, "duration": 10, "takenMul": 0.5 }
+    "name": "Rempart",
+    "role": "Défensif",
+    "color": "#60d070",
+    "passive": {
+      "name": "Carapace",
+      "desc": "+25 de bouclier maximum",
+      "type": "shieldBoost",
+      "extra": 25
+    },
+    "tactical": {
+      "name": "Mur de bouclier",
+      "desc": "Dresse un mur indestructible pendant 12 s",
+      "type": "wall",
+      "cooldown": 25,
+      "duration": 12,
+      "width": 5,
+      "height": 2.6
+    },
+    "ultimate": {
+      "name": "Forteresse",
+      "desc": "Bouclier restauré, dégâts subis −50 % pendant 10 s",
+      "type": "fortress",
+      "charge": 80,
+      "duration": 10,
+      "takenMul": 0.5
+    },
+    "price": 400
   },
   "phantom": {
-    "name": "Fantôme", "role": "Mobilité", "color": "#b070ff",
-    "passive":   { "name": "Pied léger", "desc": "+6 % de vitesse de déplacement", "type": "speedBoost", "mul": 1.06 },
-    "tactical":  { "name": "Pas fantôme", "desc": "Impulsion rapide vers l'avant", "type": "dash", "cooldown": 8, "power": 16 },
-    "ultimate":  { "name": "Saut dimensionnel", "desc": "Téléportation vers le point visé (60 m)", "type": "teleport", "charge": 60, "range": 60 }
+    "name": "Fantôme",
+    "role": "Mobilité",
+    "color": "#b070ff",
+    "passive": {
+      "name": "Pied léger",
+      "desc": "+6 % de vitesse de déplacement",
+      "type": "speedBoost",
+      "mul": 1.06
+    },
+    "tactical": {
+      "name": "Pas fantôme",
+      "desc": "Impulsion rapide vers l'avant",
+      "type": "dash",
+      "cooldown": 8,
+      "power": 16
+    },
+    "ultimate": {
+      "name": "Saut dimensionnel",
+      "desc": "Téléportation vers le point visé (60 m)",
+      "type": "teleport",
+      "charge": 60,
+      "range": 60
+    },
+    "price": 600
   },
   "medic": {
-    "name": "Médic", "role": "Soutien", "color": "#ff70a0",
-    "passive":   { "name": "Régénération", "desc": "+1 PV/s après 5 s sans dégâts ; réanimation 40 % plus rapide", "type": "regen", "rate": 1, "delay": 5, "reviveMul": 0.6 },
-    "tactical":  { "name": "Drone de soin", "desc": "Soigne 25 PV et 25 de bouclier sur 3 s ; alliés proches +20 PV", "type": "heal", "cooldown": 22, "duration": 3, "hp": 25, "shield": 25, "radius": 7, "allyHp": 20 },
-    "ultimate":  { "name": "Réveil collectif", "desc": "Relève les alliés à terre à 25 m et soigne tout le monde", "type": "revivePulse", "charge": 90, "radius": 25 }
+    "name": "Médic",
+    "role": "Soutien",
+    "color": "#ff70a0",
+    "passive": {
+      "name": "Régénération",
+      "desc": "+1 PV/s après 5 s sans dégâts ; réanimation 40 % plus rapide",
+      "type": "regen",
+      "rate": 1,
+      "delay": 5,
+      "reviveMul": 0.6
+    },
+    "tactical": {
+      "name": "Drone de soin",
+      "desc": "Soigne 25 PV et 25 de bouclier sur 3 s ; alliés proches +20 PV",
+      "type": "heal",
+      "cooldown": 22,
+      "duration": 3,
+      "hp": 25,
+      "shield": 25,
+      "radius": 7,
+      "allyHp": 20
+    },
+    "ultimate": {
+      "name": "Réveil collectif",
+      "desc": "Relève les alliés à terre à 25 m et soigne tout le monde",
+      "type": "revivePulse",
+      "charge": 90,
+      "radius": 25
+    },
+    "price": 800
   },
   "saboteur": {
-    "name": "Saboteur", "role": "Contrôle", "color": "#e0c040",
-    "passive":   { "name": "Artificier", "desc": "Délai des pièges −25 %", "type": "trapBoost", "mul": 0.75 },
-    "tactical":  { "name": "Mine", "desc": "Pose une mine (3 max), explose près d'un ennemi", "type": "mine", "cooldown": 12, "trap": true, "max": 3, "triggerRadius": 2.5, "splashRadius": 4, "splashDmg": 60 },
-    "ultimate":  { "name": "Nuage toxique", "desc": "Zone de gaz au point visé : 10 dégâts/s pendant 10 s", "type": "gas", "charge": 75, "range": 40, "radius": 6, "duration": 10, "dps": 10 }
+    "name": "Saboteur",
+    "role": "Contrôle",
+    "color": "#e0c040",
+    "passive": {
+      "name": "Artificier",
+      "desc": "Délai des pièges −25 %",
+      "type": "trapBoost",
+      "mul": 0.75
+    },
+    "tactical": {
+      "name": "Mine",
+      "desc": "Pose une mine (3 max), explose près d'un ennemi",
+      "type": "mine",
+      "cooldown": 12,
+      "trap": true,
+      "max": 3,
+      "triggerRadius": 2.5,
+      "splashRadius": 4,
+      "splashDmg": 60
+    },
+    "ultimate": {
+      "name": "Nuage toxique",
+      "desc": "Zone de gaz au point visé : 10 dégâts/s pendant 10 s",
+      "type": "gas",
+      "charge": 75,
+      "range": 40,
+      "radius": 6,
+      "duration": 10,
+      "dps": 10
+    },
+    "price": 1000
+  },
+  "titan": {
+    "name": "Titan",
+    "role": "Lourd",
+    "color": "#9fb0c8",
+    "price": 1500,
+    "passive": {
+      "name": "Blindage",
+      "desc": "+50 de bouclier maximum",
+      "type": "shieldBoost",
+      "extra": 50
+    },
+    "tactical": {
+      "name": "Onde de choc",
+      "desc": "Frappe le sol : 35 dégâts et repousse les ennemis à 7 m",
+      "type": "slam",
+      "cooldown": 16,
+      "radius": 7,
+      "dmg": 35,
+      "push": 14
+    },
+    "ultimate": {
+      "name": "Rempart d'acier",
+      "desc": "Dégâts subis −65 % pendant 8 s",
+      "type": "fortress",
+      "charge": 85,
+      "duration": 8,
+      "takenMul": 0.35
+    }
+  },
+  "hunter": {
+    "name": "Chasseur",
+    "role": "Traqueur",
+    "color": "#2fd6a8",
+    "price": 2000,
+    "passive": {
+      "name": "Tir précis",
+      "desc": "+25 % de dégâts à la tête",
+      "type": "headMul",
+      "mul": 1.25
+    },
+    "tactical": {
+      "name": "Piste",
+      "desc": "Révèle les ennemis à 55 m pendant 6 s",
+      "type": "pulse",
+      "cooldown": 18,
+      "radius": 55,
+      "duration": 6
+    },
+    "ultimate": {
+      "name": "Traque",
+      "desc": "10 s : +20 % dégâts, +10 % vitesse",
+      "type": "rage",
+      "charge": 75,
+      "duration": 10,
+      "dmgMul": 1.2,
+      "moveMul": 1.1
+    }
   }
 }

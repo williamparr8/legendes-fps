@@ -115,6 +115,8 @@ const LEXTRA = [
   () => mergeGeometries([pb(0.15, 0.42, 0.04, 0, 0.32, 0.36), pb(0.26, 0.07, 0.22, 0, 0.62, 0)]),                                             // écharpe + col
   () => mergeGeometries([pb(0.2, 0.06, 0.02, 0, 0.3, 0.345), pb(0.06, 0.2, 0.02, 0, 0.3, 0.345)]),                                             // croix médicale sur le sac
   () => mergeGeometries([pb(0.12, 0.12, 0.12, -0.27, 0.0, 0), pb(0.12, 0.12, 0.12, 0.27, 0.0, 0), pb(0.08, 0.06, 0.05, 0.22, 0.25, -0.215)]), // mines + détonateur
+  () => mergeGeometries([pb(0.3, 0.14, 0.3, -0.34, 0.66, 0), pb(0.3, 0.14, 0.3, 0.34, 0.66, 0), pb(0.34, 0.26, 0.04, 0, 0.3, -0.22)]),         // épaulières géantes (Titan)
+  () => mergeGeometries([pb(0.06, 0.06, 0.34, 0.18, 0.42, -0.22), pb(0.2, 0.05, 0.12, 0, 0.72, 0.1)]),                                           // lunette de tir + capuche (Chasseur)
 ];
 const ACCG = [];
 function accGeo(i) { // i = rang de la légende (-1 : aucune)

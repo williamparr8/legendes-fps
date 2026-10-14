@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { setTheme, Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, THEME } from './terrain.js';
+import { setTheme, THEMES, Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, THEME } from './terrain.js';
 import { buildBuilding } from './buildings.js';
 import { buildDecor } from './decor.js';
 import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
 
+const THEMES_COUNT = THEMES.length;
 export const HALF = 270;        // demi-taille de référence (vaisseau, zone) ; le relief s'étend à HALF + 24
 export const EXT = HALF + 24;
 const WALLS = [[0x9a9ea6, 0x6c7078], [0xb7a88c, 0x7d7058], [0x94604f, 0x5e3c33], [0x7f93a6, 0x56667a], [0xa9a39a, 0x6f6a62]];
@@ -18,12 +19,13 @@ const DECOR = { Port: [0.35, 0.55, 0.1], Usine: [0.35, 0.55, 0.1], Ferme: [0.6, 
 // usine, ferme, port, ruines, hameau, phare) reliés par des routes, forêts par amas, massifs, tours + tyroliennes, jump pads.
 // Générée uniquement depuis la graine. opts.shadows : ombres du soleil (suit le joueur, voir World.followSun).
 export function buildIsland(scene, seed = 1, opts = {}) {
-  setTheme(Math.abs(seed | 0) % 3);
+  setTheme(opts.theme != null ? opts.theme : Math.abs(seed | 0) % THEMES_COUNT); // opts.theme : imposé par un événement
   const r = rng(seed);
   scene.background = new THREE.Color(THEME.fog);
   scene.fog = new THREE.Fog(THEME.fog, 80, THEME.fogFar);
-  scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x6a7550, 1.15));
-  const sun = new THREE.DirectionalLight(0xfff1d8, 2.1);
+  const HM = THEME.hemi || [0xcfe0ff, 0x6a7550, 1.15], SN = THEME.sun || [0xfff1d8, 2.1], SP = THEME.sunPos || [60, 100, 30];
+  scene.add(new THREE.HemisphereLight(HM[0], HM[1], HM[2]));
+  const sun = new THREE.DirectionalLight(SN[0], SN[1]);
   if (opts.shadows) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -31,9 +33,9 @@ export function buildIsland(scene, seed = 1, opts = {}) {
     sc.left = sc.bottom = -50; sc.right = sc.top = 50; sc.near = 20; sc.far = 260;
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.06;
   }
-  sun.position.set(60, 100, 30);
+  sun.position.set(SP[0], SP[1], SP[2]);
   scene.add(sun, sun.target);
-  buildSky(scene, new THREE.Vector3(60, 100, 30));
+  buildSky(scene, new THREE.Vector3(SP[0], SP[1], SP[2]));
   if (getSkyEnv()) { scene.environment = getSkyEnv(); scene.environmentIntensity = 0.42; }
   buildMountains(scene, seed);
   buildWater(scene);

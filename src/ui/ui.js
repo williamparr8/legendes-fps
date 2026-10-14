@@ -8,7 +8,10 @@ import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
 import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } from '../shop/quests.js';
 import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
-import { LIST, owns, equip } from '../shop/profile.js';
+import { LIST, owns, equip, legendUnlocked, legendPrice, unlockLegend, firstUnlockedLegend, dailyBonus, dailyClaimable, claimDaily } from '../shop/profile.js';
+import { ACH, hasAch, achCount, titleName, setTitle } from '../shop/achievements.js';
+import { friends, seen as seenFriends, forget as forgetFriend, ago } from '../shop/friends.js';
+import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
@@ -23,7 +26,7 @@ const MODES = {
 };
 const KEYS = [
   ['ZQSD / WASD', 'Déplacement'], ['Maj', 'Sprint'], ['Espace', 'Saut / escalade'], ['C / Ctrl', 'Accroupi ; en sprint : glissade'],
-  ['E', 'Ramasser · tyrolienne · réanimer (maintenir)'], ['Clic G / D', 'Tirer / viser'], ['Clic molette', 'Marquer un lieu (vu par les coéquipiers)'], ['R', 'Recharger'], ['Tab', 'Inventaire'], ['1 / 2 / molette', 'Changer d\'arme'],
+  ['E', 'Ramasser · tyrolienne · réanimer (maintenir)'], ['Clic G / D', 'Tirer / viser'], ['Clic molette', 'Marquer un lieu / ennemi / objet (vu par les coéquipiers) ; viser le marqueur d\'un coéquipier = répondre'], ['V', 'Marquer un danger'], ['R', 'Recharger'], ['Tab', 'Inventaire'], ['1 / 2 / molette', 'Changer d\'arme'],
   ['3 / 4 / 5', 'Seringue / kit médical / cellule de bouclier'], ['F / G', 'Habileté tactique / ultime'], ['Entrée', 'Chat (en ligne)'], ['Échap', 'Pause'],
 ];
 
@@ -91,7 +94,7 @@ export class UI {
     switch (a) {
       case 'mode': this.mode = d.mode; this.show('setup'); break;
       case 'play': this.play(); break;
-      case 'ltab': this.lobbyTab = this.lobbyTab === d.t || d.t === 'play' ? null : d.t; this.show('main'); break;
+      case 'ltab': this.lobbyTab = this.lobbyTab === d.t || d.t === 'play' ? null : d.t; this.view = null; this.show('main'); break;
       case 'qopen': this.qTab = d.q; this.lobbyTab = 'quests'; this.show('main'); break;
       case 'qtab': this.qTab = d.q; this.show('main'); break;
       case 'passbuy': {
@@ -105,15 +108,26 @@ export class UI {
       case 'gemsbuy': { const u = buyUrl(); if (u) window.open(u, '_blank', 'noopener'); break; }
       case 'gemsredeem': this.redeemCode(); break;
       case 'mtab': this.mineTab = d.m; this.show('main'); break;
-      case 'mleg': this.legend = d.id; this.show('main'); break;
+      case 'mleg': this.view = d.id; if (legendUnlocked(d.id)) this.legend = d.id; this.show('main'); break;
+      case 'unlock': if (unlockLegend(d.id)) { this.legend = d.id; this.view = d.id; } this.show('main'); break;
+      case 'ptab': this.profTab = d.p; this.show('main'); break;
+      case 'title': setTitle(+d.i); this.show('main'); break;
+      case 'forget': forgetFriend(d.n); this.show('main'); break;
+      case 'claim': { const n = claimDaily(); if (n) this.game.banner('+' + n + ' points : bonus quotidien'); this.show('main'); break; }
+      case 'invite': this.quickInvite(); break;
       case 'meq': equip(d.k, +d.i); this.show('main'); break;
       case 'pzoom': this.zoom = { k: d.k, id: d.id, t: d.t }; this.show('main'); break;
       case 'zclose': this.zoom = null; this.show('main'); break;
       case 'lclose': this.zoom = null; this.lobbyTab = null; this.show('main'); break;
       case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
       case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
-      case 'lleg': { const i = LEGEND_IDS.indexOf(this.legend); this.legend = LEGEND_IDS[(i + (+d.d) + LEGEND_IDS.length) % LEGEND_IDS.length]; this.show('main'); break; }
-      case 'pick': this.legend = d.id; if (this.screen === 'main') this.show('main'); else document.querySelectorAll('.card').forEach((c) => c.classList.toggle('sel', c.dataset.id === d.id)); break;
+      case 'lleg': { // légende suivante / précédente parmi celles débloquées
+        const n = LEGEND_IDS.length;
+        let i = LEGEND_IDS.indexOf(this.legend);
+        for (let k = 0; k < n; k++) { i = (i + (+d.d) + n) % n; if (legendUnlocked(LEGEND_IDS[i])) break; }
+        this.legend = LEGEND_IDS[i]; this.show('main'); break;
+      }
+      case 'pick': if (!legendUnlocked(d.id)) break; this.legend = d.id; if (this.screen === 'main') this.show('main'); else document.querySelectorAll('.card').forEach((c) => c.classList.toggle('sel', c.dataset.id === d.id)); break;
       case 'start': g.start(this.readConfig()); break;
       case 'menu': g.quit(); break;
       case 'options': this.from = this.screen; this.show('options'); break;
@@ -133,8 +147,13 @@ export class UI {
 
   // Hall (menu principal) : barre d'onglets en haut, opérateur 3D au centre (lobby.js), modes à gauche, bouton JOUER en bas.
   main() {
+    if (!legendUnlocked(this.legend)) this.legend = firstUnlockedLegend();
     const L = levelInfo(), D = dailies(), W = weeklies(), SE = season(), M = MODES[this.mode], LG = LEGENDS[this.legend];
+    const LV = LEGENDS[this.view && LEGENDS[this.view] ? this.view : this.legend], vid = this.view && LEGENDS[this.view] ? this.view : this.legend;
     const left = pending(), nextQ = D.concat(W).find((q) => !q.done);
+    const hasNew = false;
+    const EV = eventInfo(), canClaim = dailyClaimable();
+    const fr = friends().slice(0, 3);
     const tab = (t, n, act, extra = '') => `<button class="lo-tab${(t === 'play' && !this.lobbyTab) || this.lobbyTab === t ? ' on' : ''}" data-act="${act}" data-t="${t}">${n}${extra}</button>`;
     const modeRows = Object.keys(MODES).map((k) => `<button class="lo-mrow${k === this.mode ? ' on' : ''}" data-act="lmode" data-mode="${k}" style="--a:${MODES[k].col}"><b>${MODES[k].title}</b><small>${MODES[k].desc}</small></button>`).join('');
     const qrows = (list) => list.map((q) => `<div class="lo-q${q.done ? ' done' : ''}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><i style="--p:${Math.round(100 * q.p / q.n)}%"></i><em>${q.done ? 'fait' : q.p + ' / ' + q.n} · +${q.reward} pts</em></div>`).join('');
@@ -174,6 +193,33 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code. 3. Colle-le ici :</p>
         <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>`}
         <small class="lo-msg">${esc(this.gemMsg || '')}</small>`;
+    } else if (this.lobbyTab === 'profile') {
+      const pf = this.profTab || 'stats', st = profile.st;
+      const ptab = (k, n) => `<button class="lo-qt${pf === k ? ' on' : ''}" data-act="ptab" data-p="${k}">${n}</button>`;
+      let body = '';
+      if (pf === 'stats') {
+        const acc = st.shots ? Math.round(100 * st.hits / st.shots) : 0, hsr = st.hits ? Math.round(100 * st.hs / st.hits) : 0;
+        const wr = profile.games ? Math.round(100 * profile.wins / profile.games) : 0, kpg = profile.games ? (profile.kills / profile.games).toFixed(1) : '0';
+        const wk = Object.keys(wdefs), mw = Math.max(0, ...st.w), ml = Math.max(0, ...st.l);
+        const favW = mw > 0 ? wdefs[wk[st.w.indexOf(mw)]].name : '—', favL = ml > 0 && LEGEND_IDS[st.l.indexOf(ml)] ? LEGENDS[LEGEND_IDS[st.l.indexOf(ml)]].name : '—';
+        const box = (v, l) => `<div class="lo-sbox"><b>${v}</b><span>${l}</span></div>`;
+        const mx = Math.max(10, ...st.hist);
+        const bars = st.hist.map((v, i) => `<rect x="${i * 24 + 4}" y="${(70 - 60 * v / mx).toFixed(1)}" width="18" height="${(60 * v / mx).toFixed(1)}" rx="2"><title>${v} pts</title></rect>`).join('');
+        body = `<div class="lo-sgrid">${box(L.level, 'Niveau')}${box(profile.games, 'Parties')}${box(profile.wins + ' (' + wr + ' %)', 'Victoires')}${box(st.top3, 'Top 3')}${box(st.bestPlace ? '#' + st.bestPlace : '—', 'Meilleur rang')}
+          ${box(profile.kills, 'Éliminations')}${box(kpg, 'Élim. / partie')}${box(st.bestKills, 'Record d\'élim.')}${box(st.dmg, 'Dégâts')}${box(acc + ' %', 'Précision')}${box(hsr + ' %', 'Tirs à la tête')}${box(favW, 'Arme préférée')}${box(favL, 'Légende préférée')}${box(profile.streak + ' j', 'Série de connexion')}${box(profile.earned, 'Points gagnés')}</div>
+          <h3>Points gagnés sur les 12 dernières parties</h3><svg class="lo-chart" viewBox="0 0 292 80"><g fill="#ffd070">${bars}</g></svg>`;
+      } else if (pf === 'ach') {
+        const cur = titleName();
+        body = `<p>${achCount()} / ${ACH.length} succès · titre affiché : <b style="color:#ff7af0">${cur ? '« ' + esc(cur) + ' »' : 'aucun'}</b>${cur ? ' <button class="lo-link2" data-act="title" data-i="0">retirer</button>' : ''}</p>` + ACH.map((a, i) => {
+          const got = hasAch(i), [v, g] = a.c(), pc = got ? 100 : Math.min(100, Math.round(100 * v / g));
+          return `<div class="lo-q${got ? ' done' : ''}"><span>${got ? '🏆 ' : ''}<b>${esc(a.n)}</b> — ${esc(a.d)}</span><i style="--p:${pc}%"></i><em>${got ? (profile.title === i + 1 ? 'Titre actif' : '<button class="lo-link2" data-act="title" data-i="' + (i + 1) + '">Titre « ' + esc(a.t) + ' »</button>') : (a.m ? 'non accompli' : Math.min(v, g) + ' / ' + g) + ' · +' + a.r + ' pts'}</em></div>`;
+        }).join('');
+      } else {
+        const fl = friends();
+        body = `<p>Les joueurs rencontrés en ligne s'ajoutent ici automatiquement. Le jeu n'a pas de serveur central : on ne voit donc pas qui est connecté, mais le lien d'invitation s'envoie en un clic.</p>
+          <div class="row" style="justify-content:flex-start"><button class="primary" data-act="invite">Inviter des amis : créer le salon et copier le lien</button></div>` + (fl.length ? fl.map((f) => `<div class="lo-q"><span><b>${esc(f.n)}</b> — vu ${ago(f.d)} · ${f.c} partie${f.c > 1 ? 's' : ''} ensemble</span><i style="--p:0%"></i><em><button class="lo-link2" data-act="forget" data-n="${esc(f.n)}">retirer</button></em></div>`).join('') : '<p class="lo-how">Aucun ami récent pour le moment : joue une partie en ligne pour les retrouver ici.</p>');
+      }
+      modal = `<h2>Profil — ${esc(settings.name || 'Joueur')}</h2><div class="lo-qts">${ptab('stats', 'Statistiques')}${ptab('ach', 'Succès ' + achCount() + '/' + ACH.length)}${ptab('friends', 'Amis')}</div>${body}`;
     } else if (this.lobbyTab === 'legends') modal = '';
     const name = esc(settings.name || 'Joueur');
     const mine = this.lobbyTab === 'legends';
@@ -197,8 +243,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       const mtab = (k, n) => `<button class="lo-qt${mt === k ? ' on' : ''}" data-act="mtab" data-m="${k}">${n}</button>`;
       let list = '', hint = '';
       if (mt === 'leg') {
-        list = LEGEND_IDS.map((id) => { const L2 = LEGENDS[id]; return `<button class="lo-lg${id === this.legend ? ' on' : ''}" data-act="mleg" data-id="${id}" style="--c:${L2.color}"><b>${L2.name}</b><small>${L2.role}</small><em>${id === this.legend ? 'Équipée' : 'Débloquée'}</em></button>`; }).join('');
-        hint = 'Toutes les légendes sont débloquées. Celle qui est équipée sera jouée au prochain départ.';
+        list = LEGEND_IDS.map((id) => { const L2 = LEGENDS[id], un = legendUnlocked(id); return `<button class="lo-lg${id === vid ? ' on' : ''}${un ? '' : ' locked'}" data-act="mleg" data-id="${id}" style="--c:${L2.color}"><b>${un ? '' : '🔒 '}${L2.name}</b><small>${L2.role}</small><em>${!un ? legendPrice(id) + ' pts à débloquer' : id === this.legend ? 'Équipée' : 'Débloquée'}</em></button>`; }).join('');
+        hint = `${LEGEND_IDS.filter((id) => legendUnlocked(id)).length} / ${LEGEND_IDS.length} légendes débloquées. Clique une légende pour la voir ; celle qui est équipée sera jouée au prochain départ. Les autres se débloquent avec des points.`;
       } else {
         const eq = profile.eq[mt];
         const item = (idx, nm, id) => `<button class="lo-sk2${eq === idx ? ' on' : ''}" data-act="meq" data-k="${mt}" data-i="${idx}">${id ? thumbImg(mt, id, 'lo-th2') : '<div class="lo-th2 none">Par défaut</div>'}<b>${nm}</b><em>${eq === idx ? 'Équipé' : 'Débloqué'}</em></button>`;
@@ -210,19 +256,21 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       const ab = (tag, o) => `<div class="lo-ab"><small>${tag}</small><b>${o.name}</b><p>${o.desc}</p><div class="lo-st">${stat(o)}</div></div>`;
       mineHtml = `<div class="lo-mine-l"><h2>Mes légendes</h2><div class="lo-qts">${mtab('leg', 'Légendes ' + LEGEND_IDS.length)}${mtab('perso', 'Tenues ' + (cnt('perso') + 1))}${mtab('arme', 'Armes ' + (cnt('arme') + 1))}</div>
           <div class="lo-mine-list">${list}</div><p class="lo-how">${hint}</p></div>
-        <div class="lo-mine-r"><small>Compétences</small><h2 style="color:${LG.color}">${LG.name}</h2><span class="lo-role">${LG.role}</span>
-          ${ab('Passif', LG.passive)}${ab('Tactique · touche F', LG.tactical)}${ab('Ultime · touche G', LG.ultimate)}</div>`;
+        <div class="lo-mine-r"><small>Compétences</small><h2 style="color:${LV.color}">${LV.name}</h2><span class="lo-role">${LV.role}</span>
+          ${legendUnlocked(vid) ? '' : `<div class="lo-lock"><b>Légende verrouillée</b><button class="primary" data-act="unlock" data-id="${vid}" ${profile.pts >= legendPrice(vid) ? '' : 'disabled'}>Débloquer — ${legendPrice(vid)} pts</button>${profile.pts >= legendPrice(vid) ? '' : `<small>Il te manque ${legendPrice(vid) - profile.pts} pts</small>`}</div>`}
+          ${ab('Passif', LV.passive)}${ab('Tactique · touche F', LV.tactical)}${ab('Ultime · touche G', LV.ultimate)}</div>`;
     }
     return `<div class="lo${mine ? ' mine' : ''}">
       <div class="lo-top">
-        <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${titleFor(SE.tier, SE.n)} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
-        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Mes légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
+        <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleName() || titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${esc(titleName() || titleFor(SE.tier, SE.n))} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
+        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Mes légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('profile', 'Profil', 'ltab', hasNew ? '<span class="lo-badge new">!</span>' : '')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
         <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gems" data-act="gemsopen" title="Obtenir des Éclats">${GEM} ${profile.gems} <i>+</i></button><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
       </div>
       <div class="lo-left">
         <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
-        <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
-        <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
+        <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
+        <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
+        ${fr.length ? `<div class="lo-fr2"><small>Amis récents</small>${fr.map((f) => `<button data-act="invite" title="Copier le lien d'invitation"><b>${esc(f.n)}</b><span>${ago(f.d)} · inviter</span></button>`).join('')}</div>` : ''}
       </div>
       <button class="lo-season" data-act="qopen" data-q="season" title="Défis de saison"><small>Saison ${SE.n}</small><b>${SE.name}</b><span>Palier ${SE.tier} / ${SE.tiers} · ${SE.daysLeft} j restants${SE.pass ? ' · PASS ✔' : ''}</span><div class="lo-xp wide"><i style="width:${SE.tier >= SE.tiers ? 100 : Math.round(100 * (SE.tierXp - SE.toNext) / SE.tierXp)}%"></i></div></button>
       <div class="lo-bl">
@@ -236,6 +284,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         ${this.mode === 'solo' || this.mode === 'squad' ? `<button class="lo-link" data-act="mode" data-mode="${this.mode}">Options de la partie</button>` : ''}
       </div>
       <div class="lo-br">
+        <button class="lo-tile ev${EV.active ? ' on' : ''}" data-act="ltab" data-t="quests" title="${esc(EV.ev.desc)}"><small>${EV.active ? 'Événement en cours · ×' + EVENT_MULT + ' points' : 'Prochain événement'}</small><b>${esc(EV.ev.name)}</b><span>${EV.active ? esc(EV.ev.desc) + ' · ' + EV.text : EV.text}</span></button>
+        <button class="lo-tile daily${canClaim ? ' on' : ''}" ${canClaim ? 'data-act="claim"' : ''}><small>Bonus quotidien · série de ${profile.streak} jour${profile.streak > 1 ? 's' : ''}</small><b>${canClaim ? 'Récupérer +' + dailyBonus() + ' pts' : 'Déjà récupéré ✔'}</b><span>${canClaim ? 'La série augmente chaque jour de connexion' : 'Demain : +' + (20 + 15 * Math.min(profile.streak + 1, 7)) + ' pts'}</span></button>
         <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis (jour · semaine)</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
         <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
       </div>
@@ -264,6 +314,18 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     if (this.screen === 'main') this.show('main');
   }
 
+  // Invitation en un clic : crée le salon si besoin puis copie le lien d'invitation.
+  async quickInvite() {
+    const g = this.game;
+    try {
+      if (!g.session) { g.banner('Création du salon…'); await g.hostRoom(settings.name || 'Joueur', this.legend); }
+      const s = g.session;
+      if (!s || s.role !== 'host') { g.banner('Tu es déjà dans le salon de quelqu\'un : demande-lui son lien.'); return; }
+      const link = location.origin + location.pathname + '?salon=' + s.code + (transportKind() === 'local' ? '&local' : '');
+      try { await navigator.clipboard.writeText(link); g.banner("Lien d'invitation copié : envoie-le à tes amis !"); } catch (e) { g.banner('Lien : ' + link); }
+    } catch (e) { g.banner('Impossible de créer le salon : ' + errorText(e)); }
+  }
+
   // Lancement depuis le hall : solo / équipe / entraînement démarrent tout de suite (réglages par défaut) ; les autres ouvrent leur écran.
   play() {
     const m = this.mode;
@@ -277,8 +339,9 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
   legendCards() {
     return LEGEND_IDS.map((id) => {
       const L = LEGENDS[id];
-      return `<div class="card ${id === this.legend ? 'sel' : ''}" data-act="pick" data-id="${id}" style="border-color:${L.color}">
-        <b style="color:${L.color}">${L.name}</b><i>${L.role}</i>
+      const lk = !legendUnlocked(id);
+      return `<div class="card ${id === this.legend ? 'sel' : ''}" data-act="pick" data-id="${id}" style="border-color:${L.color};${lk ? 'opacity:.45' : ''}">
+        <b style="color:${L.color}">${lk ? '🔒 ' : ''}${L.name}</b>${lk ? `<small>Verrouillée : ${legendPrice(id)} pts (Mes légendes)</small>` : ''}<i>${L.role}</i>
         <small>◆ ${L.passive.name} : ${L.passive.desc}</small><small>[F] ${L.tactical.name} : ${L.tactical.desc}</small><small>[G] ${L.ultimate.name} : ${L.ultimate.desc}</small></div>`;
     }).join('');
   }
@@ -313,7 +376,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     const cfg = {
       mode: m, map: m === 'training' ? 'training' : 'island', legend: this.legend,
       difficulty: v('c-diff', 'normal'), enemySquads: +v('c-bots', MODES[m].bots), squadSize: m === 'solo' ? 1 : +v('c-size', 3),
-      zone: ch('c-zone', m !== 'training'), timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
+      zone: ch('c-zone', m !== 'training'), event: m === 'training' || !currentEvent() ? null : currentEvent().id, timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
       weapons: list('.wc', Object.keys(wdefs)), legends: list('.lc', LEGEND_IDS), seed: this.seed,
     };
     this._seed = null;
@@ -337,7 +400,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
 
   lobby() {
     const s = this.game.session, host = s.role === 'host';
-    const opts = LEGEND_IDS.map((id) => `<option value="${id}" ${id === this.legend ? 'selected' : ''}>${LEGENDS[id].name}</option>`).join('');
+    const opts = LEGEND_IDS.filter((id) => legendUnlocked(id)).map((id) => `<option value="${id}" ${id === this.legend ? 'selected' : ''}>${LEGENDS[id].name}</option>`).join('');
     const link = location.origin + location.pathname + '?salon=' + s.code + (transportKind() === 'local' ? '&local' : '');
     return `<div class="panel"><h2>Salon <span class="code">${s.code}</span></h2>
       <div class="linkrow"><input class="t" id="lb-link" readonly value="${esc(link)}"><button data-act="copylink">Copier le lien</button><span id="lb-copied"></span></div>
@@ -349,6 +412,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
   }
 
   updateLobby(roster) {
+    try { seenFriends(roster.map((p) => p.name), settings.name); } catch (e) { /* ignoré */ }
     const el = $('lb-players');
     if (!el || this.screen !== 'lobby') return;
     el.innerHTML = roster.map((p) => `<div class="pl"><b>${esc(p.name)}</b>${p.host ? ' <small>(hôte)</small>' : ''}<i style="color:${LEGENDS[p.legend] ? LEGENDS[p.legend].color : '#fff'}">${LEGENDS[p.legend] ? LEGENDS[p.legend].name : ''}</i></div>`).join('');
@@ -403,6 +467,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       <div class="place">#${r.place}<small style="font-size:18px;opacity:.7"> / ${r.total}</small></div>
       ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal) · niveau ${levelInfo().level}</p>` : ''}
       ${(r.quests || []).map((q) => `<p class="gain">Défi accompli : ${q.txt} · +${q.reward} points</p>`).join('')}
+      ${(r.ach || []).map((q) => `<p class="gain" style="color:#ff9af0">${q.txt} · +${q.reward} points</p>`).join('')}
+      ${r.event ? `<p class="gain">Événement actif : points ×${EVENT_MULT}</p>` : ''}
       <div class="stats"><div><b>${r.kills}</b>Éliminations</div><div><b>${r.damage}</b>Dégâts infligés</div><div><b>${t}</b>Temps de survie</div><div><b>${LEGENDS[this.legend].name}</b>Légende</div></div>
       <div class="row">${buttons}</div></div>`;
   }

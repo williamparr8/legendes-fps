@@ -20,7 +20,7 @@ const MAT = {
 };
 for (const k of ['metal', 'dark', 'steel']) weaponDetail(MAT[k], 'gunmetal');
 weaponDetail(MAT.poly, 'rubber', 0.1, 0.8);
-const ACCENT = { rifle: 0x4f8fc0, smg: 0x9b6fd0, shotgun: 0xd05a3a, sniper: 0x4fb070, launcher: 0xe09030 };
+const ACCENT = { rifle: 0x4f8fc0, smg: 0x9b6fd0, shotgun: 0xd05a3a, sniper: 0x4fb070, launcher: 0xe09030, pistol: 0xd0b040, lmg: 0x40b0a8 };
 // Emplacement de palette d'une matière (skins d'arme) : 0 metal, 1 dark, 2 steel, 3 poly, 4 wood (+ olive), 5 accent ; -1 = jamais recoloré.
 const SLOT_MATS = [MAT.metal, MAT.dark, MAT.steel, MAT.poly, MAT.wood];
 const slotOf = (mat, accent) => { const i = SLOT_MATS.indexOf(mat); return i >= 0 ? i : mat === MAT.olive ? 4 : mat === accent ? 5 : -1; };
@@ -153,6 +153,39 @@ const BUILD = {
     prof(g, [[0.3, 0.056], [0.46, 0.062], [0.46, 0.056], [0.3, 0.05]], 0.05, 0, metal, 0.003);
     box(g, 0.065, 0.13, 0.03, 0, -0.03, 0.555, poly);
     g.userData = { muzzle: -1.0, sightY: 0.105, grip: [-0.1, 0.16], fore: [-0.03, -0.32] };
+  },
+  pistol(g, a) {
+    const { metal, dark, steel, poly } = MAT;
+    prof(g, [[-0.16, 0.04], [-0.12, 0.052], [0.06, 0.052], [0.08, 0.038], [0.08, 0.0], [-0.16, 0.0]], 0.036, 0, metal, 0.004);
+    box(g, 0.026, 0.012, 0.16, 0, 0.056, -0.04, dark);
+    prof(g, [[-0.12, 0.0], [0.07, 0.0], [0.07, -0.026], [-0.12, -0.026]], 0.03, 0, dark, 0.003);
+    cyl(g, 0.011, 0.011, 0.07, 0, 0.026, -0.2, steel, 8); cyl(g, 0.014, 0.014, 0.012, 0, 0.026, -0.24, a, 8);
+    box(g, 0.012, 0.014, 0.016, 0, 0.066, -0.14, dark); box(g, 0.016, 0.014, 0.014, 0, 0.066, 0.06, dark);
+    prof(g, [[0.03, 0.0], [0.075, 0.0], [0.1, -0.13], [0.055, -0.13]], 0.034, 0, poly, 0.004);
+    guard(g, -0.02, -0.03);
+    g.userData = { muzzle: -0.24, sightY: 0.07, grip: [-0.07, 0.07], fore: [-0.07, 0.07] };
+  },
+  lmg(g, a) {
+    const { metal, dark, steel, poly, glass } = MAT;
+    prof(g, [[-0.22, 0.056], [0.2, 0.062], [0.24, 0.04], [0.24, -0.05], [-0.22, -0.05]], 0.07, 0, metal, 0.006);
+    box(g, 0.03, 0.012, 0.5, 0, 0.07, -0.05, dark);
+    prof(g, [[-0.2, 0.04], [-0.62, 0.034], [-0.62, -0.036], [-0.2, -0.046]], 0.07, 0, metal, 0.007);
+    for (const z of [-0.3, -0.4, -0.5]) box(g, 0.076, 0.02, 0.04, 0, 0, z, dark);
+    cyl(g, 0.013, 0.013, 0.16, 0, 0.004, -0.7, steel); cyl(g, 0.022, 0.018, 0.08, 0, 0.004, -0.79, dark, 8); cyl(g, 0.024, 0.024, 0.012, 0, 0.004, -0.74, a);
+    // bipied replié + poignée de transport
+    for (const s of [-1, 1]) cyl(g, 0.006, 0.006, 0.2, s * 0.03, -0.06, -0.5, steel, 6).rotation.set(1.2, 0, 0);
+    cyl(g, 0.008, 0.008, 0.16, 0, 0.1, -0.12, steel, 8).rotation.set(0, 0, Math.PI / 2);
+    box(g, 0.014, 0.05, 0.014, 0, 0.1, -0.18, dark); box(g, 0.014, 0.05, 0.014, 0, 0.1, -0.06, dark);
+    // boîte de munitions
+    box(g, 0.1, 0.13, 0.15, 0, -0.12, 0.02, dark); box(g, 0.103, 0.03, 0.153, 0, -0.095, 0.02, a);
+    // viseur point rouge
+    box(g, 0.04, 0.02, 0.06, 0, 0.088, 0.14, dark); for (const s of [-1, 1]) box(g, 0.006, 0.04, 0.06, s * 0.018, 0.105, 0.14, dark);
+    box(g, 0.04, 0.008, 0.06, 0, 0.125, 0.14, dark); box(g, 0.03, 0.03, 0.004, 0, 0.105, 0.11, glass);
+    prof(g, [[0.1, -0.05], [0.15, -0.05], [0.19, -0.17], [0.135, -0.17]], 0.044, 0, poly, 0.006);
+    guard(g, 0.03, -0.07);
+    prof(g, [[0.24, 0.04], [0.42, 0.05], [0.46, 0.05], [0.46, -0.09], [0.4, -0.09], [0.24, -0.05]], 0.052, 0, poly, 0.006);
+    box(g, 0.06, 0.13, 0.02, 0, -0.02, 0.465, dark);
+    g.userData = { muzzle: -0.8, sightY: 0.11, grip: [-0.12, 0.15], fore: [-0.06, -0.3] };
   },
   launcher(g, a) {
     const { metal, dark, poly, olive, orange, glass } = MAT;
