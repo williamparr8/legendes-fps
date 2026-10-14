@@ -15,6 +15,7 @@ import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
 import { recommend, powerLabel } from '../match/balance.js';
 import { setSquad } from './lobby.js';
 import { rankInfo } from '../shop/rank.js';
+import { embHtml, banCss } from '../shop/cosmetics.js';
 import { openOffers, leftText as offersLeft, unseen as offersUnseen } from '../shop/daily.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
@@ -295,7 +296,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gems" data-act="gemsopen" title="Obtenir des Éclats">${GEM} ${profile.gems} <i>+</i></button><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
       </div>
       <div class="lo-left">
-        <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
+        <div class="lo-friend" style="${banCss(profile.eq.ban)}"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${embHtml(profile.eq.emb)} ${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
         ${roomChip}
@@ -471,7 +472,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     if (!el || this.screen !== 'lobby') return;
     el.innerHTML = roster.map((p) => {
       const L = LEGENDS[p.legend], pw = p.pw | 0;
-      return `<div class="sq-lab"><b>${esc(p.name)}${p.host ? ' 👑' : ''}</b><span style="color:${L ? L.color : '#fff'}">${L ? L.name : ''}</span>
+      return `<div class="sq-lab" style="${banCss(p.bn)}"><b>${embHtml(p.em)} ${esc(p.name)}${p.host ? ' 👑' : ''}</b><span style="color:${L ? L.color : '#fff'}">${L ? L.name : ''}</span>
         <i><u style="width:${pw}%"></u></i><small>Niv. ${p.lv | 0} · ${powerLabel(pw)} (${pw})</small><small style="color:${rankInfo(p.rp | 0).color}">${rankInfo(p.rp | 0).name}</small></div>`;
     }).join('');
     // recommandation : calculée ici pour l'hôte (avec la taille d'équipe choisie), reçue de l'hôte pour les autres
@@ -543,7 +544,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     const oo = openOffers();
     const nearHtml = (top3.length ? `<div class="near"><small>Tu y es presque</small>${top3.map((x) => `<div class="nr"><span>${esc(x.t)}</span><div class="lo-xp wide"><i style="width:${Math.round(100 * x.f)}%"></i></div></div>`).join('')}</div>` : '')
       + (oo.length ? `<p class="gain" style="color:#ffd070">Boutique du jour : ${oo.length} offre${oo.length > 1 ? 's' : ''} à prix réduit, plus que ${offersLeft()}</p>` : '');
-    return `<div class="panel narrow"><h2 style="text-align:center">${r.win ? 'VICTOIRE !' : 'Éliminé'}</h2>
+    const idLine = `<p class="idline" style="${banCss(profile.eq.ban)}">${embHtml(profile.eq.emb)} ${esc(settings.name || 'Joueur')}</p>`;
+    return `<div class="panel narrow"><h2 style="text-align:center">${r.win ? 'VICTOIRE !' : 'Éliminé'}</h2>${idLine}
       <div class="place">#${r.place}<small style="font-size:18px;opacity:.7"> / ${r.total}</small></div>
       ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal) · niveau ${levelInfo().level}</p>` : ''}
       ${rankHtml}

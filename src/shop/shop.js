@@ -7,6 +7,7 @@ import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
 import { buySkin, GEM } from './pass.js';
 import { offers, offerFor, buyOffer, leftText, markSeen } from './daily.js';
+import { COSM, buyCosm } from './cosmetics.js';
 import { thumbImg, thumbTick } from './thumbs.js';
 
 // Écran Boutique : cartes de skins (personnage / arme), aperçu 3D à droite (rendu par Game.render via shopFrame), sauvegarde.
@@ -15,7 +16,33 @@ const $ = (id) => document.getElementById(id);
 
 export function shopOpen() { S.sel = profile.eq[S.kind] - 1; S.msg = ''; S.saveOpen = false; markSeen(); }
 
+// Onglets Emblèmes / Bannières : cartes simples (pas d'aperçu 3D d'arme).
+function cosmHtml() {
+  const k = S.kind, list = COSM[k], eq = profile.eq[k] - 1, d0 = list[S.sel];
+  const tab = (t, n) => `<button class="tab${S.kind === t ? ' sel' : ''}" data-act="stab" data-k="${t}">${n}</button>`;
+  const cards = list.map((d, i) => {
+    const own = owns(k, i), st = eq === i ? '<em class="eq">Équipé</em>' : own ? '<em class="ow">Possédé</em>' : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= d.p ? 'ok' : 'pr'}">◆ ${d.p} pts</em>`;
+    const pv = k === 'emb' ? `<div class="cp" style="color:${d.c}">${d.g}</div>` : `<div class="cp ban" style="background:linear-gradient(90deg,${d.a},${d.b})">Joueur</div>`;
+    return `<div class="sc cosm${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${d.gems ? '#ffd070' : '#5a6573'}">${pv}<b>${d.n}</b><small style="color:${d.gems ? '#ffd070' : '#9aa5b1'}">${d.gems ? 'Premium' : 'Boutique en points'}</small>${st}</div>`;
+  }).join('');
+  let act = '<button disabled>Choisis un élément</button>';
+  if (S.sel === -1) act = eq === -1 ? '<button disabled>Aucun équipé</button>' : '<button class="primary" data-act="seq" data-i="-1">Ne rien équiper</button>';
+  else if (d0 && owns(k, S.sel)) act = eq === S.sel ? `<button class="primary" data-act="seq" data-i="-1">Retirer</button>` : `<button class="primary" data-act="seq" data-i="${S.sel}">Équiper</button>`;
+  else if (d0) {
+    const have = d0.gems ? profile.gems : profile.pts, cost = d0.gems || d0.p;
+    act = have >= cost ? `<button class="primary" data-act="cbuy" data-k="${k}" data-i="${S.sel}">Acheter — ${d0.gems ? GEM + ' ' + cost : cost + ' pts'}</button>`
+      : d0.gems ? `<button class="primary" data-act="gemsopen">Il manque ${cost - have} ${GEM} — Obtenir des Éclats</button>` : `<button disabled>Il manque ${cost - have} pts (${cost})</button>`;
+  }
+  return `<div class="panel shop"><h2>Boutique <span class="pts">${profile.pts} pts</span> <span class="pts" style="color:#ffe27a">${GEM} ${profile.gems}</span></h2>
+    <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}${tab('emb', 'Emblèmes')}${tab('ban', 'Bannières')}</div>
+    <p style="text-align:left;opacity:.75;margin:0 0 8px">${k === 'emb' ? 'Un emblème s\'affiche à côté de ton nom (hall, salon, résultats).' : 'Une bannière colore le fond de ta plaque de nom (hall, salon, résultats).'}</p>
+    <div class="scards cosms">${cards}</div>
+    <div class="row sact"><span class="smsg">${S.msg}</span>${act}</div>
+    <div class="row"><button data-act="back">Retour</button></div></div>`;
+}
+
 export function shopHtml() {
+  if (S.kind === 'emb' || S.kind === 'ban') return cosmHtml();
   const k = S.kind, list = LIST[k], eq = profile.eq[k] - 1, cards = [];
   const card = (i, name, rar, pal, st, th = '') => `<div class="sc${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${rar ? rar.c : '#5a6573'}">
       ${th}<b>${name}</b><small style="color:${rar ? rar.c : '#9aa5b1'}">${rar ? rar.n : 'Par défaut'}</small>
@@ -60,7 +87,7 @@ export function shopHtml() {
         ${thumbImg(o.kind, o.def.id)}<b>${o.def.n}</b><small>${o.kind === 'perso' ? 'Tenue' : 'Arme'}${o.def.daily ? ' · exclusif du jour' : ''}</small>
         ${own ? '<em class="ow">Possédé</em>' : `<em class="ok">${sym} ${o.price} <s>${o.base}</s></em>`}</div>`;
     }).join('')}</div></div>
-    <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}</div>
+    <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}${tab('emb', 'Emblèmes')}${tab('ban', 'Bannières')}</div>
     <div class="scards">${cards.join('')}</div>
     <div class="row sact"><span class="smsg">${S.msg}</span>${act}</div>
     <p class="sstats">Collection ${got} / ${total} · ${profile.games} parties · ${profile.kills} éliminations · ${profile.wins} victoires · ${profile.earned} pts gagnés</p>
@@ -79,6 +106,7 @@ export function shopAct(ui, a, d) {
     case 'stab': S.kind = d.k; S.sel = profile.eq[d.k] - 1; break;
     case 'spick': S.sel = +d.i; break;
     case 'seq': equip(S.kind, +d.i + 1); break;
+    case 'cbuy': { const r = buyCosm(d.k, +d.i); S.msg = r === 'ok' ? 'Acheté et équipé !' : r === 'gems' ? "Pas assez d'Éclats." : r === 'pts' ? 'Pas assez de points.' : ''; break; }
     case 'soffsel': S.kind = d.k; S.sel = +d.i; break;
     case 'soffer': if (buyOffer(d.k, +d.i)) S.msg = 'Offre du jour achetée et équipée !'; else S.msg = 'Pas assez pour cette offre.'; break;
     case 'sgem': if (buySkin(S.kind, +d.i)) S.msg = 'Acheté et équipé !'; else S.msg = "Pas assez d'Éclats."; break;

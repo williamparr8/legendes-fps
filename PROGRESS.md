@@ -284,3 +284,7 @@
 ### Calendrier de connexion + bonus premier achat (2026-10-14)
 - Cycle de 7 jours selon la série (`LOGIN` dans profile.js) : +30, +45, +60, +80, +100, +130, puis jour 7 = +250 pts et +25 ✦ ; la tuile du hall ouvre le calendrier (récupération dans la fenêtre). Série : jamais remise à zéro (divisée par 2 après des jours manqués).
 - Premier achat d'Éclats (par appareil, `legendes-fps-firstbuy`) : +500 ✦ de bonus (1500 au lieu de 1000), affiché dans la fenêtre Éclats et dans le message de crédit.
+
+### Emblèmes et bannières (2026-10-14)
+- `shop/cosmetics.js` : 16 emblèmes (glyphes colorés : 13 en points 200-1200, 3 premium en Éclats) et 10 bannières (7 en points 300-1500, 3 premium) ; Boutique : onglets Emblèmes / Bannières (achat = équipé). Profil v5 (own/eq `emb` et `ban`, ancien v1-v4 importables). Affichés sur la carte du hall, les étiquettes du salon (annoncés par chaque joueur : `em`/`bn`) et l'écran de résultats.
+- Testé : achats points/Éclats, doublon, code v5, compat v4, rendu boutique. Visuel jamais vu à l'écran (couleurs des bannières, glyphes selon les polices).

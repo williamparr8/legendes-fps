@@ -327,3 +327,12 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-cal.done{opacity:.55}.lo-cal i{position:absolute;right:4px;top:2px;color:#6fe06f;font-style:normal;font-size:14px}
 .lo-first{background:linear-gradient(90deg,#ff7a3a33,transparent);border-left:4px solid #ff7a3a;padding:8px 12px;margin:8px 0!important;text-transform:none}
 @media(max-width:700px){.lo-cals{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Emblèmes et bannières */
+.emb{font-size:1.05em;filter:drop-shadow(0 1px 2px #000)}
+.cosms{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.sc.cosm .cp{height:70px;display:grid;place-items:center;font-size:38px;border-radius:6px;background:#0a0f1a}
+.sc.cosm .cp.ban{font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000}
+.idline{text-align:center;margin:0 0 8px!important;padding:5px 10px;border-radius:4px;font-weight:700;letter-spacing:.05em;background:#ffffff0f}
+.sq-lab[style*="gradient"]{padding:3px 6px;border-radius:5px;width:auto;min-width:130px}
+.lo-friend[style*="gradient"]{border-left-color:#fff}
