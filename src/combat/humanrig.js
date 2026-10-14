@@ -12,7 +12,7 @@ import legends from '../legends/legends.json';
 // Même interface que le Rig procédural (humanoid.js) : constructor(group, friendly), setFriendly, setAccent, setSkins, animate.
 // Le modèle est chargé une fois et cloné par acteur (géométrie et textures partagées) ; un AnimationMixer par acteur.
 const LEGS = Object.keys(legends), WIDS = Object.keys(wdefs);
-export const human = { ready: false, scene: null, variants: [], next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
+export const human = { ready: false, scene: null, variants: [], bodies: {}, next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
 
 // url : premier modèle (avec les clips) ; extras : autres corps (même squelette, sans clips) pour varier les acteurs.
 export function loadHuman(url, extras = []) {
@@ -23,7 +23,12 @@ export function loadHuman(url, extras = []) {
     if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
   });
   for (const u of extras) {
-    new GLTFLoader().load(u, (g) => { prep(g.scene); human.variants.push(g.scene); }, undefined, () => {});
+    new GLTFLoader().load(u, (g) => {
+      prep(g.scene);
+      const nm = u.split('/').pop().replace('.glb', '');
+      if (nm === 'eve' || nm === 'maria') human.bodies[nm] = g.scene; // corps réservés aux skins (pas dans la rotation par défaut)
+      else human.variants.push(g.scene);
+    }, undefined, () => {});
   }
   return new Promise((res) => {
     new GLTFLoader().load(url, (g) => {
@@ -81,8 +86,14 @@ const _v = new THREE.Vector3();
 
 export class HumanRig {
   constructor(group, friendly) {
-    this.g = group;
-    this.root = clone(human.variants[human.next++ % human.variants.length] || human.scene); // corps varié d'un acteur à l'autre
+    this.g = group; this.friendly = friendly; this.body = null;
+    this.build(null);
+  }
+
+  // Construit le corps (scene = modèle imposé par un skin, sinon corps varié d'un acteur à l'autre) et tous ses attachements.
+  build(scene) {
+    const group = this.g, friendly = this.friendly;
+    this.root = clone(scene || human.variants[human.next++ % human.variants.length] || human.scene);
     this.root.rotation.y = Math.PI; // le modèle regarde +z, le jeu -z
     const box = new THREE.Box3().setFromObject(this.root);
     this.root.position.y = -box.min.y;
@@ -141,13 +152,29 @@ export class HumanRig {
     this.wid = undefined; this.ud = null; this.pskin = 0; this.wskin = 0;
     this.lx = 0; this.lz = 0; this.init = false; this.speed = 0; this.vx = 0; this.vz = 0;
     this.kick = 0; this.sc = 0;
-    this.mats = null;
+    this.mats = null; this.sk = null;
   }
 
-  setFriendly(f) { const m = f ? FRIEND : ENEMY; for (const o of this.team) o.material = m; }
+  // Change de corps (skins de personnage à modèle propre) en conservant équipe, légende, arme.
+  setBody(name) {
+    const sc = name ? human.bodies[name] : null;
+    if (name && !sc) return;
+    this.g.remove(this.root, this.wp, this.canopy);
+    this.mixer.stopAllAction();
+    const wid = this.wid;
+    this.build(sc);
+    this.body = name;
+    this.curName = ''; this.cur = null;
+    this.setFriendly(this.friendly);
+    if (this.accHex != null) this.setAccent(this.accHex, this.accLeg);
+    if (wid) this.setWeapon(wid);
+  }
+
+  setFriendly(f) { this.friendly = f; const m = f ? FRIEND : ENEMY; for (const o of this.team) o.material = m; }
 
   // Couleur d'accent + accessoire propre à la légende.
   setAccent(hex, legend) {
+    this.accHex = hex; this.accLeg = legend;
     const h = typeof hex === 'string' ? parseInt(hex.slice(1), 16) : hex, m = accentMat(h);
     this.band.material = m;
     const i = LEGS.indexOf(legend);
@@ -166,8 +193,10 @@ export class HumanRig {
   // Skins cosmétiques (indices + 1 dans skins.json) : teinte du personnage ; skin d'arme appliqué à l'arme tenue.
   setSkins(ps, ws) {
     if (ps !== this.pskin) {
-      this.pskin = ps;
       const def = skinData.perso[ps - 1];
+      const want = def && def.body && human.bodies[def.body] ? def.body : null;
+      if (want !== this.body) this.setBody(want);
+      this.pskin = ps;
       if (!this.mats) { // matériaux propres à l'acteur seulement quand une teinte est demandée
         this.mats = [];
         this.root.traverse((o) => { if (o.isSkinnedMesh) { o.material = o.material.clone(); this.mats.push(o.material); } });

@@ -39,7 +39,7 @@ export class Game {
     bakeSky(this.renderer, new THREE.Vector3(60, 100, 30).normalize());
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
-    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb']); // personnage animé ; en attendant, silhouette procédurale
+    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb', import.meta.env.BASE_URL + 'models/eve.glb', import.meta.env.BASE_URL + 'models/maria.glb']); // personnage animé ; en attendant, silhouette procédurale
     this.menuScene = new THREE.Scene();
     this.menuScene.background = new THREE.Color(0x0b0f14);
     addEventListener('resize', () => {
