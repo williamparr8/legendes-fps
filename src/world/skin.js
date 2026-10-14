@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PBR_KINDS, pbrMaterial, terrainPbr } from './pbr.js';
 
 // Matériaux « peau » procéduraux : motif + relief (bump) calculés dans le shader à partir de la position monde
 // (pas de texture, pas d'étirement quelle que soit la taille de la boîte). Le relief perturbe la normale (dérivées d'écran),
@@ -138,6 +139,7 @@ function patch(mat) {
 }
 
 export function skinMaterial(kind, flat = false) {
+  if (PBR_KINDS[kind]) return pbrMaterial(kind, flat); // textures photo (voir pbr.js) ; le reste reste procédural
   const key = kind + (flat ? 'f' : '');
   if (cache[key]) return cache[key];
   const mat = kind === 8 // verre : spéculaire + transparence
@@ -149,6 +151,7 @@ export function skinMaterial(kind, flat = false) {
 
 // Terrain : couleurs par sommet (altitude/pente) × taches et brins d'herbe procéduraux + relief fin.
 export function terrainMaterial(map) {
+  if (!map || map.usePbr !== false) return terrainPbr();
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map });
   mat.defines = { SKIN: 7 };
   return patch(mat);

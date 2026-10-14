@@ -13,6 +13,7 @@ const ROOF = [0x7a3f32, 0x5f4a40, 0x4d5560, 0x6e5a3c];
 const WOOD = [0xb08a60, 0xa07a50, 0x8a6a45, 0xc09a68];
 const CLOTH = [0x4f6a8a, 0x8a4f4f, 0x5a7a54, 0x7a6a8a];
 const BRICK = [0xb8624a, 0xa8553f, 0xc07a58, 0x9a5442, 0xb86a50];
+const PLASTER = [0xe8dfc8, 0xd9c9a0, 0xc9d4d8, 0xe0b8a0, 0xcfd8c0];
 const SIDING = [0xd8d2c0, 0x8da0b0, 0x7a9476, 0xc0ae92, 0xb5877a];
 
 function wallPieces(w, axis, fixed, a0, a1, yb, h, gaps, col, kind = 0) {
@@ -74,7 +75,9 @@ export function buildBuilding(w, r, spec) {
   if (style === 'phare') { col = 0xe9e6dc; trim = 0xb33a30; }
   else if (style === 'house' || style === 'farm' || style === 'default' || style === 'ruin') {
     const k = r();
-    if (k < 0.5) { wallKind = 9; col = BRICK[(r() * BRICK.length) | 0]; } else if (k < 0.8 && style !== 'ruin') { wallKind = 10; col = SIDING[(r() * SIDING.length) | 0]; }
+    if (k < 0.45) { wallKind = 9; col = BRICK[(r() * BRICK.length) | 0]; }
+    else if (k < 0.65 && style !== 'ruin') { wallKind = 10; col = SIDING[(r() * SIDING.length) | 0]; }
+    else if (k < 0.85 && style !== 'ruin') { wallKind = 12; col = PLASTER[(r() * PLASTER.length) | 0]; }
   } else if (style === 'industrial' || style === 'warehouse') wallKind = 3;
   const x0 = cx - sx / 2, x1 = cx + sx / 2, z0 = cz - sz / 2, z1 = cz + sz / 2, G = 3.6;
   const pitched = (style === 'house' || style === 'farm') && n <= 2 && r() < 0.8; // toit à pignon : pas d'accès au toit

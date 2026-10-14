@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, HORIZON } from './terrain.js';
+import { Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, HORIZON } from './terrain.js';
 import { buildBuilding } from './buildings.js';
 import { buildDecor } from './decor.js';
 import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
@@ -33,6 +33,7 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   sun.position.set(60, 100, 30);
   scene.add(sun, sun.target);
   buildSky(scene, new THREE.Vector3(60, 100, 30));
+  if (getSkyEnv()) { scene.environment = getSkyEnv(); scene.environmentIntensity = 0.55; }
   buildMountains(scene, seed);
   buildWater(scene);
 

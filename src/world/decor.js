@@ -86,12 +86,12 @@ export function buildDecor(w, E) {
     if (type === 'truck') {
       const cab = alongX ? [x + L / 2 - 1.8, z - Wd / 2, x + L / 2, z + Wd / 2] : [x - Wd / 2, z + L / 2 - 1.8, x + Wd / 2, z + L / 2];
       const car = alongX ? [x - L / 2, z - Wd / 2, x + L / 2 - 1.9, z + Wd / 2] : [x - Wd / 2, z - L / 2, x + Wd / 2, z + L / 2 - 1.9];
-      w.box(car[0], gy + 0.5, car[1], car[2], gy + 3.0, car[3], 0x8a8f96, 3);
-      w.box(cab[0], gy + 0.5, cab[1], cab[2], gy + 2.6, cab[3], c, 3);
+      w.box(car[0], gy + 0.5, car[1], car[2], gy + 3.0, car[3], 0x8a8f96, 13);
+      w.box(cab[0], gy + 0.5, cab[1], cab[2], gy + 2.6, cab[3], c, 13);
     } else {
-      w.box(x - bx, gy + 0.35, z - bz, x + bx, gy + 1.1, z + bz, c, 3);
+      w.box(x - bx, gy + 0.35, z - bz, x + bx, gy + 1.1, z + bz, c, 13);
       const cx0 = alongX ? x - 1.5 : x - bx + 0.1, cx1 = alongX ? x + 0.8 : x + bx - 0.1, cz0 = alongX ? z - bz + 0.1 : z - 1.5, cz1 = alongX ? z + bz - 0.1 : z + 0.8;
-      w.box(cx0, gy + 1.1, cz0, cx1, gy + 1.85, cz1, 0x2b3640, 3);
+      w.box(cx0, gy + 1.1, cz0, cx1, gy + 1.85, cz1, 0x2b3640, 13);
     }
     for (const sx of [-1, 1]) for (const sz of (type === 'truck' ? [-0.38, 0.1, 0.4] : [-0.3, 0.3])) {
       const wx = alongX ? x + sz * L : x + sx * (Wd / 2 - 0.05), wz = alongX ? z + sx * (Wd / 2 - 0.05) : z + sz * L;

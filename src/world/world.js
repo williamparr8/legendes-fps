@@ -30,8 +30,8 @@ export class World {
     this.colliders = new Colliders();
     this.pads = [];
     this.zips = [];
-    this._boxes = Array.from({ length: 12 }, () => []); // solides (collision + ombres), un tableau par matériau
-    this._deco = Array.from({ length: 12 }, () => []);  // décors sans collision ni ombre portée
+    this._boxes = Array.from({ length: 16 }, () => []); // solides (collision + ombres), un tableau par matériau
+    this._deco = Array.from({ length: 16 }, () => []);  // décors sans collision ni ombre portée
     this._shapes = new Map();   // 'forme|matériau' → [[x,y,z, qx,qy,qz,qw, sx,sy,sz, couleur], …]
     this.groundY = () => 0;
     this.sun = null;
