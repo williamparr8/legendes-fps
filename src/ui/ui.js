@@ -14,6 +14,8 @@ import { friends, seen as seenFriends, forget as forgetFriend, add as addFriend,
 import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
 import { recommend, powerLabel } from '../match/balance.js';
 import { setSquad } from './lobby.js';
+import { rankInfo } from '../shop/rank.js';
+import { openOffers, leftText as offersLeft, unseen as offersUnseen } from '../shop/daily.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
@@ -163,6 +165,7 @@ export class UI {
     const L = levelInfo(), D = dailies(), W = weeklies(), SE = season(), M = MODES[this.mode], LG = LEGENDS[this.legend];
     const LV = LEGENDS[this.view && LEGENDS[this.view] ? this.view : this.legend], vid = this.view && LEGENDS[this.view] ? this.view : this.legend;
     const left = pending(), nextQ = D.concat(W).find((q) => !q.done);
+    const RK = rankInfo(profile.rp), OO = openOffers(), fresh = offersUnseen();
     const hasNew = false;
     const EV = eventInfo(), canClaim = dailyClaimable();
     const fr = friends().slice(0, 3);
@@ -222,7 +225,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         const box = (v, l) => `<div class="lo-sbox"><b>${v}</b><span>${l}</span></div>`;
         const mx = Math.max(10, ...st.hist);
         const bars = st.hist.map((v, i) => `<rect x="${i * 24 + 4}" y="${(70 - 60 * v / mx).toFixed(1)}" width="18" height="${(60 * v / mx).toFixed(1)}" rx="2"><title>${v} pts</title></rect>`).join('');
-        body = `<div class="lo-sgrid">${box(L.level, 'Niveau')}${box(profile.games, 'Parties')}${box(profile.wins + ' (' + wr + ' %)', 'Victoires')}${box(st.top3, 'Top 3')}${box(st.bestPlace ? '#' + st.bestPlace : '—', 'Meilleur rang')}
+        body = `<div class="lo-sgrid">${box(RK.name, 'Rang classé')}${box(rankInfo(profile.peak).name, 'Meilleur rang de la saison')}${box(L.level, 'Niveau')}${box(profile.games, 'Parties')}${box(profile.wins + ' (' + wr + ' %)', 'Victoires')}${box(st.top3, 'Top 3')}${box(st.bestPlace ? '#' + st.bestPlace : '—', 'Meilleur rang')}
           ${box(profile.kills, 'Éliminations')}${box(kpg, 'Élim. / partie')}${box(st.bestKills, 'Record d\'élim.')}${box(st.dmg, 'Dégâts')}${box(acc + ' %', 'Précision')}${box(hsr + ' %', 'Tirs à la tête')}${box(favW, 'Arme préférée')}${box(favL, 'Légende préférée')}${box(profile.streak + ' j', 'Série de connexion')}${box(profile.earned, 'Points gagnés')}</div>
           <h3>Points gagnés sur les 12 dernières parties</h3><svg class="lo-chart" viewBox="0 0 292 80"><g fill="#ffd070">${bars}</g></svg>`;
       } else if (pf === 'ach') {
@@ -281,8 +284,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     }
     return `<div class="lo${mine ? ' mine' : ''}">
       <div class="lo-top">
-        <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleName() || titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${esc(titleName() || titleFor(SE.tier, SE.n))} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
-        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Mes légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('profile', 'Profil', 'ltab', hasNew ? '<span class="lo-badge new">!</span>' : '')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
+        <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleName() || titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${esc(titleName() || titleFor(SE.tier, SE.n))} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small><small style="color:${RK.color}">${RK.name} · ${RK.top ? RK.into + ' RP' : RK.into + ' / 100 RP'}</small></div></div>
+        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Mes légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('profile', 'Profil', 'ltab', hasNew ? '<span class="lo-badge new">!</span>' : '')}${tab('shop', 'Boutique', 'shop', fresh ? '<span class="lo-badge new">!</span>' : '')}${tab('opt', 'Options', 'options')}</nav>
         <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gems" data-act="gemsopen" title="Obtenir des Éclats">${GEM} ${profile.gems} <i>+</i></button><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
       </div>
       <div class="lo-left">
@@ -307,7 +310,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <button class="lo-tile ev${EV.active ? ' on' : ''}" data-act="ltab" data-t="quests" title="${esc(EV.ev.desc)}"><small>${EV.active ? 'Événement en cours · ×' + EVENT_MULT + ' points' : 'Prochain événement'}</small><b>${esc(EV.ev.name)}</b><span>${EV.active ? esc(EV.ev.desc) + ' · ' + EV.text : EV.text}</span></button>
         <button class="lo-tile daily${canClaim ? ' on' : ''}" ${canClaim ? 'data-act="claim"' : ''}><small>Bonus quotidien · série de ${profile.streak} jour${profile.streak > 1 ? 's' : ''}</small><b>${canClaim ? 'Récupérer +' + dailyBonus() + ' pts' : 'Déjà récupéré ✔'}</b><span>${canClaim ? 'La série augmente chaque jour de connexion' : 'Demain : +' + (20 + 15 * Math.min(profile.streak + 1, 7)) + ' pts'}</span></button>
         <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis (jour · semaine)</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
-        <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
+        <button class="lo-tile alt${fresh ? ' on' : ''}" data-act="shop"><small>Boutique du jour · renouvelée dans ${offersLeft()}</small><b>${OO.length ? OO.length + ' offre' + (OO.length > 1 ? 's' : '') + ' de -25 % à -40 %' : 'Offres du jour achetées ✔'}</b><span>${fresh ? 'NOUVEAU · ' : ''}${OO[0] ? esc(OO[0].def.n) + ' à -' + OO[0].pct + ' %' : profile.pts + ' points'}</span></button>
       </div>
       ${mineHtml}
       ${zoomHtml}
@@ -463,7 +466,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     el.innerHTML = roster.map((p) => {
       const L = LEGENDS[p.legend], pw = p.pw | 0;
       return `<div class="sq-lab"><b>${esc(p.name)}${p.host ? ' 👑' : ''}</b><span style="color:${L ? L.color : '#fff'}">${L ? L.name : ''}</span>
-        <i><u style="width:${pw}%"></u></i><small>Niv. ${p.lv | 0} · ${powerLabel(pw)} (${pw})</small></div>`;
+        <i><u style="width:${pw}%"></u></i><small>Niv. ${p.lv | 0} · ${powerLabel(pw)} (${pw})</small><small style="color:${rankInfo(p.rp | 0).color}">${rankInfo(p.rp | 0).name}</small></div>`;
     }).join('');
     // recommandation : calculée ici pour l'hôte (avec la taille d'équipe choisie), reçue de l'hôte pour les autres
     const sz = $('c-size') ? +$('c-size').value : 3, s = this.game.session;
@@ -520,12 +523,28 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     const buttons = !s ? '<button data-act="menu">Menu</button><button class="primary" data-act="replay">Rejouer</button>'
       : s.role === 'host' ? '<button data-act="menu">Quitter</button><button class="primary" data-act="tolobby">Retour au salon (termine la partie pour tous)</button>'
         : '<button data-act="menu">Quitter</button><p style="margin:0;align-self:center">Retour au salon quand l\'hôte le décidera…</p>';
+    const rk = r.rank;
+    const rankHtml = rk && rk.counted ? `<div class="rk"><b style="color:${rk.after.color}">${rk.after.name}</b> <em class="${rk.delta >= 0 ? 'up' : 'down'}">${rk.delta >= 0 ? '▲ +' : '▼ '}${rk.delta} RP</em>${rk.promoted ? ' <strong>PROMOTION !</strong>' : ''}
+      <div class="lo-xp wide"><i style="width:${rk.after.top ? 100 : rk.after.into}%"></i></div><small>${rk.after.top ? rk.after.into + ' RP en Légende' : 'encore ' + (100 - rk.after.into) + ' RP avant ' + rk.after.next}</small></div>` : '';
+    // « tu y es presque » : les objectifs les plus proches, pour donner envie de relancer tout de suite
+    const near = [];
+    { const L2 = levelInfo(); near.push({ f: L2.xp / L2.need, t: `Niveau ${L2.level + 1} : encore ${L2.need - L2.xp} XP` });
+      const S2 = season(); if (S2.tier < S2.tiers) near.push({ f: (S2.tierXp - S2.toNext) / S2.tierXp, t: `Palier de saison ${S2.tier + 1} : encore ${S2.toNext} XP` });
+      const R2 = rankInfo(profile.rp); if (!R2.top) near.push({ f: R2.into / 100, t: `${R2.next} : encore ${100 - R2.into} RP` });
+      for (const q of dailies().concat(weeklies())) if (!q.done) near.push({ f: q.p / q.n, t: `${q.txt} : encore ${q.n - q.p}` }); }
+    near.sort((a, b) => b.f - a.f);
+    const top3 = near.filter((x) => x.f > 0.3).slice(0, 3);
+    const oo = openOffers();
+    const nearHtml = (top3.length ? `<div class="near"><small>Tu y es presque</small>${top3.map((x) => `<div class="nr"><span>${esc(x.t)}</span><div class="lo-xp wide"><i style="width:${Math.round(100 * x.f)}%"></i></div></div>`).join('')}</div>` : '')
+      + (oo.length ? `<p class="gain" style="color:#ffd070">Boutique du jour : ${oo.length} offre${oo.length > 1 ? 's' : ''} à prix réduit, plus que ${offersLeft()}</p>` : '');
     return `<div class="panel narrow"><h2 style="text-align:center">${r.win ? 'VICTOIRE !' : 'Éliminé'}</h2>
       <div class="place">#${r.place}<small style="font-size:18px;opacity:.7"> / ${r.total}</small></div>
       ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal) · niveau ${levelInfo().level}</p>` : ''}
+      ${rankHtml}
       ${(r.quests || []).map((q) => `<p class="gain">Défi accompli : ${q.txt} · +${q.reward} points</p>`).join('')}
       ${(r.ach || []).map((q) => `<p class="gain" style="color:#ff9af0">${q.txt} · +${q.reward} points</p>`).join('')}
       ${r.event ? `<p class="gain">Événement actif : points ×${EVENT_MULT}</p>` : ''}
+      ${nearHtml}
       <div class="stats"><div><b>${r.kills}</b>Éliminations</div><div><b>${r.damage}</b>Dégâts infligés</div><div><b>${t}</b>Temps de survie</div><div><b>${LEGENDS[this.legend].name}</b>Légende</div></div>
       <div class="row">${buttons}</div></div>`;
   }

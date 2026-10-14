@@ -26,6 +26,7 @@ import { MapView } from './ui/map.js';
 import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
 import { achMatch } from './shop/achievements.js';
+import { rankMatch, rankSeason } from './shop/rank.js';
 import { touchDay } from './shop/profile.js';
 import { shopFrame } from './shop/shop.js';
 import { lobbyFrame, squadFrame } from './ui/lobby.js';
@@ -76,6 +77,8 @@ export class Game {
       else if (e.code === 'Escape' && this.inv.open) { this.inv.close(); this.ui.show('pause'); }
     });
     touchDay(); // série de connexion
+    const rkNote = rankSeason(); // fin de saison classée : récompense + remise à niveau douce
+    if (rkNote) setTimeout(() => this.banner(rkNote), 2500);
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
     if (invite) this.ui.show('online', { code: invite }); else { this.ui.show('main'); setTimeout(() => this.openMyRoom(), 1200); }
     startLoop((dt) => this.update(dt), (a, dt) => this.render(a, dt), () => !!this.m && !!this.m.net);
@@ -318,11 +321,12 @@ export class Game {
     const m = this.m;
     if (m && res.ms === undefined) { // statistiques locales de la partie + contexte (légende, événement)
       res.ms = Object.assign({}, m.combat.mstat, { heals: m.inv.healUsed | 0 });
-      res.leg = this.ui.legend; res.event = m.cfg && m.cfg.event ? m.cfg.event : null;
+      res.leg = this.ui.legend; res.event = m.cfg && m.cfg.event ? m.cfg.event : null; res.diff = m.cfg && m.cfg.difficulty ? m.cfg.difficulty : 'normal';
     }
     awardMatch(res); // points de la partie (une seule fois : res.pts sert de drapeau)
     questsMatch(res); // défis quotidiens, hebdomadaires, saison
     achMatch(res); // succès
+    rankMatch(res); // rang classé (RP)
     this.state = 'results';
     this.chatting = false; this.chatIn.style.display = 'none';
     document.exitPointerLock();

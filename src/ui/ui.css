@@ -305,3 +305,16 @@ button.lo-season:hover{background:#2a3aa088!important}
 .sq-stats b{display:block;font-size:20px;color:#fff;letter-spacing:0;text-transform:none}.sq-stats em{font-style:normal;opacity:.7;text-transform:none;letter-spacing:0}
 .sq-go{padding:14px 34px!important;font-size:20px!important}
 .sq-adv{flex:1 1 280px;max-width:420px;font-size:13px}.sq-adv details{margin-top:6px;max-height:34vh;overflow:auto;background:#0a0f32e0;padding:8px 10px}.sq-adv summary{cursor:pointer}
+
+/* Boutique du jour, rang classé, « presque » */
+.sdaily{margin-bottom:10px}.sgrp.daily{border-color:#ff7a3a;background:linear-gradient(90deg,#ff7a3a33,transparent)}.sgrp.daily b{color:#ffb070}
+.soffers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.sc.offer{position:relative}.sc.offer .th{height:84px}
+.sc .star{position:absolute;right:6px;top:6px;background:#ff3a2a;color:#fff;font-style:normal;font-weight:800;font-size:12px;padding:2px 7px;border-radius:10px;z-index:1}.sc .star.n{background:#c0602a}
+.sc em s{opacity:.55;margin-left:4px;font-weight:400}
+.rk{background:#ffffff0f;padding:10px 14px;margin:8px 0;border-left:4px solid #ffd070}.rk b{font-size:20px}.rk em{font-style:normal;font-weight:700;margin-left:8px}.rk em.up{color:#6fe06f}.rk em.down{color:#ff8a80}
+.rk strong{color:#ffd070;margin-left:6px}.rk small{opacity:.75;display:block;margin-top:3px}
+.near{margin:10px 0;padding:10px 14px;background:#ffffff0a;border-left:4px solid #6a78ff}.near small{display:block;opacity:.7;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.nr{margin:6px 0;font-size:13px}.nr .lo-xp{margin:3px 0 0}
+@media(max-width:900px){.soffers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.scards{max-height:38vh!important}

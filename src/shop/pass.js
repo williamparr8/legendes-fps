@@ -111,7 +111,7 @@ export function buyPass(season) {
 // Achète un skin à prix en Éclats.
 export function buySkin(kind, i) {
   const d = LIST[kind][i];
-  if (!d || !d.gems || profile.gems < d.gems || (profile.own[kind] >> i) & 1) return false;
+  if (!d || !d.gems || d.daily || profile.gems < d.gems || (profile.own[kind] >> i) & 1) return false; // « daily » : seulement via la boutique du jour (daily.js)
   profile.gems -= d.gems; profile.own[kind] |= 1 << i; profile.eq[kind] = i + 1; save();
   return true;
 }

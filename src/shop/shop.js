@@ -6,13 +6,14 @@ import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
 import { buySkin, GEM } from './pass.js';
+import { offers, offerFor, buyOffer, leftText, markSeen } from './daily.js';
 import { thumbImg, thumbTick } from './thumbs.js';
 
 // Écran Boutique : cartes de skins (personnage / arme), aperçu 3D à droite (rendu par Game.render via shopFrame), sauvegarde.
 const S = { kind: 'perso', sel: -1, msg: '', saveOpen: false }; // sel : indice du skin affiché (-1 = tenue par défaut)
 const $ = (id) => document.getElementById(id);
 
-export function shopOpen() { S.sel = profile.eq[S.kind] - 1; S.msg = ''; S.saveOpen = false; }
+export function shopOpen() { S.sel = profile.eq[S.kind] - 1; S.msg = ''; S.saveOpen = false; markSeen(); }
 
 export function shopHtml() {
   const k = S.kind, list = LIST[k], eq = profile.eq[k] - 1, cards = [];
@@ -22,6 +23,7 @@ export function shopHtml() {
   // sections : points ◆ (gratuit + points), Éclats ✦ (premium), Pass (paliers)
   const groups = { pts: [card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`, '<div class="th th-none">Par défaut</div>')], gems: [], pass: [] };
   list.forEach((d, i) => {
+    if (d.daily && !owns(k, i)) return; // visible seulement dans les offres du jour
     const c = price(d);
     const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">◆ ${c} pts</em>`;
     const html = card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], d.p || d.w, st, thumbImg(k, d.id));
@@ -35,6 +37,11 @@ export function shopHtml() {
   let act;
   if (S.sel === -1) act = eq === -1 ? '<button disabled>Équipé</button>' : '<button class="primary" data-act="seq" data-i="-1">Équiper la tenue d\'origine</button>';
   else if (owns(k, S.sel)) act = eq === S.sel ? '<button disabled>Équipé</button>' : `<button class="primary" data-act="seq" data-i="${S.sel}">Équiper</button>`;
+  else if (offerFor(k, S.sel)) {
+    const o = offerFor(k, S.sel), have = o.cur === 'gems' ? profile.gems : profile.pts, sym = o.cur === 'gems' ? GEM : '◆', unit = o.cur === 'gems' ? '' : ' pts';
+    act = have >= o.price ? `<button class="primary" data-act="soffer" data-k="${k}" data-i="${S.sel}">Offre du jour — ${sym} ${o.price}${unit} <s style="opacity:.6">${o.base}</s> (-${o.pct} %)</button>`
+      : o.cur === 'gems' ? `<button class="primary" data-act="gemsopen">Il manque ${o.price - have} ${GEM} — Obtenir des Éclats</button>` : `<button disabled>Il manque ${o.price - have} pts (${o.price})</button>`;
+  } else if (list[S.sel].daily) act = '<button disabled>Disponible seulement dans une offre du jour</button>';
   else if (list[S.sel].pass) act = `<button disabled>Exclusif au Pass de saison — palier ${list[S.sel].pass}</button>`;
   else if (list[S.sel].gems) {
     const c = list[S.sel].gems;
@@ -47,6 +54,12 @@ export function shopHtml() {
   const tab = (t, n) => `<button class="tab${S.kind === t ? ' sel' : ''}" data-act="stab" data-k="${t}">${n}</button>`;
   const total = LIST.perso.length + LIST.arme.length, got = ['perso', 'arme'].reduce((n, t) => n + LIST[t].filter((_, i) => owns(t, i)).length, 0);
   return `<div class="panel shop"><h2>Boutique <span class="pts">${profile.pts} pts</span> <span class="pts" style="color:#ffe27a">${GEM} ${profile.gems}</span></h2>
+    <div class="sdaily"><div class="sgrp daily"><b>⏱ Offres du jour</b><span>Se renouvellent dans ${leftText()} · -25 % à -40 %</span></div><div class="soffers">${offers().map((o) => {
+      const own = owns(o.kind, o.i), sym = o.cur === 'gems' ? GEM : '◆', rar = o.def.gems ? { c: '#ffd070' } : RAR[o.def.r];
+      return `<div class="sc offer${S.kind === o.kind && S.sel === o.i ? ' sel' : ''}" data-act="soffsel" data-k="${o.kind}" data-i="${o.i}" style="border-color:${rar.c}">${o.star ? '<i class="star">-' + o.pct + ' %</i>' : '<i class="star n">-' + o.pct + ' %</i>'}
+        ${thumbImg(o.kind, o.def.id)}<b>${o.def.n}</b><small>${o.kind === 'perso' ? 'Tenue' : 'Arme'}${o.def.daily ? ' · exclusif du jour' : ''}</small>
+        ${own ? '<em class="ow">Possédé</em>' : `<em class="ok">${sym} ${o.price} <s>${o.base}</s></em>`}</div>`;
+    }).join('')}</div></div>
     <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}</div>
     <div class="scards">${cards.join('')}</div>
     <div class="row sact"><span class="smsg">${S.msg}</span>${act}</div>
@@ -66,6 +79,8 @@ export function shopAct(ui, a, d) {
     case 'stab': S.kind = d.k; S.sel = profile.eq[d.k] - 1; break;
     case 'spick': S.sel = +d.i; break;
     case 'seq': equip(S.kind, +d.i + 1); break;
+    case 'soffsel': S.kind = d.k; S.sel = +d.i; break;
+    case 'soffer': if (buyOffer(d.k, +d.i)) S.msg = 'Offre du jour achetée et équipée !'; else S.msg = 'Pas assez pour cette offre.'; break;
     case 'sgem': if (buySkin(S.kind, +d.i)) S.msg = 'Acheté et équipé !'; else S.msg = "Pas assez d'Éclats."; break;
     case 'sbuy': if (buy(S.kind, +d.i)) S.msg = 'Acheté et équipé !'; else S.msg = 'Pas assez de points.'; break;
     case 'svcopy': {

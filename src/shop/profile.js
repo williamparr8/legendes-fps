@@ -26,6 +26,7 @@ const blankStats = () => ({ shots: 0, hits: 0, hs: 0, dmg: 0, top3: 0, bestPlace
 export const profile = {
   pts: 0, own: { perso: 0, arme: 0 }, eq: { perso: 0, arme: 0 }, games: 0, kills: 0, wins: 0, earned: 0, gems: 0, pass: 0,
   ach: 0, title: 0, streak: 0, lastDay: 0, claimed: 0, legs: FREE_MASK, st: blankStats(),
+  rp: 0, peak: 0, rseason: 0, // rang classé : points de rang, meilleur de la saison, saison courante (voir rank.js)
 };
 
 const sum = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
@@ -34,8 +35,8 @@ const unb64 = (s) => atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice(
 
 export function exportCode() {
   const p = profile, s = p.st;
-  const v = [3, p.pts, p.own.perso, p.own.arme, p.eq.perso, p.eq.arme, p.games, p.kills, p.wins, p.earned, p.gems, p.pass,
-    p.ach, p.title, p.streak, p.lastDay, p.claimed, p.legs, s.shots, s.hits, s.hs, s.dmg, s.top3, s.bestPlace, s.bestKills, s.heals, ...s.w, ...s.l, ...s.hist];
+  const v = [4, p.pts, p.own.perso, p.own.arme, p.eq.perso, p.eq.arme, p.games, p.kills, p.wins, p.earned, p.gems, p.pass,
+    p.ach, p.title, p.streak, p.lastDay, p.claimed, p.legs, s.shots, s.hits, s.hs, s.dmg, s.top3, s.bestPlace, s.bestKills, s.heals, ...s.w, ...s.l, ...s.hist, p.rp, p.peak, p.rseason];
   const body = v.join('.');
   return 'LF' + b64(body + '~' + sum(SALT + body));
 }
@@ -48,14 +49,14 @@ function decode(code) {
     const [body, cs] = unb64(s.slice(2)).split('~');
     if (!body || cs !== sum(SALT + body)) return null;
     const v = body.split('.').map(Number);
-    const ver = v[0], need = ver === 1 ? 10 : ver === 2 ? 12 : ver === 3 ? 54 : -1;
+    const ver = v[0], need = ver === 1 ? 10 : ver === 2 ? 12 : ver === 3 ? 54 : ver === 4 ? 57 : -1;
     if (v.length !== need || v.some((n) => !Number.isInteger(n) || n < 0)) return null;
     const [, pts, op, oa, ep, ea, games, kills, wins, earned, gems = 0, pass = 0] = v;
     if (ep > LIST.perso.length || ea > LIST.arme.length) return null;
     if (ep && !(op >> (ep - 1) & 1)) return null;
     if (ea && !(oa >> (ea - 1) & 1)) return null;
-    const o = { pts, own: { perso: op, arme: oa }, eq: { perso: ep, arme: ea }, games, kills, wins, earned, gems, pass, ach: 0, title: 0, streak: 0, lastDay: 0, claimed: 0, legs: games > 0 ? ALL_MASK : FREE_MASK, st: blankStats() };
-    if (ver === 3) {
+    const o = { pts, own: { perso: op, arme: oa }, eq: { perso: ep, arme: ea }, games, kills, wins, earned, gems, pass, ach: 0, title: 0, streak: 0, lastDay: 0, claimed: 0, legs: games > 0 ? ALL_MASK : FREE_MASK, st: blankStats(), rp: 0, peak: 0, rseason: 0 };
+    if (ver >= 3) {
       let i = 12;
       o.ach = v[i++]; o.title = v[i++]; o.streak = v[i++]; o.lastDay = v[i++]; o.claimed = v[i++]; o.legs = v[i++] | FREE_MASK;
       const st = o.st;
@@ -63,6 +64,7 @@ function decode(code) {
       for (let k = 0; k < SLOTS_W; k++) st.w[k] = v[i++];
       for (let k = 0; k < SLOTS_L; k++) st.l[k] = v[i++];
       for (let k = 0; k < HIST; k++) st.hist[k] = v[i++];
+      if (ver === 4) { o.rp = v[i++]; o.peak = v[i++]; o.rseason = v[i++]; }
     }
     return o;
   } catch (e) { return null; }

@@ -156,6 +156,60 @@
       "gems": 700,
       "p": [ "#fff0a0", "#2a1a04", "#ffc830", "#e0bc98", "#1a1004", "#ffe880", "#5a3a08", "#3a2406", "#ffc830" ],
       "s": 16
+    },
+    {
+      "id": "braise2",
+      "n": "Braise ardente",
+      "r": 2,
+      "daily": 1,
+      "gems": 300,
+      "p": [ "#c8321a", "#3a0a06", "#ff8a20", "#e0bc98", "#1e0604", "#ffcf50", "#5a1208", "#2a0a06", "#ff6a1a" ],
+      "s": 3
+    },
+    {
+      "id": "cyberrose",
+      "n": "Cyber rose",
+      "r": 2,
+      "daily": 1,
+      "gems": 300,
+      "p": [ "#ff2a9a", "#120818", "#2a1a3a", "#e0bc98", "#0a0410", "#ff5ac8", "#1a0f2a", "#00e0ff", "#ff2a9a" ],
+      "s": 4
+    },
+    {
+      "id": "nebuleuse",
+      "n": "Nébuleuse",
+      "r": 3,
+      "daily": 1,
+      "gems": 500,
+      "p": [ "#2a1a5a", "#0a0620", "#7a3aff", "#e0bc98", "#06040f", "#c0a0ff", "#1a1040", "#40ffe0", "#7a3aff" ],
+      "s": 6
+    },
+    {
+      "id": "tigre",
+      "n": "Tigre blanc",
+      "r": 2,
+      "daily": 1,
+      "gems": 300,
+      "p": [ "#d8dce0", "#14161a", "#f2f4f6", "#e0bc98", "#0c0d10", "#a0c8ff", "#b8bcc4", "#22252b", "#e8eaec" ],
+      "s": 2
+    },
+    {
+      "id": "vipere",
+      "n": "Vipère",
+      "r": 3,
+      "daily": 1,
+      "gems": 500,
+      "p": [ "#ff4ad8", "#12041a", "#8a2aff", "#d8b894", "#0a020f", "#d070ff", "#2a0a3a", "#1a0626", "#8a2aff" ],
+      "s": 15
+    },
+    {
+      "id": "chrome",
+      "n": "Chrome",
+      "r": 3,
+      "daily": 1,
+      "gems": 500,
+      "p": [ "#8a9098", "#1a1c20", "#cfd6de", "#e0bc98", "#101216", "#ffffff", "#5a5f66", "#3a3e44", "#e8edf2" ],
+      "s": 5
     }
   ],
   "arme": [
@@ -270,6 +324,42 @@
       "gems": 400,
       "w": [ "#ffc830", "#2a1a04", "#fff0a0", "#5a3a08", "#ffc830", "#ffe880" ],
       "s": 16
+    },
+    {
+      "id": "braise2",
+      "n": "Braise",
+      "r": 2,
+      "daily": 1,
+      "gems": 180,
+      "w": [ "#ff8a20", "#3a0a06", "#c8321a", "#5a1208", "#ff6a1a", "#ffcf50" ],
+      "s": 3
+    },
+    {
+      "id": "cyberrose",
+      "n": "Cyber rose",
+      "r": 2,
+      "daily": 1,
+      "gems": 180,
+      "w": [ "#2a1a3a", "#120818", "#ff2a9a", "#1a0f2a", "#00e0ff", "#ff5ac8" ],
+      "s": 4
+    },
+    {
+      "id": "nebuleuse",
+      "n": "Nébuleuse",
+      "r": 3,
+      "daily": 1,
+      "gems": 300,
+      "w": [ "#7a3aff", "#0a0620", "#40ffe0", "#1a1040", "#7a3aff", "#c0a0ff" ],
+      "s": 6
+    },
+    {
+      "id": "chrome",
+      "n": "Chrome",
+      "r": 3,
+      "daily": 1,
+      "gems": 300,
+      "w": [ "#cfd6de", "#1a1c20", "#ffffff", "#5a5f66", "#e8edf2", "#ffffff" ],
+      "s": 5
     }
   ]
 }
