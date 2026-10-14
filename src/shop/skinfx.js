@@ -136,6 +136,6 @@ export function setSkinStyle(uni, def, kind) {
   else { uni.uSk1.value.set(a[0]); uni.uSk2.value.set(a[2]); uni.uSk3.value.set(a[1]); uni.uSkGl.value.set(a[5]); }
   if (def.s === 4 || def.s === 6) uni.uSk2.value.set(a[7] || a[5]);
   if (def.s === 5) uni.uSk2.value.set(a[5]);
-  uni.uSkGlowI.value = 0.6 + Math.min(def.r, 3) * 0.5;
+  uni.uSkGlowI.value = def.s >= 9 ? 0.4 : 0.6 + Math.min(def.r, 3) * 0.5; // styles animés : lueur déjà forte dans le motif
   return def.s;
 }
