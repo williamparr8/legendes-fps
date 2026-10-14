@@ -52,7 +52,8 @@ export class Abilities {
     const prev = this.actor, prevPv = this.pv;
     this.actor = actor; this.pv = actor.pv;
     actor.pv = this.pv = Object.assign(actor.pv || {}, defaultPv());
-    actor.health.maxShield = 50; actor.health.shield = 50;
+    const ms = 50 + (actor.armorExtra || 0); // l'armure du joueur survit aux réinitialisations
+    actor.health.maxShield = ms; actor.health.shield = ms;
     PASSIVES[L.passive.type](this, L.passive);
     this.actor = prev; this.pv = prevPv;
   }

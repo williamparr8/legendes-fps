@@ -40,6 +40,19 @@ const MODEL = {
     add(g, bx(0.36, 0.22, 0.16), M.white, 0, 0.11, 0); add(g, bx(0.14, 0.05, 0.03), M.dark, 0, 0.245, 0);
     add(g, bx(0.1, 0.03, 0.006), M.crossRed, 0, 0.12, 0.083); add(g, bx(0.03, 0.1, 0.006), M.crossRed, 0, 0.12, 0.083);
   },
+  'armor:armor': (g) => {
+    add(g, bx(0.34, 0.4, 0.12), M.dark, 0, 0.22, 0); add(g, bx(0.26, 0.28, 0.03), M.steel, 0, 0.24, 0.075);
+    add(g, bx(0.1, 0.12, 0.12), M.dark, -0.22, 0.38, 0); add(g, bx(0.1, 0.12, 0.12), M.dark, 0.22, 0.38, 0);
+  },
+  'helmet:helmet': (g) => {
+    const dome = add(g, new THREE.SphereGeometry(0.16, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.darkOlive, 0, 0.12, 0);
+    dome.scale.set(1, 0.9, 1.1);
+    add(g, bx(0.3, 0.025, 0.3), M.dark, 0, 0.115, 0); add(g, bx(0.2, 0.06, 0.02), M.glass, 0, 0.17, 0.17);
+  },
+  'pack:pack': (g) => {
+    add(g, bx(0.3, 0.38, 0.18), M.olive, 0, 0.21, 0); add(g, bx(0.26, 0.12, 0.06), M.darkOlive, 0, 0.12, 0.12);
+    add(g, bx(0.04, 0.34, 0.04), M.dark, -0.1, 0.22, -0.11); add(g, bx(0.04, 0.34, 0.04), M.dark, 0.1, 0.22, -0.11);
+  },
   'heal:cell': (g) => {
     add(g, cy(0.085, 0.24, 14), M.cell, 0, 0.14, 0); add(g, cy(0.09, 0.03, 14), M.dark, 0, 0.275, 0); add(g, cy(0.09, 0.03, 14), M.dark, 0, 0.015, 0);
     add(g, cy(0.03, 0.04, 8), M.steel, 0, 0.31, 0);

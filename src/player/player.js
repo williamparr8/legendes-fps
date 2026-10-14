@@ -38,6 +38,7 @@ export class Player {
     this.grounded = false;
     this.sliding = false;
     this.prompt = '';
+    this.stepD = 0; this.shake = 0;
     this.phase = 0; this.dropT = 0; this.attached = false; this.drop = this.drop || null; // largage (voir match/drop.js)
     this.padCd = 0; this.zipCd = 0;
     this.zip = null; this.zipT = 0; this.zipDir = 1; this.zipSpeed = 0;
@@ -144,6 +145,12 @@ export class Player {
     this.moveH(this.vx * dt, this.vz * dt);
     this.moveV(dt, wasGrounded);
     if (!wasGrounded && this.grounded && preVy < -9) this.sfx.land(-preVy);
+    // pas : un bruit tous les ~2 m au sol (course plus forte, accroupi presque silencieux)
+    if (this.grounded && !this.sliding) {
+      this.stepD += Math.hypot(this.x - this.px, this.z - this.pz);
+      const sprint = this.state === 'sprint', stride = sprint ? 2.7 : 2.1;
+      if (this.stepD > stride) { this.stepD = 0; if (this.h > 1.8) this.sfx.step(this.x, this.y, this.z, sprint ? 0.5 : 0.28); }
+    }
 
     // --- mantle / tyrolienne ---
     if (!down) {
@@ -322,6 +329,10 @@ export class Player {
     }
     cam.position.set(cx, ey, cz);
     cam.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    if (this.shake > 0.0004) { // secousse (dégâts, explosions proches)
+      this.shake *= Math.exp(-dt * 7);
+      cam.rotation.x += (Math.random() - 0.5) * this.shake; cam.rotation.y += (Math.random() - 0.5) * this.shake;
+    } else this.shake = 0;
     let tf = this.sliding ? M.fovSlide : this.state === 'sprint' || this.state === 'tyrolienne' || this.phase === 2 ? M.fovSprint : M.fov;
     tf += (this.adsFov - tf) * this.ads;
     if (Math.abs(tf - this.fov) > 0.01) {

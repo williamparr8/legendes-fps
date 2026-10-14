@@ -29,19 +29,32 @@ export class Pings {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, fog: false }));
       sp.center.set(0.5, 0); sp.renderOrder = 20; sp.visible = false; sp.frustumCulled = false;
       scene.add(sp);
-      this.items.push({ sp, cv, tex, life: 0, kind: 0, d: -1, x: 0, y: 0, z: 0 });
+      this.items.push({ sp, cv, tex, life: 0, kind: 0, d: -1, x: 0, y: 0, z: 0, owner: -9 });
     }
     this.cd = 0;
   }
 
+  // Retire le marqueur d'un joueur ; renvoie true s'il existait.
+  remove(owner) {
+    let had = false;
+    for (const p of this.items) if (p.owner === owner && p.life > 0) { p.life = 0; p.sp.visible = false; had = true; }
+    return had;
+  }
+
+  // Un seul marqueur par joueur (owner : identifiant du joueur) : le nouveau remplace l'ancien.
+  // Viser (à moins de 3 m) le marqueur qu'on vient de poser le retire (renvoie 'removed').
   // kind : 0 le mien · 1 coéquipier · 2 ennemi
-  add(x, y, z, kind = 0) {
+  add(x, y, z, kind = 0, owner = 0, toggle = false) {
     let it = null;
-    for (const p of this.items) if (p.life <= 0) { it = p; break; }
-    if (!it) { it = this.items[0]; for (const p of this.items) if (p.life < it.life) it = p; } // le plus ancien est remplacé
+    for (const p of this.items) if (p.owner === owner && p.life > 0) { it = p; break; }
+    if (it && toggle && Math.hypot(it.x - x, it.y - y, it.z - z) < 3) { it.life = 0; it.sp.visible = false; return 'removed'; }
+    if (!it) for (const p of this.items) if (p.life <= 0) { it = p; break; }
+    if (!it) { it = this.items[0]; for (const p of this.items) if (p.life < it.life) it = p; } // plus aucun emplacement libre : le plus ancien
+    it.owner = owner;
     it.life = LIFE; it.kind = kind; it.d = -1; it.x = x; it.y = y; it.z = z;
     it.sp.position.set(x, y + 0.15, z); it.sp.visible = true; it.sp.material.opacity = 1;
     sfx.ping();
+    return 'added';
   }
 
   tick(dt, px, py, pz) {

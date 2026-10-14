@@ -1,5 +1,6 @@
 import defs from './weapons.json';
 import { sfx, shotKind, setListener } from '../core/audio.js';
+import items from '../loot/items.json';
 import { Weapons } from './weapon.js';
 import { Projectiles } from './projectiles.js';
 import { Fx } from './fx.js';
@@ -25,6 +26,13 @@ export class Combat {
     this.onDown = null; this.onDeath = null; this.onDamage = null;
     this.hitmark = 0; this.hitKind = 0; this.dmgSum = 0; this.dmgT = 0; this.hurt = 0;
     this.revive = 0; this.deadT = 0;
+    this.dmgDirs = []; this.killMsg = null; this.heartT = 0; // retours de jeu : directions des dégâts, confirmation d'élimination, cœur
+  }
+
+  // Secousse de la caméra du joueur pour une explosion en (x,y,z) de rayon r.
+  shakeAt(x, y, z, r) {
+    const p = this.player, d = Math.hypot(p.x - x, p.y - y, p.z - z), lim = Math.max(16, r * 3);
+    if (d < lim) p.shake = Math.min(0.06, (p.shake || 0) + (1 - d / lim) * 0.05);
   }
 
   add(t) { this.targets.push(t); this.all.push(t); return t; }
@@ -72,9 +80,17 @@ export class Combat {
       down = s.downed; dead = s.dead;
     } else {
       amount *= t.takenMul;
+      if (t.isPlayer && zone === 0) amount *= 1 - items.gear.helmet[this.weapons.inv.gear.helmet]; // casque : moins de dégâts à la tête
       h.damage(amount);
       if (attacker) t.lastAttacker = attacker;
-      if (t.isPlayer) { this.hurt = 0.4; sfx.hurt(); this.player.sinceDamage = 0; }
+      if (t.isPlayer) {
+        this.hurt = 0.4; sfx.hurt(); this.player.sinceDamage = 0;
+        this.player.shake = Math.min(0.05, (this.player.shake || 0) + amount * 0.0007);
+        if (attacker && attacker !== t && Number.isFinite(attacker.x)) { // d'où vient le coup (indicateur à l'écran)
+          const d = this.dmgDirs.find((q) => q.a === attacker) || (this.dmgDirs.length < 5 ? this.dmgDirs[this.dmgDirs.push({ a: attacker, x: 0, z: 0, t: 0 }) - 1] : this.dmgDirs[0]);
+          d.a = attacker; d.x = attacker.x; d.z = attacker.z; d.t = 1.4;
+        }
+      }
       else if (t.onHurt) t.onHurt(attacker, amount);
       down = h.downed; dead = h.dead;
     }
@@ -82,6 +98,7 @@ export class Combat {
       const kill = (dead && !wasDead) || (down && !wasDown);
       this.hitKind = kill ? 2 : zone === 0 ? 1 : 0;
       this.hitmark = 0.18; sfx.hit(this.hitKind);
+      if (kill) { this.killMsg = { text: (dead && !wasDead ? 'ÉLIMINÉ' : 'ASSOMMÉ') + (t.name ? ' · ' + t.name : ''), t: 1.8 }; sfx.kill(); }
       this.dmgSum += amount; this.dmgT = 1;
       const mk = this.player.pv.markOnHit;
       if (mk > 0 && t.markT < mk) t.markT = mk;
@@ -165,6 +182,7 @@ export class Combat {
 
   explode(x, y, z, pr, owner = this.pp) {
     this.fx.explosion(x, y, z, pr.splashRadius);
+    this.shakeAt(x, y, z, pr.splashRadius);
     const R = pr.splashRadius, all = this.all;
     for (let i = 0; i < all.length; i++) {
       const t = all[i];
@@ -192,6 +210,21 @@ export class Combat {
     }
     this.fx.tick(dt);
     setListener(this.player.x, this.player.y, this.player.z);
+    // pas des autres acteurs (bots, joueurs distants) : un bruit tous les ~2,3 m parcourus
+    for (let i = 0; i < this.all.length; i++) {
+      const t = this.all[i];
+      if (t === this.pp || t.health.dead || t.stance >= 4) continue;
+      if (t._sx === undefined) { t._sx = t.x; t._sz = t.z; t._sd = 0; continue; }
+      const m = Math.hypot(t.x - t._sx, t.z - t._sz);
+      t._sx = t.x; t._sz = t.z;
+      if (m > 3 || m < 0.003) continue;
+      t._sd += m;
+      if (t._sd > 2.3) { t._sd = 0; sfx.step(t.x, t.y, t.z, t.stance === 1 ? 0.12 : 0.34); }
+    }
+    for (let i = this.dmgDirs.length - 1; i >= 0; i--) if ((this.dmgDirs[i].t -= dt) <= 0) this.dmgDirs.splice(i, 1);
+    if (this.killMsg && (this.killMsg.t -= dt) <= 0) this.killMsg = null;
+    const ph = this.player.health; // cœur qui bat quand il reste peu de vie
+    if (ph.alive && !ph.downed && ph.hp <= 30) { if ((this.heartT -= dt) <= 0) { this.heartT = 0.9; sfx.heart(); } } else this.heartT = 0;
     if (this.hitmark > 0) this.hitmark -= dt;
     if (this.hurt > 0) this.hurt -= dt;
     if (this.dmgT > 0 && (this.dmgT -= dt) <= 0) this.dmgSum = 0;

@@ -7,13 +7,14 @@ export class Inventory {
   constructor() {
     this.ammo = { light: 0, shells: 0, sniper: 0, rocket: 0 };
     this.heal = { syringe: 0, medkit: 0, cell: 0 };
+    this.gear = { armor: 0, helmet: 0, pack: 0 }; // paliers 0 (rien) à 3
     this.useKey = null; this.useT = 0; this.useDur = 1;
   }
 
   // Ajoute jusqu'au plafond ; retourne la quantité réellement ajoutée.
   add(kind, key, amount) {
     const store = kind === 'ammo' ? this.ammo : this.heal;
-    const cap = (kind === 'ammo' ? items.ammoCaps : items.healCaps)[key];
+    const cap = this.cap(kind, key);
     const n = Math.min(cap - store[key], amount);
     if (n <= 0) return 0;
     store[key] += n;
@@ -23,7 +24,21 @@ export class Inventory {
   // Place restante pour cet objet (munitions / soins) ; sert au ramassage automatique.
   room(kind, key) {
     const store = kind === 'ammo' ? this.ammo : this.heal;
-    return (kind === 'ammo' ? items.ammoCaps : items.healCaps)[key] - store[key];
+    return store ? this.cap(kind, key) - store[key] : 0;
+  }
+
+  // Capacité effective (le sac à dos l'augmente).
+  cap(kind, key) { return Math.floor((kind === 'ammo' ? items.ammoCaps : items.healCaps)[key] * items.gear.pack[this.gear.pack]); }
+
+  // Équipe (ou retire, tier 0) une pièce d'équipement ; l'armure ajoute du bouclier maximal (appliqué aussi à chaque réapparition).
+  setGear(kind, tier, player) {
+    const old = this.gear[kind];
+    this.gear[kind] = tier;
+    if (kind === 'armor') {
+      const d = items.gear.armor[tier] - items.gear.armor[old], h = player.health;
+      player.armorExtra = items.gear.armor[tier];
+      h.maxShield += d; h.shield = Math.max(0, Math.min(h.maxShield, h.shield + (d > 0 ? d : 0)));
+    }
   }
 
   get progress() { return this.useKey ? 1 - this.useT / this.useDur : 0; }

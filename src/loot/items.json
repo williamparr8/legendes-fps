@@ -1,23 +1,397 @@
 {
-  "ammoCaps": { "light": 180, "shells": 36, "sniper": 24, "rocket": 12 },
-  "healCaps": { "syringe": 8, "medkit": 3, "cell": 4 },
+  "ammoCaps": {
+    "light": 180,
+    "shells": 36,
+    "sniper": 24,
+    "rocket": 12
+  },
+  "healCaps": {
+    "syringe": 8,
+    "medkit": 3,
+    "cell": 4
+  },
   "healing": {
-    "syringe": { "name": "Seringue", "time": 2, "hp": 25, "shield": 0 },
-    "medkit": { "name": "Kit médical", "time": 4, "hp": 100, "shield": 0 },
-    "cell": { "name": "Cellule de bouclier", "time": 3, "hp": 0, "shield": 50 }
+    "syringe": {
+      "name": "Seringue",
+      "time": 2,
+      "hp": 25,
+      "shield": 0
+    },
+    "medkit": {
+      "name": "Kit médical",
+      "time": 4,
+      "hp": 100,
+      "shield": 0
+    },
+    "cell": {
+      "name": "Cellule de bouclier",
+      "time": 3,
+      "hp": 0,
+      "shield": 50
+    }
   },
   "table": [
-    { "kind": "ammo", "key": "light", "amount": 40, "name": "Munitions légères", "color": "#f0c040", "w": 22 },
-    { "kind": "ammo", "key": "shells", "amount": 10, "name": "Cartouches", "color": "#e05030", "w": 8 },
-    { "kind": "ammo", "key": "sniper", "amount": 8, "name": "Munitions sniper", "color": "#40c070", "w": 5 },
-    { "kind": "ammo", "key": "rocket", "amount": 3, "name": "Roquettes", "color": "#d08030", "w": 3 },
-    { "kind": "heal", "key": "syringe", "amount": 2, "name": "Seringue", "color": "#60e0ff", "w": 14 },
-    { "kind": "heal", "key": "medkit", "amount": 1, "name": "Kit médical", "color": "#ffffff", "w": 6 },
-    { "kind": "heal", "key": "cell", "amount": 1, "name": "Cellule de bouclier", "color": "#4080ff", "w": 10 },
-    { "kind": "weapon", "key": "rifle", "amount": 1, "name": "Fusil d'assaut", "color": "#8899aa", "w": 9 },
-    { "kind": "weapon", "key": "smg", "amount": 1, "name": "Mitraillette", "color": "#aa88cc", "w": 9 },
-    { "kind": "weapon", "key": "shotgun", "amount": 1, "name": "Fusil à pompe", "color": "#cc9966", "w": 7 },
-    { "kind": "weapon", "key": "sniper", "amount": 1, "name": "Sniper", "color": "#66aa66", "w": 4 },
-    { "kind": "weapon", "key": "launcher", "amount": 1, "name": "Lance-roquettes", "color": "#cc6644", "w": 2 }
-  ]
+    {
+      "kind": "ammo",
+      "key": "light",
+      "amount": 40,
+      "name": "Munitions légères",
+      "color": "#f0c040",
+      "w": 22
+    },
+    {
+      "kind": "ammo",
+      "key": "shells",
+      "amount": 10,
+      "name": "Cartouches",
+      "color": "#e05030",
+      "w": 8
+    },
+    {
+      "kind": "ammo",
+      "key": "sniper",
+      "amount": 8,
+      "name": "Munitions sniper",
+      "color": "#40c070",
+      "w": 5
+    },
+    {
+      "kind": "ammo",
+      "key": "rocket",
+      "amount": 3,
+      "name": "Roquettes",
+      "color": "#d08030",
+      "w": 3
+    },
+    {
+      "kind": "heal",
+      "key": "syringe",
+      "amount": 2,
+      "name": "Seringue",
+      "color": "#60e0ff",
+      "w": 14
+    },
+    {
+      "kind": "heal",
+      "key": "medkit",
+      "amount": 1,
+      "name": "Kit médical",
+      "color": "#ffffff",
+      "w": 6
+    },
+    {
+      "kind": "heal",
+      "key": "cell",
+      "amount": 1,
+      "name": "Cellule de bouclier",
+      "color": "#4080ff",
+      "w": 10
+    },
+    {
+      "kind": "weapon",
+      "key": "rifle",
+      "amount": 1,
+      "name": "Fusil d'assaut",
+      "color": "#cfd6dd",
+      "w": 5.58
+    },
+    {
+      "kind": "weapon",
+      "key": "rifle",
+      "rar": 1,
+      "amount": 1,
+      "name": "Fusil d'assaut (rare)",
+      "color": "#4aa3ff",
+      "w": 2.16
+    },
+    {
+      "kind": "weapon",
+      "key": "rifle",
+      "rar": 2,
+      "amount": 1,
+      "name": "Fusil d'assaut (épique)",
+      "color": "#b266ff",
+      "w": 0.99
+    },
+    {
+      "kind": "weapon",
+      "key": "rifle",
+      "rar": 3,
+      "amount": 1,
+      "name": "Fusil d'assaut (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.27
+    },
+    {
+      "kind": "weapon",
+      "key": "smg",
+      "amount": 1,
+      "name": "Mitraillette",
+      "color": "#cfd6dd",
+      "w": 5.58
+    },
+    {
+      "kind": "weapon",
+      "key": "smg",
+      "rar": 1,
+      "amount": 1,
+      "name": "Mitraillette (rare)",
+      "color": "#4aa3ff",
+      "w": 2.16
+    },
+    {
+      "kind": "weapon",
+      "key": "smg",
+      "rar": 2,
+      "amount": 1,
+      "name": "Mitraillette (épique)",
+      "color": "#b266ff",
+      "w": 0.99
+    },
+    {
+      "kind": "weapon",
+      "key": "smg",
+      "rar": 3,
+      "amount": 1,
+      "name": "Mitraillette (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.27
+    },
+    {
+      "kind": "weapon",
+      "key": "shotgun",
+      "amount": 1,
+      "name": "Fusil à pompe",
+      "color": "#cfd6dd",
+      "w": 4.34
+    },
+    {
+      "kind": "weapon",
+      "key": "shotgun",
+      "rar": 1,
+      "amount": 1,
+      "name": "Fusil à pompe (rare)",
+      "color": "#4aa3ff",
+      "w": 1.68
+    },
+    {
+      "kind": "weapon",
+      "key": "shotgun",
+      "rar": 2,
+      "amount": 1,
+      "name": "Fusil à pompe (épique)",
+      "color": "#b266ff",
+      "w": 0.77
+    },
+    {
+      "kind": "weapon",
+      "key": "shotgun",
+      "rar": 3,
+      "amount": 1,
+      "name": "Fusil à pompe (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.21
+    },
+    {
+      "kind": "weapon",
+      "key": "sniper",
+      "amount": 1,
+      "name": "Sniper",
+      "color": "#cfd6dd",
+      "w": 2.48
+    },
+    {
+      "kind": "weapon",
+      "key": "sniper",
+      "rar": 1,
+      "amount": 1,
+      "name": "Sniper (rare)",
+      "color": "#4aa3ff",
+      "w": 0.96
+    },
+    {
+      "kind": "weapon",
+      "key": "sniper",
+      "rar": 2,
+      "amount": 1,
+      "name": "Sniper (épique)",
+      "color": "#b266ff",
+      "w": 0.44
+    },
+    {
+      "kind": "weapon",
+      "key": "sniper",
+      "rar": 3,
+      "amount": 1,
+      "name": "Sniper (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.12
+    },
+    {
+      "kind": "weapon",
+      "key": "launcher",
+      "amount": 1,
+      "name": "Lance-roquettes",
+      "color": "#cfd6dd",
+      "w": 1.24
+    },
+    {
+      "kind": "weapon",
+      "key": "launcher",
+      "rar": 1,
+      "amount": 1,
+      "name": "Lance-roquettes (rare)",
+      "color": "#4aa3ff",
+      "w": 0.48
+    },
+    {
+      "kind": "weapon",
+      "key": "launcher",
+      "rar": 2,
+      "amount": 1,
+      "name": "Lance-roquettes (épique)",
+      "color": "#b266ff",
+      "w": 0.22
+    },
+    {
+      "kind": "weapon",
+      "key": "launcher",
+      "rar": 3,
+      "amount": 1,
+      "name": "Lance-roquettes (légendaire)",
+      "color": "#ffb02e",
+      "w": 0.06
+    },
+    {
+      "kind": "armor",
+      "key": "armor",
+      "rar": 1,
+      "amount": 1,
+      "name": "Armure rare",
+      "color": "#4aa3ff",
+      "w": 4
+    },
+    {
+      "kind": "armor",
+      "key": "armor",
+      "rar": 2,
+      "amount": 1,
+      "name": "Armure épique",
+      "color": "#b266ff",
+      "w": 2
+    },
+    {
+      "kind": "armor",
+      "key": "armor",
+      "rar": 3,
+      "amount": 1,
+      "name": "Armure légendaire",
+      "color": "#ffb02e",
+      "w": 0.7
+    },
+    {
+      "kind": "helmet",
+      "key": "helmet",
+      "rar": 1,
+      "amount": 1,
+      "name": "Casque rare",
+      "color": "#4aa3ff",
+      "w": 4
+    },
+    {
+      "kind": "helmet",
+      "key": "helmet",
+      "rar": 2,
+      "amount": 1,
+      "name": "Casque épique",
+      "color": "#b266ff",
+      "w": 2
+    },
+    {
+      "kind": "helmet",
+      "key": "helmet",
+      "rar": 3,
+      "amount": 1,
+      "name": "Casque légendaire",
+      "color": "#ffb02e",
+      "w": 0.7
+    },
+    {
+      "kind": "pack",
+      "key": "pack",
+      "rar": 1,
+      "amount": 1,
+      "name": "Sac à dos rare",
+      "color": "#4aa3ff",
+      "w": 3
+    },
+    {
+      "kind": "pack",
+      "key": "pack",
+      "rar": 2,
+      "amount": 1,
+      "name": "Sac à dos épique",
+      "color": "#b266ff",
+      "w": 1.5
+    },
+    {
+      "kind": "pack",
+      "key": "pack",
+      "rar": 3,
+      "amount": 1,
+      "name": "Sac à dos légendaire",
+      "color": "#ffb02e",
+      "w": 0.5
+    }
+  ],
+  "rarities": [
+    {
+      "n": "Commun",
+      "c": "#cfd6dd",
+      "dmg": 1,
+      "mag": 1,
+      "reload": 1
+    },
+    {
+      "n": "Rare",
+      "c": "#4aa3ff",
+      "dmg": 1.06,
+      "mag": 1.15,
+      "reload": 0.92
+    },
+    {
+      "n": "Épique",
+      "c": "#b266ff",
+      "dmg": 1.12,
+      "mag": 1.3,
+      "reload": 0.84
+    },
+    {
+      "n": "Légendaire",
+      "c": "#ffb02e",
+      "dmg": 1.2,
+      "mag": 1.5,
+      "reload": 0.75
+    }
+  ],
+  "gear": {
+    "armor": [
+      0,
+      25,
+      50,
+      75
+    ],
+    "helmet": [
+      0,
+      0.1,
+      0.2,
+      0.3
+    ],
+    "pack": [
+      1,
+      1.25,
+      1.5,
+      1.75
+    ]
+  }
 }

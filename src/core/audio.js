@@ -78,6 +78,13 @@ Object.assign(sfx, {
   hit(kind) { tone(kind === 1 ? 1700 : kind === 2 ? 900 : 1200, kind === 2 ? 400 : 900, kind === 2 ? 0.2 : 0.06, 'square', kind === 2 ? 0.12 : 0.07); },
   hurt() { burst(0.45, 700, 120, 0.18, 'lowpass', 1, 90); },
   reload() { burst(0.2, 3000, 1500, 0.04, 'bandpass', 4); setTimeout(() => burst(0.25, 2400, 1200, 0.06, 'bandpass', 4, 220), 420); },
+  // Pas : bruit court et sourd ; ceux des autres acteurs ne s'entendent que dans un rayon de 38 m.
+  step(x, y, z, v = 0.3) {
+    if (Math.hypot(x - lx, y - ly, z - lz) > 38) return;
+    burst(gainAt(x, y, z, v), 650 + Math.random() * 350, 200, 0.07, 'lowpass', 0.9, 0);
+  },
+  kill() { tone(520, 1040, 0.12, 'square', 0.09); setTimeout(() => tone(780, 1560, 0.14, 'square', 0.08), 70); },
+  heart() { tone(70, 45, 0.12, 'sine', 0.22); setTimeout(() => tone(60, 40, 0.14, 'sine', 0.18), 160); },
   ping() { tone(880, 1320, 0.09, 'triangle', 0.08); setTimeout(() => tone(1320, 1320, 0.08, 'triangle', 0.06), 90); },
   pickup() { tone(620, 940, 0.07, 'sine', 0.05); },
   heal() { tone(520, 780, 0.25, 'sine', 0.1); setTimeout(() => tone(780, 1040, 0.2, 'sine', 0.08), 130); },

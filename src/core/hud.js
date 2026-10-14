@@ -20,6 +20,12 @@ export class Hud {
       this.root.appendChild(el);
       this.optics[id] = { el, v: -1 };
     }
+    // retours de jeu : 5 arcs de direction des dégâts, texte d'élimination, vignette de faible vie
+    this.dirs = [];
+    const wrap = document.createElement('div'); wrap.id = 'h-dirs'; this.root.appendChild(wrap);
+    for (let i = 0; i < 5; i++) { const d = document.createElement('div'); d.className = 'hdir'; wrap.appendChild(d); this.dirs.push(d); }
+    this.killEl = document.createElement('div'); this.killEl.id = 'h-kill'; this.root.appendChild(this.killEl);
+    this.lowEl = document.createElement('div'); this.lowEl.id = 'h-low'; this.root.appendChild(this.lowEl);
     this.last = {};
     this._acc = 0; this._n = 0;
   }
@@ -47,6 +53,7 @@ export class Hud {
     const w = cb.weapons, d = w.def;
     this.set(this.ammo, 'a', !d ? '—' : w.reload > 0 ? 'RECHARGE…' : w.mag + ' / ' + w.reserve);
     this.set(this.wep, 'w', d ? d.name : 'Aucune arme (ramassez-en une)');
+    this.wep.style.color = d && d.rc ? d.rc : '';
     this.cross.style.opacity = 0.85 * (1 - w.ads); // en ADS le viseur de l'arme prend le relais
     for (const id in this.optics) {
       const o = this.optics[id], v = w.id !== id ? 0 : id === 'sniper' ? Math.max(0, (w.ads - 0.8) / 0.2) : Math.max(0, (w.ads - 0.3) / 0.7);
@@ -60,6 +67,22 @@ export class Hud {
     if (this.last.hk !== cb.hitKind) { this.last.hk = cb.hitKind; this.hit.style.color = HIT_COLORS[cb.hitKind]; }
     this.set(this.dmg, 'd', cb.dmgT > 0 ? String(Math.round(cb.dmgSum)) : '');
     this.hurt.style.opacity = cb.hurt > 0 ? Math.min(1, cb.hurt * 2.5) : 0;
+
+    // direction des dégâts : angle de l'attaquant par rapport au regard (0 = devant)
+    const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
+    for (let i = 0; i < this.dirs.length; i++) {
+      const q = cb.dmgDirs[i], el = this.dirs[i];
+      if (!q) { if (el.style.opacity !== '0') el.style.opacity = '0'; continue; }
+      const dx = q.x - p.x, dz = q.z - p.z;
+      const ang = Math.atan2(dx * cy - dz * sy, -dx * sy - dz * cy);
+      el.style.transform = 'rotate(' + ang.toFixed(3) + 'rad)';
+      el.style.opacity = Math.min(1, q.t * 1.2).toFixed(2);
+    }
+    const km = cb.killMsg;
+    this.set(this.killEl, 'km', km ? km.text : '');
+    this.killEl.style.opacity = km ? Math.min(1, km.t * 2) : 0;
+    const low = h.alive && !h.downed && h.hp <= 30;
+    if (this.last.low !== low) { this.last.low = low; this.lowEl.style.opacity = low ? 1 : 0; }
 
     const prog = inv.useKey ? inv.progress : cb.revive;
     this.rev.style.display = prog > 0 ? 'block' : 'none';

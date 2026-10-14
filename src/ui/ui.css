@@ -254,3 +254,10 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-zinfo p{font-size:14px;opacity:.9;text-align:left;margin:10px 0}
 .lo-zpal{display:flex;gap:3px}.lo-zpal s{display:block;width:20px;height:20px;border-radius:4px;border:1px solid #0006}
 @media(max-width:760px){.lo-zp{flex-direction:column}.lo-zimg{max-width:80vw}}
+
+/* Retours de jeu : direction des dégâts, élimination, faible vie */
+#h-dirs{position:absolute;left:50%;top:50%;width:0;height:0}
+.hdir{position:absolute;left:-80px;top:-200px;width:160px;height:30px;transform-origin:80px 200px;border-top:7px solid #ff3a3a;border-radius:80px 80px 0 0/30px 30px 0 0;opacity:0;filter:drop-shadow(0 0 6px #f00)}
+#h-kill{position:absolute;left:50%;top:60%;transform:translateX(-50%);font:700 24px sans-serif;letter-spacing:.12em;color:#ffd040;text-shadow:0 2px 6px #000;opacity:0;white-space:nowrap;text-transform:uppercase}
+#h-low{position:absolute;inset:0;box-shadow:inset 0 0 130px 35px rgba(220,0,0,.5);opacity:0;animation:lowp 1.1s ease-in-out infinite;pointer-events:none}
+@keyframes lowp{0%,100%{filter:brightness(.7)}50%{filter:brightness(1.4)}}

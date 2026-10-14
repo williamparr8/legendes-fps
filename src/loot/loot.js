@@ -2,6 +2,7 @@ import items from './items.json';
 import { buildItemModel, makeBeacons, setBeacon } from './itemModels.js';
 import { sfx } from '../core/audio.js';
 
+const GEAR = { armor: 1, helmet: 1, pack: 1 };
 const AUTO_R2 = 1.7 * 1.7; // ramassage automatique des munitions et des soins en passant dessus (rayon 1,7 m)
 
 const N = 700;
@@ -87,14 +88,19 @@ export class LootField {
       const dx = l.x - player.x, dz = l.z - player.z, d = dx * dx + dz * dz;
       l.m.userData.body.visible = d < 4900; // le modèle n'est dessiné que dans un rayon de 70 m (la balise reste visible de loin)
       if (d < bd && Math.abs(l.y - player.y) < 2.4) { bd = d; best = l; }
-      if (!auto && alive && d < AUTO_R2 && l.it.kind !== 'weapon' && Math.abs(l.y - player.y) < 2.4 && inv.room(l.it.kind, l.it.key) > 0) auto = l;
+      if (!auto && alive && d < AUTO_R2 && (l.it.kind === 'ammo' || l.it.kind === 'heal') && Math.abs(l.y - player.y) < 2.4 && inv.room(l.it.kind, l.it.key) > 0) auto = l;
     }
     if (auto && this.pendT <= 0) { this.tryPickup(auto, player, inv, weapons); if (!auto.on && best === auto) best = null; }
     this.near = player.health.alive ? best : null;
     player.lootNear = !!this.near;
     if (!this.near) return;
     // pas d'invite pour ce qui est ramassé automatiquement
-    if (!player.prompt && this.near !== auto) player.prompt = 'E — Ramasser : ' + this.near.it.name + (this.near.it.kind === 'weapon' ? '' : ' x' + this.near.amount);
+    if (!player.prompt && this.near !== auto) {
+      const it = this.near.it;
+      if (GEAR[it.kind]) player.prompt = it.rar <= inv.gear[it.kind] ? it.name + ' — tu as déjà mieux ou équivalent' : 'E — Équiper : ' + it.name + ' (' + gearEffect(it.kind, it.rar) + ')';
+      else if (it.kind === 'weapon') player.prompt = 'E — Ramasser : ' + it.name;
+      else player.prompt = 'E — Ramasser : ' + it.name + ' x' + this.near.amount;
+    }
     if (input.pressed.KeyE) this.tryPickup(this.near, player, inv, weapons);
   }
 
@@ -115,17 +121,36 @@ export class LootField {
     this.net.pickDone(i, l.on, l.amount);
   }
 
+  entry(kind, key, rar) { return items.table.find((e) => e.kind === kind && e.key === key && (e.rar | 0) === (rar | 0)); }
+
   pickup(l, player, inv, weapons) {
-    const it = l.it;
+    const it = l.it, rar = it.rar | 0;
     if (it.kind === 'weapon') {
-      if (weapons.slots.includes(it.key)) {
-        const n = inv.add('ammo', weapons.defs[it.key].ammo, weapons.defs[it.key].mag);
-        if (n === 0) return;
+      const key = it.key, W = weapons;
+      if (W.slots.includes(key)) {
+        if (rar > (W.rar[key] | 0)) { // version plus rare de l'arme tenue : échange sur place, l'ancienne tombe au sol
+          const old = W.rar[key] | 0;
+          W.setRarity(key, rar);
+          this.spawn(this.entry('weapon', key, old), player.x, player.z, undefined, player.y);
+        } else {
+          const n = inv.add('ammo', W.defs[key].ammo, W.defs[key].mag);
+          if (n === 0) return;
+        }
       } else {
-        const dropped = weapons.give(it.key);
-        inv.add('ammo', weapons.defs[it.key].ammo, weapons.defs[it.key].mag * 2);
-        if (dropped) this.spawn(items.table.find((e) => e.kind === 'weapon' && e.key === dropped), player.x, player.z, undefined, player.y);
+        const dropped = W.give(key, rar);
+        inv.add('ammo', W.defs[key].ammo, W.defs[key].mag * 2);
+        if (dropped) this.spawn(this.entry('weapon', dropped, W.rar[dropped] | 0), player.x, player.z, undefined, player.y);
       }
+      sfx.pickup();
+      this.hide(l); this.dirty.add(l.i);
+      return;
+    }
+    if (GEAR[it.kind]) { // armure / casque / sac : seulement si meilleur que l'actuel (l'ancien tombe au sol)
+      const cur = inv.gear[it.kind];
+      if (rar <= cur) return;
+      if (cur > 0) this.spawn(this.entry(it.kind, it.key, cur), player.x, player.z, undefined, player.y);
+      inv.setGear(it.kind, rar, player);
+      sfx.pickup();
       this.hide(l); this.dirty.add(l.i);
       return;
     }
@@ -135,4 +160,12 @@ export class LootField {
     l.amount -= n; this.dirty.add(l.i);
     if (l.amount <= 0) this.hide(l);
   }
+}
+
+// Texte d'effet d'une pièce d'équipement.
+export function gearEffect(kind, tier) {
+  const g = items.gear;
+  if (kind === 'armor') return '+' + g.armor[tier] + ' bouclier max';
+  if (kind === 'helmet') return '-' + Math.round(g.helmet[tier] * 100) + ' % dégâts à la tête';
+  return '+' + Math.round((g.pack[tier] - 1) * 100) + ' % de capacité';
 }

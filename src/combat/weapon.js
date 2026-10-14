@@ -1,4 +1,5 @@
 import { sfx } from '../core/audio.js';
+import items from '../loot/items.json';
 const SLOT_KEYS = ['Digit1', 'Digit2'];
 
 // Armes du joueur : 2 emplacements, chargeur + munitions de réserve (Inventory), ADS, dispersion, recul.
@@ -9,6 +10,8 @@ export class Weapons {
     this.ids = Object.keys(defs); // tous les modèles (viewmodel)
     this.slots = [null, null];
     this.mags = {};
+    this.rar = {};            // rareté de chaque arme tenue (0 commun … 3 légendaire)
+    this._dd = new Map();     // définitions dérivées par rareté
     this.cur = 0;
     this.cd = 0; this.reload = 0; this.reloadTotal = 1; this.swap = 0;
     this.ads = 0; this.bloom = 0; this.shots = 0; this.since = 99;
@@ -17,18 +20,38 @@ export class Weapons {
   }
 
   get id() { return this.slots[this.cur]; }
-  get def() { const i = this.slots[this.cur]; return i ? this.defs[i] : null; }
+  get def() { const i = this.slots[this.cur]; return i ? this.derive(i) : null; }
+  // Définition effective : dégâts, chargeur et rechargement modifiés par la rareté (rc : couleur, pour l'affichage).
+  derive(id) {
+    const r = this.rar[id] | 0, base = this.defs[id];
+    if (!r) return base;
+    const k = id + ':' + r;
+    let d = this._dd.get(k);
+    if (!d) {
+      const R = items.rarities[r];
+      d = { ...base, dmg: base.dmg * R.dmg, mag: Math.round(base.mag * R.mag), reload: base.reload * R.reload, name: base.name + ' · ' + R.n, rc: R.c };
+      this._dd.set(k, d);
+    }
+    return d;
+  }
+  // Passe l'arme tenue à une rareté supérieure : le chargeur s'agrandit et reçoit la différence.
+  setRarity(id, r) {
+    const before = this.derive(id).mag;
+    this.rar[id] = r;
+    this.mags[id] = (this.mags[id] || 0) + this.derive(id).mag - before;
+  }
   get mag() { const i = this.slots[this.cur]; return i ? this.mags[i] : 0; }
   get reserve() { const d = this.def; return d ? this.inv.ammo[d.ammo] : 0; }
 
   // Équipe une arme (chargeur plein). Retourne l'arme remplacée (à lâcher) ou null.
-  give(id) {
+  give(id, rar = 0) {
     if (this.slots.includes(id)) return null;
     let slot = this.slots[this.cur] === null ? this.cur : this.slots.indexOf(null);
     let dropped = null;
     if (slot < 0) { slot = this.cur; dropped = this.slots[slot]; }
     this.slots[slot] = id;
-    this.mags[id] = this.defs[id].mag;
+    this.rar[id] = rar;
+    this.mags[id] = this.derive(id).mag;
     if (slot === this.cur) { this.reload = 0; this.swap = 0.35; this.ads = 0; this.shots = 0; }
     return dropped;
   }

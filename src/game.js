@@ -303,7 +303,11 @@ export class Game {
       if (inp.pressed.Mouse1 && player.health.alive && m.pings.cd <= 0) {
         m.pings.cd = 0.4;
         const r = combat.pingRay(player);
-        if (r) { m.pings.add(r.x, r.y, r.z, r.enemy ? 2 : 0); if (combat.fx.emit) combat.fx.emit(5, r.x, r.y, r.z, player.team, r.enemy ? 1 : 0); }
+        if (r) {
+          const me = net ? net.id : 0, res = m.pings.add(r.x, r.y, r.z, r.enemy ? 2 : 0, me, true);
+          // événement 5 : x, y, z, équipe, ennemi, propriétaire, retrait
+          if (combat.fx.emit) combat.fx.emit(5, r.x, r.y, r.z, player.team, r.enemy ? 1 : 0, me, res === 'removed' ? 1 : 0);
+        }
       }
       m.pings.tick(dt, player.x, player.y, player.z);
     }
