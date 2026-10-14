@@ -201,3 +201,8 @@
 - **Skin Police** (fin de liste perso, palette bleu marine/or) sur le corps existant : pas de vrai modèle de policier (pas de téléchargement fait).
 - **Bras en vue subjective** : 2 avant-bras (manche + main) fixés à l'arme, couleurs de la tenue équipée (`Viewmodel.setArms`). Positions estimées, **jamais vues à l'écran**.
 - **Sons** : `audio.js` — tirs par type d'arme, explosions, impact (hitmarker), dégâts reçus, rechargement, soin ; bruit filtré, atténuation par distance, limitation par source. Bots/explosions sonorisés ; les tirs d'autres joueurs en réseau restent silencieux (traçante `silent`). Jamais écouté.
+
+### Hall style « lobby » (2026-10-14, local, NON poussé)
+- Nouveau menu principal inspiré d'un hall de hero shooter : barre d'onglets en haut (Jouer, Légendes, Défis, Boutique, Options ; niveau + XP à gauche, points à droite), opérateur 3D équipé au centre (`src/ui/lobby.js`, fond canvas : dégradé, alvéoles, grand titre, sol en perspective), amis/« + » et carte du joueur à gauche, carte du mode de jeu en bas à gauche (liste de modes dépliable), sélecteur de légende ◀ ▶ + gros bouton JOUER au centre, tuiles Défis/Boutique en bas à droite, fenêtres Défis et Légendes.
+- JOUER : solo / équipe / entraînement démarrent tout de suite avec les réglages par défaut (`readConfig` : bots du mode, zone active hors entraînement) ; « Options de la partie » ouvre l'ancien écran ; personnalisée → écran de préparation ; en ligne → salon. Le monde est préchargé dès l'affichage du hall (solo/équipe).
+- Vérifié dans le navigateur (1280×720 émulé) : rendu, onglets, fenêtre Défis, changement de légende, lancement d'une partie (monde rendu). Non vérifié : écran réellement en 16:9 plein écran, mobile, FPS du hall.

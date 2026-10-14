@@ -26,6 +26,7 @@ import { MapView } from './ui/map.js';
 import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
 import { shopFrame } from './shop/shop.js';
+import { lobbyFrame } from './ui/lobby.js';
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
@@ -348,7 +349,7 @@ export class Game {
     const m = this.m;
     if (m && this.state === 'playing') this.autoQuality(dt);
     if (!m || this.state === 'menu') {
-      if (this.ui.screen === 'shop') shopFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
+      if (this.ui.screen === 'shop') shopFrame(this, dt); else if (this.ui.screen === 'main') lobbyFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
       return;
     }
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));

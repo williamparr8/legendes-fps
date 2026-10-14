@@ -12,11 +12,11 @@ import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const MODES = {
-  solo: { title: 'Solo contre bots', bots: 24, label: 'Adversaires (bots)' },
-  squad: { title: 'Équipe contre bots', bots: 10, label: 'Escouades ennemies' },
-  custom: { title: 'Partie personnalisée', bots: 10, label: 'Escouades ennemies' },
-  training: { title: 'Entraînement', bots: 0, label: '' },
-  online: { title: 'Salon en ligne', bots: 6, label: 'Escouades de bots' },
+  solo: { title: 'Solo contre bots', bots: 24, label: 'Adversaires (bots)', col: '#e0452f', desc: 'Seul contre 24 bots, zone qui se réduit' },
+  squad: { title: 'Équipe contre bots', bots: 10, label: 'Escouades ennemies', col: '#3a8ee8', desc: 'Escouade de 3 contre 10 escouades' },
+  custom: { title: 'Partie personnalisée', bots: 10, label: 'Escouades ennemies', col: '#a45be8', desc: 'Armes, limites, équipes : tes règles' },
+  training: { title: 'Entraînement', bots: 0, label: '', col: '#3fae6c', desc: 'Mannequins et armes à volonté' },
+  online: { title: 'Salon en ligne', bots: 6, label: 'Escouades de bots', col: '#e8b030', desc: 'Joue avec tes amis (code de salon)' },
 };
 const KEYS = [
   ['ZQSD / WASD', 'Déplacement'], ['Maj', 'Sprint'], ['Espace', 'Saut / escalade'], ['C / Ctrl', 'Accroupi ; en sprint : glissade'],
@@ -32,6 +32,7 @@ export class UI {
     this.chatBuf = [];
     this.root.addEventListener('click', (e) => {
       const el = e.target.closest('[data-act]');
+      if (el && el.classList.contains('lo-modal') && e.target !== el) return; // clic dans la fenêtre : ne la ferme pas
       if (el) this.act(el.dataset.act, el.dataset);
     });
     this.root.addEventListener('change', (e) => {
@@ -56,7 +57,7 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); if ((screen === 'setup' && this.mode !== 'training') || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
 
   // Graine choisie d'avance : le monde peut être construit pendant que le joueur règle sa partie.
@@ -86,7 +87,13 @@ export class UI {
     const g = this.game;
     switch (a) {
       case 'mode': this.mode = d.mode; this.show('setup'); break;
-      case 'pick': this.legend = d.id; document.querySelectorAll('.card').forEach((c) => c.classList.toggle('sel', c.dataset.id === d.id)); break;
+      case 'play': this.play(); break;
+      case 'ltab': this.lobbyTab = this.lobbyTab === d.t || d.t === 'play' ? null : d.t; this.show('main'); break;
+      case 'lclose': this.lobbyTab = null; this.show('main'); break;
+      case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
+      case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
+      case 'lleg': { const i = LEGEND_IDS.indexOf(this.legend); this.legend = LEGEND_IDS[(i + (+d.d) + LEGEND_IDS.length) % LEGEND_IDS.length]; this.show('main'); break; }
+      case 'pick': this.legend = d.id; if (this.screen === 'main') this.show('main'); else document.querySelectorAll('.card').forEach((c) => c.classList.toggle('sel', c.dataset.id === d.id)); break;
       case 'start': g.start(this.readConfig()); break;
       case 'menu': g.quit(); break;
       case 'options': this.from = this.screen; this.show('options'); break;
@@ -104,19 +111,53 @@ export class UI {
     }
   }
 
+  // Hall (menu principal) : barre d'onglets en haut, opérateur 3D au centre (lobby.js), modes à gauche, bouton JOUER en bas.
   main() {
-    const L = levelInfo(), D = dailies();
-    const dq = D.map((q) => `<div style="display:flex;justify-content:space-between;gap:12px;opacity:${q.done ? 0.55 : 1}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><span>${q.done ? 'fait' : q.p + '/' + q.n} · +${q.reward}</span></div>`).join('');
-    return `<div class="panel narrow"><h1>LÉGENDES</h1><p>Hero shooter 3D dans le navigateur</p>
-      <div style="font-size:13px;margin:6px 0"><b>Niveau ${L.level}</b> <small>(${L.xp} / ${L.need} XP)</small><div style="height:5px;background:#223;border-radius:3px;margin:3px 0 8px"><i style="display:block;height:100%;width:${Math.round(100 * L.xp / L.need)}%;background:#ffd070;border-radius:3px"></i></div>
-      <b>Défis du jour</b>${dq}</div><div class="menu">
-      <button data-act="mode" data-mode="solo">Solo contre bots</button>
-      <button data-act="mode" data-mode="squad">Équipe contre bots</button>
-      <button data-act="mode" data-mode="custom">Partie personnalisée</button>
-      <button data-act="mode" data-mode="training">Entraînement</button>
-      <button class="primary" data-act="online">Salon en ligne (amis)</button>
-      <button data-act="shop">Boutique <small>(${profile.pts} pts)</small></button>
-      <button data-act="options">Options &amp; commandes</button></div></div>`;
+    const L = levelInfo(), D = dailies(), M = MODES[this.mode], LG = LEGENDS[this.legend];
+    const left = D.filter((q) => !q.done).length, nextQ = D.find((q) => !q.done);
+    const tab = (t, n, act, extra = '') => `<button class="lo-tab${(t === 'play' && !this.lobbyTab) || this.lobbyTab === t ? ' on' : ''}" data-act="${act}" data-t="${t}">${n}${extra}</button>`;
+    const modeRows = Object.keys(MODES).map((k) => `<button class="lo-mrow${k === this.mode ? ' on' : ''}" data-act="lmode" data-mode="${k}" style="--a:${MODES[k].col}"><b>${MODES[k].title}</b><small>${MODES[k].desc}</small></button>`).join('');
+    const dq = D.map((q) => `<div class="lo-q${q.done ? ' done' : ''}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><i style="--p:${Math.round(100 * q.p / q.n)}%"></i><em>${q.done ? 'fait' : q.p + ' / ' + q.n} · +${q.reward} pts</em></div>`).join('');
+    let modal = '';
+    if (this.lobbyTab === 'quests') modal = `<h2>Défis du jour</h2><p>Trois nouveaux défis chaque jour ; la récompense est créditée dès qu'un défi est accompli.</p>${dq}<p class="lo-lv">Niveau ${L.level} — ${L.xp} / ${L.need} XP</p>`;
+    else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
+    const name = esc(settings.name || 'Joueur');
+    return `<div class="lo">
+      <div class="lo-top">
+        <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b><div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
+        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
+        <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
+      </div>
+      <div class="lo-left">
+        <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
+        <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
+        <button class="lo-slot" data-act="online" title="Inviter des amis : salon en ligne">+</button>
+      </div>
+      <div class="lo-season"><small>Saison</small><b>Légendes</b><span>${LG.name} · ${LG.role}</span></div>
+      <div class="lo-bl">
+        <div class="lo-stat"><b>Carrière</b><span>${profile.games} parties · ${profile.kills} éliminations · ${profile.wins} victoires</span></div>
+        ${this.modesOpen ? `<div class="lo-mlist">${modeRows}</div>` : ''}
+        <button class="lo-mode" data-act="lmodes" style="--a:${M.col}"><small>Mode de jeu ▴</small><b>${M.title}</b><span>${M.desc}</span></button>
+      </div>
+      <div class="lo-center">
+        <div class="lo-leg"><button data-act="lleg" data-d="-1">◀</button><div><b style="color:${LG.color}">${LG.name}</b><small>${LG.role}</small></div><button data-act="lleg" data-d="1">▶</button></div>
+        <div class="lo-playw"><button class="lo-play" data-act="play">${this.mode === 'training' ? "S'entraîner" : this.mode === 'online' ? 'Salon en ligne' : 'Jouer'}</button></div>
+        ${this.mode === 'solo' || this.mode === 'squad' ? `<button class="lo-link" data-act="mode" data-mode="${this.mode}">Options de la partie</button>` : ''}
+      </div>
+      <div class="lo-br">
+        <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis du jour</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
+        <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
+      </div>
+      ${modal ? `<div class="lo-modal" data-act="lclose"><div class="lo-mp" data-stop="1">${modal}<div class="row"><button class="primary" data-act="lclose">Fermer</button></div></div></div>` : ''}
+    </div>`;
+  }
+
+  // Lancement depuis le hall : solo / équipe / entraînement démarrent tout de suite (réglages par défaut) ; les autres ouvrent leur écran.
+  play() {
+    const m = this.mode;
+    if (m === 'custom') this.show('setup');
+    else if (m === 'online') this.show('online');
+    else this.game.start(this.readConfig());
   }
 
   shop() { return shopHtml(); }
@@ -159,8 +200,8 @@ export class UI {
     const list = (cls, all) => { const a = [...document.querySelectorAll(cls)].filter((x) => x.checked).map((x) => x.value); return a.length ? a : all; };
     const cfg = {
       mode: m, map: m === 'training' ? 'training' : 'island', legend: this.legend,
-      difficulty: v('c-diff', 'normal'), enemySquads: +v('c-bots', 0), squadSize: m === 'solo' ? 1 : +v('c-size', 3),
-      zone: ch('c-zone', false), timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
+      difficulty: v('c-diff', 'normal'), enemySquads: +v('c-bots', MODES[m].bots), squadSize: m === 'solo' ? 1 : +v('c-size', 3),
+      zone: ch('c-zone', m !== 'training'), timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
       weapons: list('.wc', Object.keys(wdefs)), legends: list('.lc', LEGEND_IDS), seed: this.seed,
     };
     this._seed = null;
