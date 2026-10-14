@@ -1,3 +1,4 @@
+// Nécessite : npm i --no-save sharp (non gardé dans package.json pour ne pas alourdir le déploiement)
 // Prépare les textures PBR libres de droits (ambientCG, CC0) pour le jeu : pour chaque matière, deux JPG en 1024 px :
 //  <nom>_c.jpg : couleur (occlusion ambiante cuite à 50 %)
 //  <nom>_n.jpg : R = normale x (OpenGL), G = normale y, B = rugosité (la normale z est reconstruite dans le shader)
