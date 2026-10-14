@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { sfx } from '../core/audio.js';
 
 // Effets poolés : traçantes, impacts, explosions. Rien n'est créé pendant le jeu.
 export class Fx {
@@ -55,6 +56,7 @@ export class Fx {
   }
 
   explosion(x, y, z, r, silent) {
+    sfx.boom(x, y, z);
     if (this.emit && !silent) this.emit(2, x, y, z, r);
     const e = this.ex[this.exi]; this.exi = (this.exi + 1) % this.ex.length;
     e.m.position.set(x, y, z); e.r = r; e.m.scale.setScalar(0.2); e.m.visible = true; e.life = 0.35;

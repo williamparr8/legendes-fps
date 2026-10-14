@@ -1,3 +1,4 @@
+import { sfx } from '../core/audio.js';
 const SLOT_KEYS = ['Digit1', 'Digit2'];
 
 // Armes du joueur : 2 emplacements, chargeur + munitions de réserve (Inventory), ADS, dispersion, recul.
@@ -41,6 +42,7 @@ export class Weapons {
     const d = this.def;
     if (this.reload > 0 || !d || this.mag >= d.mag || this.reserve <= 0) return;
     this.reload = this.reloadTotal = d.reload * player.pv.reloadMul;
+    sfx.reload();
   }
 
   tick(dt, input, player) {

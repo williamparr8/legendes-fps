@@ -39,7 +39,27 @@ export class Viewmodel {
     this.mag = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.07), new THREE.MeshLambertMaterial({ color: 0x1c1f25 }));
     this.mag.visible = false;
     this.root.add(this.mag);
+    // bras : deux avant-bras (manche + main) qui tiennent la poignée et le garde-main, fixés à l'arme
+    this.arms = [];
+    const mk = (from, to, w) => {
+      const grp = new THREE.Group(), len = from.distanceTo(to);
+      const sl = new THREE.Mesh(new THREE.BoxGeometry(w, w, len * 0.72), new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.9 }));
+      const hd = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, w * 0.8, len * 0.3), new THREE.MeshStandardMaterial({ color: 0xe0bc98, roughness: 0.8 }));
+      sl.position.z = len * 0.36; hd.position.z = -len * 0.14;
+      grp.add(sl, hd);
+      grp.position.copy(to); grp.lookAt(from); // l'axe +z du groupe pointe vers l'épaule (hors champ)
+      this.root.add(grp);
+      this.arms.push([sl, hd]);
+    };
+    mk(new THREE.Vector3(0.16, -0.42, 0.5), new THREE.Vector3(0.0, -0.1, 0.07), 0.075);   // main de la poignée
+    mk(new THREE.Vector3(-0.22, -0.4, 0.28), new THREE.Vector3(0.0, -0.06, -0.26), 0.07); // main du garde-main
     this.cur = null;
+  }
+
+  // Couleurs des bras d'après la tenue équipée (entrée de skins.json ou null).
+  setArms(def) {
+    const p = def && def.p;
+    for (const [sl, hd] of this.arms) { sl.material.color.set(p ? p[0] : 0x3a3f4a); hd.material.color.set(p ? p[3] : 0xe0bc98); }
   }
 
   // Skin d'arme cosmétique (entrée de skins.json ou null).

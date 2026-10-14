@@ -6,6 +6,7 @@ import { transportKind, errorText, cleanCode } from '../net/transport.js';
 import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
+import { levelInfo, dailies } from '../shop/quests.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
 const $ = (id) => document.getElementById(id);
@@ -104,7 +105,11 @@ export class UI {
   }
 
   main() {
-    return `<div class="panel narrow"><h1>LÉGENDES</h1><p>Hero shooter 3D dans le navigateur</p><div class="menu">
+    const L = levelInfo(), D = dailies();
+    const dq = D.map((q) => `<div style="display:flex;justify-content:space-between;gap:12px;opacity:${q.done ? 0.55 : 1}"><span>${q.done ? '✔ ' : ''}${q.txt}</span><span>${q.done ? 'fait' : q.p + '/' + q.n} · +${q.reward}</span></div>`).join('');
+    return `<div class="panel narrow"><h1>LÉGENDES</h1><p>Hero shooter 3D dans le navigateur</p>
+      <div style="font-size:13px;margin:6px 0"><b>Niveau ${L.level}</b> <small>(${L.xp} / ${L.need} XP)</small><div style="height:5px;background:#223;border-radius:3px;margin:3px 0 8px"><i style="display:block;height:100%;width:${Math.round(100 * L.xp / L.need)}%;background:#ffd070;border-radius:3px"></i></div>
+      <b>Défis du jour</b>${dq}</div><div class="menu">
       <button data-act="mode" data-mode="solo">Solo contre bots</button>
       <button data-act="mode" data-mode="squad">Équipe contre bots</button>
       <button data-act="mode" data-mode="custom">Partie personnalisée</button>
@@ -243,7 +248,8 @@ export class UI {
         : '<button data-act="menu">Quitter</button><p style="margin:0;align-self:center">Retour au salon quand l\'hôte le décidera…</p>';
     return `<div class="panel narrow"><h2 style="text-align:center">${r.win ? 'VICTOIRE !' : 'Éliminé'}</h2>
       <div class="place">#${r.place}<small style="font-size:18px;opacity:.7"> / ${r.total}</small></div>
-      ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal)</p>` : ''}
+      ${r.pts !== undefined ? `<p class="gain">+${r.pts} points · total ${profile.pts} (Boutique au menu principal) · niveau ${levelInfo().level}</p>` : ''}
+      ${(r.quests || []).map((q) => `<p class="gain">Défi accompli : ${q.txt} · +${q.reward} points</p>`).join('')}
       <div class="stats"><div><b>${r.kills}</b>Éliminations</div><div><b>${r.damage}</b>Dégâts infligés</div><div><b>${t}</b>Temps de survie</div><div><b>${LEGENDS[this.legend].name}</b>Légende</div></div>
       <div class="row">${buttons}</div></div>`;
   }

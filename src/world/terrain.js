@@ -40,9 +40,9 @@ function grassTexture() {
 // Maillage du terrain : couleurs par altitude / pente / proximité des bâtiments, ombres reçues.
 // Cartes (thèmes) : 0 île verte, 1 désert, 2 toundra enneigée. Choisi depuis la graine (même thème côté hôte et clients).
 export const THEMES = [
-  { name: 'Île verte', grass: 0x4f7d3a, dry: 0x9a9a52, rock: 0x7d786f, dirt: 0x8c7c60, sand: 0xcdbb8c, snow: 0, arid: 0, water: 0x1f6f8c, peak: 0.62 },
-  { name: 'Désert', grass: 0xb99a5c, dry: 0xd2b274, rock: 0xa4623e, dirt: 0xa7825a, sand: 0xe0c48a, snow: 0, arid: 1, water: 0x2a8f94, peak: 2 },
-  { name: 'Toundra', grass: 0xdfe8ee, dry: 0xc2ccd4, rock: 0x7f858e, dirt: 0x9a9690, sand: 0xe6edf3, snow: 1, arid: 0, water: 0x3a7a9a, peak: 0.35 },
+  { name: 'Île verte', grass: 0x4f7d3a, dry: 0x9a9a52, rock: 0x7d786f, dirt: 0x8c7c60, sand: 0xcdbb8c, snow: 0, arid: 0, water: 0x1f6f8c, peak: 0.62, top: [0.17,0.38,0.80], mid: [0.46,0.69,0.92], hor: [0.83,0.89,0.94], cloud: 0.5, fog: 0xd4e3f0, fogFar: 440 },
+  { name: 'Désert', grass: 0xb99a5c, dry: 0xd2b274, rock: 0xa4623e, dirt: 0xa7825a, sand: 0xe0c48a, snow: 0, arid: 1, water: 0x2a8f94, peak: 2, top: [0.28,0.45,0.78], mid: [0.72,0.78,0.86], hor: [0.95,0.84,0.66], cloud: 0.72, fog: 0xecd7ae, fogFar: 380 },
+  { name: 'Toundra', grass: 0xdfe8ee, dry: 0xc2ccd4, rock: 0x7f858e, dirt: 0x9a9690, sand: 0xe6edf3, snow: 1, arid: 0, water: 0x3a7a9a, peak: 0.35, top: [0.42,0.52,0.64], mid: [0.66,0.72,0.79], hor: [0.84,0.88,0.92], cloud: 0.32, fog: 0xd3dbe3, fogFar: 340 },
 ];
 export const THEME = { ...THEMES[0] };
 export function setTheme(i) { Object.assign(THEME, THEMES[((i % 3) + 3) % 3]); }
@@ -172,12 +172,12 @@ export function buildMountains(scene, seed) {
 // Ciel : dégradé, nuages procéduraux, soleil (disque HDR pour le bloom) et halo ; couleurs définies en sRGB puis converties
 // (tone mapping et espace colorimétrique appliqués comme pour les autres matériaux). Dôme centré sur la carte, indépendant du brouillard.
 export const HORIZON = 0xd4e3f0; // = couleur du brouillard
-function skyMaterial(sunDir) {
+function skyMaterial(sunDir, th) {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { sun: { value: sunDir.clone().normalize() } },
+    uniforms: { sun: { value: sunDir.clone().normalize() }, uTop: { value: new THREE.Vector3(...th.top) }, uMid: { value: new THREE.Vector3(...th.mid) }, uHor: { value: new THREE.Vector3(...th.hor) }, uCl: { value: th.cloud } },
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `varying vec3 vD; uniform vec3 sun;
+    fragmentShader: `varying vec3 vD; uniform vec3 sun, uTop, uMid, uHor; uniform float uCl;
       vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
       float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -185,12 +185,12 @@ function skyMaterial(sunDir) {
       float fbm(vec2 p){ return vn(p) * 0.5 + vn(p * 2.1) * 0.25 + vn(p * 4.3) * 0.125 + vn(p * 8.7) * 0.0625; }
       void main(){
         vec3 d = normalize(vD); float h = clamp(d.y, -0.2, 1.0);
-        vec3 top = lin(vec3(0.17,0.38,0.80)), mid = lin(vec3(0.46,0.69,0.92)), hor = lin(vec3(0.83,0.89,0.94));
+        vec3 top = lin(uTop), mid = lin(uMid), hor = lin(uHor);
         vec3 c = mix(hor, mid, smoothstep(0.0, 0.3, h)); c = mix(c, top, smoothstep(0.2, 0.95, h));
         float s = max(dot(d, sun), 0.0);
         // nuages : plan projeté, bords doux, face éclairée côté soleil
         vec2 q = d.xz / (d.y + 0.18) * 0.55;
-        float n = fbm(q + vec2(3.0, 1.0)), cl = smoothstep(0.5, 0.78, n) * smoothstep(0.03, 0.22, d.y);
+        float n = fbm(q + vec2(3.0, 1.0)), cl = smoothstep(1.0 - uCl, 1.28 - uCl, n) * smoothstep(0.03, 0.22, d.y);
         float lit = fbm(q + vec2(3.0, 1.0) + sun.xz * 0.08);
         vec3 cc = mix(lin(vec3(0.62,0.68,0.78)), lin(vec3(1.0,0.98,0.95)), clamp(0.55 + (n - lit) * 3.0, 0.0, 1.0));
         c = mix(c, cc, cl * 0.9);
@@ -203,22 +203,25 @@ function skyMaterial(sunDir) {
   });
 }
 
-// Le ciel est statique : on le pré-calcule une fois dans un cube (HDR) au lancement du jeu ; chaque partie l'utilise comme fond.
-let skyCube = null, skyEnv = null;
-export function bakeSky(renderer, sunDir) {
+// Le ciel est statique : un cube (HDR) par thème, précalculé à la demande (le thème 0 au lancement) ; chaque partie l'utilise comme fond.
+const skies = [];
+let skyR = null, skySun = null, curSky = 0;
+function bake(t) {
   const sc = new THREE.Scene();
-  sc.add(new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(sunDir)));
+  sc.add(new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(skySun, THEMES[t])));
   const rt = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType });
-  new THREE.CubeCamera(0.1, 1000, rt).update(renderer, sc);
-  skyCube = rt.texture;
-  const pm = new THREE.PMREMGenerator(renderer); // éclairage ambiant et reflets (matériaux PBR)
-  skyEnv = pm.fromCubemap(rt.texture).texture;
+  new THREE.CubeCamera(0.1, 1000, rt).update(skyR, sc);
+  const pm = new THREE.PMREMGenerator(skyR); // éclairage ambiant et reflets (matériaux PBR)
+  skies[t] = { cube: rt.texture, env: pm.fromCubemap(rt.texture).texture };
   pm.dispose();
 }
-export const getSkyEnv = () => skyEnv;
+export function bakeSky(renderer, sunDir) { skyR = renderer; skySun = sunDir; bake(0); }
+export const getSkyEnv = () => (skies[curSky] || skies[0] || {}).env || null;
 export function buildSky(scene, sunDir) {
-  if (skyCube) { scene.background = skyCube; return; }
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(sunDir));
+  curSky = Math.max(0, THEMES.findIndex((t) => t.name === THEME.name));
+  if (skyR && !skies[curSky]) bake(curSky);
+  if (skies[curSky]) { scene.background = skies[curSky].cube; return; }
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 12), skyMaterial(sunDir, THEME));
   sky.renderOrder = -10;
   scene.add(sky);
 }

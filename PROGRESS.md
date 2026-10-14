@@ -193,3 +193,11 @@
 ## REPRISE (2026-10-14, soir)
 - Dernier commit local : voir `git log` (thèmes + résolution dynamique) ; poussé jusqu'à 2fb5812 ; le dernier commit n'est PAS poussé (demander accord).
 - À faire : mesurer les FPS réels (demander à l'utilisateur), nom de carte à l'écran, ciel/brouillard par thème, corps de policier (hors Mixamo : Quaternius/Sketchfab CC0), bras en vue subjective, boucle de rejouabilité (défis quotidiens, rang), sons réalistes, pic de 369 ms au 1er tick.
+
+### Session 2026-10-14 (suite 2) — non testé sur GPU
+- **Thèmes** : ciel (dégradé, nuages) et brouillard propres à chaque thème (`THEMES` : top/mid/hor/cloud/fog/fogFar) ; un cube de ciel par thème cuit à la demande (`bakeSky`/`buildSky`) ; bandeau « Carte : <nom> » au départ (`Game.banner`) ; brouillard du largage relatif à `fogFar`.
+- **Pic 1er tick** : mesuré sous Node : NavGrid ≈ 37 ms et A* < 5 ms → le pic n'était pas le pathfinding ; hypothèse : compilation des shaders au 1er rendu → `renderer.compile(scene, camera)` ajouté dans `Game.start` (non mesuré sur GPU).
+- **Niveau + défis quotidiens** : `src/shop/quests.js` ; niveau dérivé de `profile.earned` (30·n·(n+1) XP cumulés) ; 3 défis/jour (graine = date locale), progression cumulée, récompense en points créditée ; affichés au menu principal et aux résultats ; stockage séparé `legendes-fps-quests` (pas dans le code de sauvegarde).
+- **Skin Police** (fin de liste perso, palette bleu marine/or) sur le corps existant : pas de vrai modèle de policier (pas de téléchargement fait).
+- **Bras en vue subjective** : 2 avant-bras (manche + main) fixés à l'arme, couleurs de la tenue équipée (`Viewmodel.setArms`). Positions estimées, **jamais vues à l'écran**.
+- **Sons** : `audio.js` — tirs par type d'arme, explosions, impact (hitmarker), dégâts reçus, rechargement, soin ; bruit filtré, atténuation par distance, limitation par source. Bots/explosions sonorisés ; les tirs d'autres joueurs en réseau restent silencieux (traçante `silent`). Jamais écouté.

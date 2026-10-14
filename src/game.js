@@ -24,6 +24,7 @@ import { cleanCode } from './net/transport.js';
 import { InventoryPanel } from './ui/inventory.js';
 import { MapView } from './ui/map.js';
 import { profile, equippedDef, awardMatch } from './shop/profile.js';
+import { questsMatch } from './shop/quests.js';
 import { shopFrame } from './shop/shop.js';
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
@@ -207,7 +208,9 @@ export class Game {
       m.match = new Match({ scene, world, combat, abilities, nav: m.nav, loot, player, inv, net }, cfg, (res) => this.endMatch(res));
     }
     this.m = m;
+    try { this.renderer.compile(scene, this.camera); } catch (e) { /* ignoré */ } // compile les shaders avant le 1er rendu (évite le pic au premier tick)
     this.state = 'playing';
+    if (world.theme) this.banner('Carte : ' + world.theme);
     if (net) { net.beginMatch(m); this.chatLog.innerHTML = ''; this.chatShow(true); }
     this.input.lock();
   }
@@ -235,7 +238,9 @@ export class Game {
     player.sx = msg.you.x; player.sz = msg.you.z; player.syaw = msg.you.yaw; player.spawn();
     const match = new ClientMatch(scene, world, combat, msg, net);
     this.m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match, cfg: msg.cfg, net };
+    try { this.renderer.compile(scene, this.camera); } catch (e) { /* ignoré */ } // compile les shaders avant le 1er rendu (évite le pic au premier tick)
     this.state = 'playing';
+    if (world.theme) this.banner('Carte : ' + world.theme);
     net.attach(this.m);
     this.chatLog.innerHTML = ''; this.chatShow(true);
     this.ui.show('go'); // le départ vient du réseau : pas de geste utilisateur, donc la souris ne peut pas être capturée sans un clic
@@ -247,10 +252,12 @@ export class Game {
     combat.pp.skinP = player.skinP = profile.eq.perso;
     combat.pp.skinW = player.skinW = profile.eq.arme;
     viewmodel.setSkin(equippedDef('arme'));
+    viewmodel.setArms(equippedDef('perso'));
   }
 
   endMatch(res) {
     awardMatch(res); // points de la partie (une seule fois : res.pts sert de drapeau)
+    questsMatch(res); // défis quotidiens
     this.state = 'results';
     this.chatting = false; this.chatIn.style.display = 'none';
     document.exitPointerLock();
@@ -325,6 +332,16 @@ export class Game {
     d.style.cssText = 'position:fixed;top:14%;left:50%;transform:translateX(-50%);background:rgba(10,14,20,.88);color:#ffd070;padding:8px 16px;border:1px solid #556;border-radius:6px;z-index:50;font:14px sans-serif';
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 6000);
+  }
+
+  // Bandeau temporaire (nom de la carte).
+  banner(txt) {
+    const d = document.createElement('div');
+    d.textContent = txt;
+    d.style.cssText = 'position:fixed;top:9%;left:50%;transform:translateX(-50%);color:#fff;text-shadow:0 2px 8px #000;font:600 26px sans-serif;letter-spacing:2px;z-index:40;pointer-events:none;transition:opacity 1.2s';
+    document.body.appendChild(d);
+    setTimeout(() => { d.style.opacity = '0'; }, 3500);
+    setTimeout(() => d.remove(), 5000);
   }
 
   render(alpha, dt) {

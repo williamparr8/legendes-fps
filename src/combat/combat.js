@@ -1,4 +1,5 @@
 import defs from './weapons.json';
+import { sfx, shotKind, setListener } from '../core/audio.js';
 import { Weapons } from './weapon.js';
 import { Projectiles } from './projectiles.js';
 import { Fx } from './fx.js';
@@ -73,14 +74,14 @@ export class Combat {
       amount *= t.takenMul;
       h.damage(amount);
       if (attacker) t.lastAttacker = attacker;
-      if (t.isPlayer) { this.hurt = 0.4; this.player.sinceDamage = 0; }
+      if (t.isPlayer) { this.hurt = 0.4; sfx.hurt(); this.player.sinceDamage = 0; }
       else if (t.onHurt) t.onHurt(attacker, amount);
       down = h.downed; dead = h.dead;
     }
     if (attacker === this.pp && t !== this.pp) {
       const kill = (dead && !wasDead) || (down && !wasDown);
       this.hitKind = kill ? 2 : zone === 0 ? 1 : 0;
-      this.hitmark = 0.18;
+      this.hitmark = 0.18; sfx.hit(this.hitKind);
       this.dmgSum += amount; this.dmgT = 1;
       const mk = this.player.pv.markOnHit;
       if (mk > 0 && t.markT < mk) t.markT = mk;
@@ -105,6 +106,7 @@ export class Combat {
     this.trace(ox, oy, oz, dx, dy, dz, d.range, att, this.friendlyFire ? -1 : att.team);
     const t = this.hitT, hx = ox + dx * t, hy = oy + dy * t, hz = oz + dz * t;
     this.fx.tracer(mx, my, mz, hx, hy, hz);
+    sfx.shot(mx, my, mz, shotKind(d));
     const tg = this.hitTarget;
     if (tg) {
       const z = this.hitZone;
@@ -180,6 +182,7 @@ export class Combat {
       if (t.health.dead) this.sendDeath(t); else t._ds = false;
     }
     this.fx.tick(dt);
+    setListener(this.player.x, this.player.y, this.player.z);
     if (this.hitmark > 0) this.hitmark -= dt;
     if (this.hurt > 0) this.hurt -= dt;
     if (this.dmgT > 0 && (this.dmgT -= dt) <= 0) this.dmgSum = 0;

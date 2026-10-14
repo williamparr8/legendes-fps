@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { World } from './world.js';
 import { rng } from './testScene.js';
-import { setTheme, Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, HORIZON } from './terrain.js';
+import { setTheme, Heightfield, makeCoast, roadDist, buildTerrainMesh, buildWater, buildMountains, buildSky, getSkyEnv, THEME } from './terrain.js';
 import { buildBuilding } from './buildings.js';
 import { buildDecor } from './decor.js';
 import { makeTrees, makeRocks, makeBushes, makeGrass } from './props.js';
@@ -20,8 +20,8 @@ const DECOR = { Port: [0.35, 0.55, 0.1], Usine: [0.35, 0.55, 0.1], Ferme: [0.6, 
 export function buildIsland(scene, seed = 1, opts = {}) {
   setTheme(Math.abs(seed | 0) % 3);
   const r = rng(seed);
-  scene.background = new THREE.Color(HORIZON);
-  scene.fog = new THREE.Fog(HORIZON, 80, 440);
+  scene.background = new THREE.Color(THEME.fog);
+  scene.fog = new THREE.Fog(THEME.fog, 80, THEME.fogFar);
   scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x6a7550, 1.15));
   const sun = new THREE.DirectionalLight(0xfff1d8, 2.1);
   if (opts.shadows) {
@@ -281,6 +281,6 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   }
   w.finalize();
   w.half = HALF; w.ext = EXT; w.lootPoints = lootPoints; w.poi = poi; w.spawns = spawns; w.rand = r; w.buildings = buildingsInfo;
-  w.places = places; w.roads = roads; w.coast = coast; w.towers = towers;
+  w.theme = THEME.name; w.places = places; w.roads = roads; w.coast = coast; w.towers = towers;
   return w;
 }

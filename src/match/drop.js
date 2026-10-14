@@ -17,7 +17,7 @@ export class Ship {
     this.jumpT = (R - half) / SHIP_SPEED;           // saut permis dès que la carte est survolée
     this.ejectT = (R + half * 0.95) / SHIP_SPEED;   // éjection forcée des derniers passagers
     this.x = this.sx; this.z = this.sz;
-    this.fog = scene.fog;
+    this.fog = scene.fog; this.farEnd = scene.fog ? scene.fog.far : 440;
     this.mesh = buildShip();
     this.mesh.rotation.y = Math.atan2(-this.dx, -this.dz);
     scene.add(this.mesh);
@@ -29,7 +29,7 @@ export class Ship {
     this.x = this.sx + this.dx * d; this.z = this.sz + this.dz * d;
     this.mesh.position.set(this.x, SHIP_ALT, this.z);
     this.mesh.visible = t < this.T;
-    if (this.fog) { const u = clamp((t - this.T) / 8, 0, 1); this.fog.near = 200 - 120 * u; this.fog.far = 700 - 260 * u; } // vue dégagée depuis le vaisseau
+    if (this.fog) { const u = clamp((t - this.T) / 8, 0, 1); this.fog.near = 200 - 120 * u; this.fog.far = this.farEnd + 260 * (1 - u); } // vue dégagée depuis le vaisseau
   }
 }
 
