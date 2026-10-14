@@ -2,7 +2,7 @@ import { Target } from '../combat/target.js';
 import { REVIVE_TIME } from '../combat/health.js';
 import { LEGENDS } from '../legends/abilities.js';
 import diffs from './difficulty.json';
-import { SHIP_ALT, SHIP_SPEED, CHUTE_ALT } from '../match/drop.js';
+import { SHIP_ALT, SHIP_SPEED, CHUTE_ALT, followVy, withLeaderChute } from '../match/drop.js';
 import wdefs from '../combat/weapons.json';
 
 const PREF = { rifle: 20, smg: 12, shotgun: 7, sniper: 45, launcher: 25 }; // distance de combat préférée
@@ -120,10 +120,10 @@ export class Bot extends Target {
     if (lead) { tx = lead.x + Math.cos(this.index * 2.1) * 5; tz = lead.z + Math.sin(this.index * 2.1) * 5; } // l'escouade se pose autour du chef
     const dx = tx - this.x, dz = tz - this.z, d = Math.hypot(dx, dz) || 1, alt = this.y - this.ctx.world.groundY(this.x, this.z);
     const fall = this.phase === 2, f = fall && d < 40 ? 1 : 0, m = d > 3 ? 1 : 0.15;
-    const H = (fall ? 30 - 20 * f : 13) * m, V = fall ? -(28 + 27 * f) : -9, a = Math.min(1, dt * 2.5);
+    const H = (fall ? 30 - 20 * f : 13) * m, V = fall ? (lead ? followVy(this, lead, dt) : -(28 + 27 * f)) : -9, a = Math.min(1, dt * 2.5);
     this.vx += (dx / d * H - this.vx) * a; this.vz += (dz / d * H - this.vz) * a; this.vy += (V - this.vy) * Math.min(1, dt * 4);
     if (Math.hypot(this.vx, this.vz) > 1) this.yaw = Math.atan2(-this.vx, -this.vz);
-    if (fall && (alt < CHUTE_ALT || (lead && lead.stance === 6))) this.phase = 3;
+    if (fall && (alt < CHUTE_ALT || withLeaderChute(this, lead))) this.phase = 3;
     this.physics(dt);
     if (this.grounded) { this.phase = 0; this.vx = this.vz = this.vy = 0; }
   }

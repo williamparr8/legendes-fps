@@ -115,6 +115,15 @@ export class Combat {
     } else if (t < d.range) this.fx.impact(hx, hy, hz, 0);
   }
 
+  // Point visé par le joueur (marqueur) : { x, y, z, enemy } ou null si rien n'est touché à moins de 250 m.
+  pingRay(p) {
+    const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), sp = Math.sin(p.pitch), cp = Math.cos(p.pitch);
+    const fx = -sy * cp, fy = sp, fz = -cy * cp, ox = p.x, oy = p.y + p.eye, oz = p.z;
+    if (!this.trace(ox, oy, oz, fx, fy, fz, 250, this.pp, p.team)) return null;
+    const t = this.hitT, tg = this.hitTarget;
+    return { x: ox + fx * t, y: oy + fy * t, z: oz + fz * t, enemy: !!tg && tg.team !== p.team };
+  }
+
   // Tir du joueur (appelé par Weapons.shoot).
   fire(p, d, spread) {
     this.pp.shots++;

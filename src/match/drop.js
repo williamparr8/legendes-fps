@@ -7,6 +7,18 @@ export const SHIP_ALT = 250, SHIP_SPEED = 11, CHUTE_ALT = 90, ZONE_DELAY = 40;
 const frac = (v) => v - Math.floor(v);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+// Vitesse verticale (≤ 0) d'un équipier qui suit son chef en chute libre : il reproduit la vitesse du chef et rattrape l'écart d'altitude
+// (plongeon jusqu'à -55 m/s). Avant, chaque suiveur tombait à sa propre vitesse : les bots plongeaient à -55 m/s dès qu'ils étaient à
+// moins de 40 m du chef et se posaient 8 s avant lui, et un suiveur resté en altitude ouvrait son parachute en même temps que le chef,
+// donc loin au-dessus de lui. `me._ly` mémorise l'altitude précédente du chef.
+export function followVy(me, lead, dt) {
+  const ly = lead.y, lvy = me._ly === undefined ? -28 : clamp((ly - me._ly) / Math.max(dt, 1e-3), -70, 5);
+  me._ly = ly;
+  return clamp(lvy + (ly - me.y) * 1.4, -55, -9);
+}
+// Le suiveur ouvre son parachute avec le chef seulement s'il est à peu près à la même altitude (sinon il continue de plonger).
+export const withLeaderChute = (me, lead) => !!lead && lead.stance === 6 && me.y - lead.y < 15;
+
 export class Ship {
   constructor(scene, seed, half) {
     const r = (k) => frac(Math.sin((seed + 1) * 12.9898 + k * 78.233) * 43758.5453);
@@ -82,12 +94,13 @@ export function tickPlayerDrop(p, dt) {
     if (l > 0) { dx /= l; dz /= l; } else { dx = -sy; dz = -cy; m = 0.35; } // sans entrée : on dérive dans le sens du regard
   }
   const fall = p.phase === 2, f = fall ? clamp(-p.pitch / 1.1, 0, 1) : 0; // regarder vers le bas = plonger
-  const H = (fall ? 30 - 20 * f : 13) * m, V = fall ? -(28 + 27 * f) : -9, a = Math.min(1, dt * 2.5);
+  const H = (fall ? 30 - 20 * f : 13) * m, a = Math.min(1, dt * 2.5);
+  const V = fall ? (p.attached && lead ? followVy(p, lead, dt) : -(28 + 27 * f)) : -9;
   p.vx += (dx * H - p.vx) * a; p.vz += (dz * H - p.vz) * a; p.vy += (V - p.vy) * Math.min(1, dt * 4);
   p.grounded = false;
   p.moveH(p.vx * dt, p.vz * dt);
   p.moveV(dt, false);
-  if (fall && (alt < CHUTE_ALT || (pr.Space && p.dropT > 0.5) || (p.attached && lead && lead.stance === 6))) p.phase = 3;
+  if (fall && (alt < CHUTE_ALT || (pr.Space && p.dropT > 0.5) || (p.attached && withLeaderChute(p, lead)))) p.phase = 3;
   if (p.grounded) { p.phase = 0; p.attached = false; p.vx = p.vz = 0; p.sfx.land(20); return; }
   p.state = fall ? 'chute libre' : 'parachute';
   const a10 = (alt / 10) | 0;

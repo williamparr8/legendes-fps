@@ -27,6 +27,7 @@ import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
 import { shopFrame } from './shop/shop.js';
 import { lobbyFrame } from './ui/lobby.js';
+import { Pings } from './combat/pings.js';
 
 // Chef d'orchestre : menus ↔ partie. Une partie = une scène neuve (monde, joueur, combat, butin, match).
 // En ligne : `m.net` = HostSession (simulation autoritaire) ou ClientSession (monde répliqué).
@@ -194,7 +195,7 @@ export class Game {
     const loot = new LootField(scene, world.rand || Math.random, world.groundY);
     const viewmodel = new Viewmodel(this.camera, combat.weapons);
     this.dress(combat, player, viewmodel);
-    const m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match: null, cfg, net };
+    const m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match: null, cfg, net, pings: new Pings(scene) };
 
     if (training) {
       for (const [x, z] of [[-6, -5], [5, -6], [0, -22], [14, -3], [-14, -12]]) combat.addTarget(x, z, 1);
@@ -238,7 +239,7 @@ export class Game {
     player.team = msg.you.team;
     player.sx = msg.you.x; player.sz = msg.you.z; player.syaw = msg.you.yaw; player.spawn();
     const match = new ClientMatch(scene, world, combat, msg, net);
-    this.m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match, cfg: msg.cfg, net };
+    this.m = { scene, world, inv, player, combat, abilities, loot, viewmodel, match, cfg: msg.cfg, net, pings: new Pings(scene) };
     try { this.renderer.compile(scene, this.camera); } catch (e) { /* ignoré */ } // compile les shaders avant le 1er rendu (évite le pic au premier tick)
     this.state = 'playing';
     if (world.theme) this.banner('Carte : ' + world.theme);
@@ -297,6 +298,15 @@ export class Game {
     } else if (this.state !== 'playing' || !inp.locked) return;
     const { player, abilities, inv, loot, combat, match } = m;
     player.tick(dt);
+    // clic molette : marqueur visible par les coéquipiers (événement réseau 5 : x, y, z, équipe, ennemi)
+    if (m.pings) {
+      if (inp.pressed.Mouse1 && player.health.alive && m.pings.cd <= 0) {
+        m.pings.cd = 0.4;
+        const r = combat.pingRay(player);
+        if (r) { m.pings.add(r.x, r.y, r.z, r.enemy ? 2 : 0); if (combat.fx.emit) combat.fx.emit(5, r.x, r.y, r.z, player.team, r.enemy ? 1 : 0); }
+      }
+      m.pings.tick(dt, player.x, player.y, player.z);
+    }
     abilities.tick(dt, inp);
     inv.tick(dt, inp, player);
     loot.tick(dt, player, inv, combat.weapons, inp);

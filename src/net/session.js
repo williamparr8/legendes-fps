@@ -9,7 +9,7 @@ const TIMEOUT = 12000;     // ms sans nouvelle d'un pair avant de le considérer
 const clean = (s, d) => String(s || '').replace(/[<>&"']/g, '').trim().slice(0, 16) || d;
 
 // Applique un effet reçu du réseau (traçante, impact, explosion, mur, nuage) sur une partie locale.
-// Événements : [0,x0,y0,z0,x1,y1,z1] [1,x,y,z,type] [2,x,y,z,rayon] [3,x0,y0,z0,x1,y1,z1,durée] [4,x,y,z,rayon,durée]
+// Événements : [0,x0,y0,z0,x1,y1,z1] [1,x,y,z,type] [2,x,y,z,rayon] [3,x0,y0,z0,x1,y1,z1,durée] [4,x,y,z,rayon,durée] [5,x,y,z,équipe,ennemi]
 function applyEvent(m, e) {
   const fx = m.combat.fx, ab = m.abilities;
   switch (e[0]) {
@@ -18,6 +18,7 @@ function applyEvent(m, e) {
     case 2: fx.explosion(e[1], e[2], e[3], e[4], true); break;
     case 3: ab.setWall(e[1], e[2], e[3], e[4], e[5], e[6], e[7]); break;
     case 4: ab.showGas(e[1], e[2], e[3], e[4], e[5]); break;
+    case 5: if (m.pings && e[4] === m.player.team) m.pings.add(e[1], e[2], e[3], e[5] ? 2 : 1); break; // marqueur d'un coéquipier
   }
 }
 

@@ -22,7 +22,7 @@ export class Input {
       this.mx += e.movementX;
       this.my += e.movementY;
     });
-    addEventListener('mousedown', (e) => { if (this.locked) { this.k['Mouse' + e.button] = true; this.pressed['Mouse' + e.button] = true; } });
+    addEventListener('mousedown', (e) => { if (this.locked) { if (e.button === 1) e.preventDefault(); /* molette : pas de défilement automatique */ this.k['Mouse' + e.button] = true; this.pressed['Mouse' + e.button] = true; } });
     addEventListener('mouseup', (e) => { this.k['Mouse' + e.button] = false; });
     addEventListener('wheel', (e) => { if (this.locked) { e.preventDefault(); this.wheel = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0; } }, { passive: false });
     addEventListener('contextmenu', (e) => { if (this.locked) e.preventDefault(); });
