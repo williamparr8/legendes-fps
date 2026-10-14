@@ -64,7 +64,7 @@ export class Fx {
     for (let i = 0; i < this.tr.length; i++) { const t = this.tr[i]; if (t.life > 0 && (t.life -= dt) <= 0) t.line.visible = false; }
     for (let i = 0; i < this.im.length; i++) {
       const t = this.im[i];
-      if (t.life > 0) { t.life -= dt; if (t.life <= 0) t.m.visible = false; else t.m.scale.setScalar(t.life * 4); }
+      if (t.life > 0) { t.life -= dt; if (t.life <= 0) t.m.visible = false; else { t.m.scale.setScalar(t.life * 4); t.m.position.y -= dt * 2.5; } } // retombe comme une étincelle
     }
     for (let i = 0; i < this.ex.length; i++) {
       const e = this.ex[i];

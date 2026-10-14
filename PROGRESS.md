@@ -176,3 +176,6 @@
 - Graphismes (2026-10-06) : paliers 1, 2, 3 faits (voir « Chantier graphique »), poussés et déployés. Qualité réglable dans Options. Prochain : retours visuels de l'utilisateur, textures photo CC0 éventuelles, I-c.
 - **PROCHAINE TÂCHE : chantier réalisme (section « Prochain chantier ») : paliers A (carte en île), B (navigation 3D) et C partie 1 (bâtiments, décor, tyroliennes) FAITS localement, NON poussés (l'utilisateur a dit « pousse pas ») ; reste C partie 2 (textures photo CC0, vraie eau, végétation/rochers en modèles) et D personnages.** Boutique : faite, poussée, à valider par l'utilisateur ; mode en ligne confirmé fonctionnel (2026-10-13). Ensuite possibles : plus de skins, comptes en ligne (Supabase/Firebase), I-c (équilibrage, sons, minimap, profilage), option menu « largage », légende avec `pv.chute`.
 - Si le build échoue dans un dossier sous `AppData`, déplacer le projet (chemin virtualisé).
+
+### Session 2026-10-14 (suite)
+- bot.js : dégâts bot/bot x0,6 (parties plus longues) ; fx.js : étincelles d impact qui retombent. Build OK, non testé en partie ni sur GPU.

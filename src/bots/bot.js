@@ -335,7 +335,7 @@ export class Bot extends Target {
     if (this.mag <= 0) { this.reloadT = def.reload; return; }
     const dist = Math.hypot(dx, dz), moving = Math.hypot(this.vx, this.vz) > 2;
     const err = d.aimErr * (1 + dist / 50) * (moving ? 1.4 : 1) * (1 - 0.4 * Math.min(1, this.seeFor / 3));
-    this.ctx.combat.botShot(this, def, e.x, e.y + (this.aimHead ? 1.62 : 1.1) * e.hs, e.z, err, this.dmgMul * d.dmg);
+    this.ctx.combat.botShot(this, def, e.x, e.y + (this.aimHead ? 1.62 : 1.1) * e.hs, e.z, err, this.dmgMul * d.dmg * (e.isBot ? 0.6 : 1)); // duels bot/bot moins mortels : parties plus longues
     this.cd = 60 / def.rpm; this.mag--;
     if (--this.burst <= 0) {
       this.burst = def.auto ? 3 + ((Math.random() * 5) | 0) : 1;
