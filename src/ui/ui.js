@@ -7,8 +7,8 @@ import { MAX_PLAYERS } from '../net/session.js';
 import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
 import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } from '../shop/quests.js';
-import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
-import { LIST, owns, equip, legendUnlocked, legendPrice, unlockLegend, firstUnlockedLegend, dailyBonus, dailyClaimable, claimDaily } from '../shop/profile.js';
+import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, firstBuyAvailable, FIRST_BONUS, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
+import { LIST, owns, equip, legendUnlocked, legendPrice, unlockLegend, firstUnlockedLegend, dailyBonus, dailyClaimable, claimDaily, LOGIN, loginDay } from '../shop/profile.js';
 import { ACH, hasAch, achCount, titleName, setTitle } from '../shop/achievements.js';
 import { friends, seen as seenFriends, forget as forgetFriend, add as addFriend, myCode, ago } from '../shop/friends.js';
 import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
@@ -126,7 +126,7 @@ export class UI {
       case 'addfriend': { this.friendMsg = addFriend($('fc-code') ? $('fc-code').value : '', $('fc-name') ? $('fc-name').value : '') || 'Ami ajouté.'; this.show('main'); break; }
       case 'copyfc': { try { navigator.clipboard.writeText(myCode()); } catch (e) { /* ignoré */ } this.game.banner('Code ami copié : ' + myCode()); break; }
       case 'joinfriend': this.joinFriend(d.c, d.n); break;
-      case 'claim': { const n = claimDaily(); if (n) this.game.banner('+' + n + ' points : bonus quotidien'); this.show('main'); break; }
+      case 'claim': { const b = claimDaily(); if (b) this.game.banner('Bonus du jour : +' + b.pts + ' points' + (b.gems ? ' et +' + b.gems + ' ' + GEM : '')); this.show('main'); break; }
       case 'invite': this.quickInvite(); break;
       case 'meq': equip(d.k, +d.i); this.show('main'); break;
       case 'pzoom': this.zoom = { k: d.k, id: d.id, t: d.t }; this.show('main'); break;
@@ -205,7 +205,7 @@ export class UI {
       modal = `<h2>Pass de saison ${SE.n} — ${SE.name}</h2>${buy}<div class="lo-track">${t}</div><p class="lo-how">Les paliers avancent avec l'XP de saison (parties et défis). Les skins du Pass sont aussi visibles dans la Boutique.</p>`;
     } else if (this.lobbyTab === 'gems') {
       const url = buyUrl();
-      modal = `<h2>${GEM} Éclats</h2><p>Solde : <b>${profile.gems} ${GEM}</b> — la monnaie premium : le Pass de saison (${PASS_PRICE} ${GEM}) et les skins uniques de la Boutique.</p>
+      modal = `<h2>${GEM} Éclats</h2><p>Solde : <b>${profile.gems} ${GEM}</b> — la monnaie premium : le Pass de saison (${PASS_PRICE} ${GEM}) et les skins uniques de la Boutique.</p>${firstBuyAvailable() ? `<p class="lo-first">🎁 Premier achat : <b>+${FIRST_BONUS} ${GEM} offerts</b> (soit ${PACK.gems + FIRST_BONUS} ${GEM} au lieu de ${PACK.gems}).</p>` : ''}
 ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()} — paiement par PayPal ou carte : les Éclats arrivent automatiquement dès que le paiement est confirmé.</small></div>
             <div id="paypal-btn" class="lo-pp">Chargement de PayPal…</div></div>`
         : `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${GEM}</b><small>pour ${priceText()}, paiement par PayPal.</small></div>
@@ -213,6 +213,12 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code. 3. Colle-le ici :</p>
         <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>`}
         <small class="lo-msg">${esc(this.gemMsg || '')}</small>`;
+    } else if (this.lobbyTab === 'login') {
+      const di = loginDay(), done = (i) => i < di || (i === di && !canClaim);
+      const cells = LOGIN.map((b, i) => `<div class="lo-cal${i === di ? ' today' : ''}${done(i) ? ' done' : ''}${i === 6 ? ' big' : ''}"><small>Jour ${i + 1}</small><b>+${b.pts}</b><span>pts${b.gems ? ' + ' + b.gems + ' ' + GEM : ''}</span>${done(i) ? '<i>✔</i>' : ''}</div>`).join('');
+      modal = `<h2>Calendrier de connexion</h2><p>Reviens chaque jour : la récompense monte jusqu'au jour 7, puis le cycle recommence. Si tu rates des jours, ta série est seulement divisée par deux, jamais remise à zéro.</p>
+        <div class="lo-cals">${cells}</div>
+        <div class="row" style="justify-content:flex-start">${canClaim ? `<button class="primary" data-act="claim">Récupérer la récompense du jour</button>` : '<button disabled>Récompense du jour déjà récupérée ✔</button>'}</div>`;
     } else if (this.lobbyTab === 'profile') {
       const pf = this.profTab || 'stats', st = profile.st;
       const ptab = (k, n) => `<button class="lo-qt${pf === k ? ' on' : ''}" data-act="ptab" data-p="${k}">${n}</button>`;
@@ -308,7 +314,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       </div>
       <div class="lo-br">
         <button class="lo-tile ev${EV.active ? ' on' : ''}" data-act="ltab" data-t="quests" title="${esc(EV.ev.desc)}"><small>${EV.active ? 'Événement en cours · ×' + EVENT_MULT + ' points' : 'Prochain événement'}</small><b>${esc(EV.ev.name)}</b><span>${EV.active ? esc(EV.ev.desc) + ' · ' + EV.text : EV.text}</span></button>
-        <button class="lo-tile daily${canClaim ? ' on' : ''}" ${canClaim ? 'data-act="claim"' : ''}><small>Bonus quotidien · série de ${profile.streak} jour${profile.streak > 1 ? 's' : ''}</small><b>${canClaim ? 'Récupérer +' + dailyBonus() + ' pts' : 'Déjà récupéré ✔'}</b><span>${canClaim ? 'La série augmente chaque jour de connexion' : 'Demain : +' + (20 + 15 * Math.min(profile.streak + 1, 7)) + ' pts'}</span></button>
+        <button class="lo-tile daily${canClaim ? ' on' : ''}" data-act="ltab" data-t="login"><small>Calendrier de connexion · jour ${loginDay() + 1} / 7 · série ${profile.streak}</small><b>${canClaim ? 'Récupérer +' + dailyBonus().pts + ' pts' + (dailyBonus().gems ? ' et +' + dailyBonus().gems + ' ' + GEM : '') : 'Déjà récupéré ✔'}</b><span>${canClaim ? 'Clique pour ouvrir le calendrier' : 'Demain : +' + LOGIN[(loginDay() + 1) % 7].pts + ' pts' + (LOGIN[(loginDay() + 1) % 7].gems ? ' et +' + LOGIN[(loginDay() + 1) % 7].gems + ' ' + GEM : '')}</span></button>
         <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis (jour · semaine)</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
         <button class="lo-tile alt${fresh ? ' on' : ''}" data-act="shop"><small>Boutique du jour · renouvelée dans ${offersLeft()}</small><b>${OO.length ? OO.length + ' offre' + (OO.length > 1 ? 's' : '') + ' de -25 % à -40 %' : 'Offres du jour achetées ✔'}</b><span>${fresh ? 'NOUVEAU · ' : ''}${OO[0] ? esc(OO[0].def.n) + ' à -' + OO[0].pct + ' %' : profile.pts + ' points'}</span></button>
       </div>
@@ -324,7 +330,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     setTimeout(() => {
       const el = $('paypal-btn');
       if (el) mountCheckout(el, (r) => {
-        this.gemMsg = r === 'used' ? 'Cette commande a déjà été créditée.' : r === 'error' ? "Le paiement a échoué ou a été annulé : rien n'a été débité." : '+' + r.gems + ' ' + GEM + ' reçus ! Merci !';
+        this.gemMsg = r === 'used' ? 'Cette commande a déjà été créditée.' : r === 'error' ? "Le paiement a échoué ou a été annulé : rien n'a été débité." : '+' + r.gems + ' ' + GEM + ' reçus' + (r.bonus ? ' (dont +' + r.bonus + ' de bonus premier achat)' : '') + ' ! Merci !';
         if (this.screen === 'main') this.show('main');
       });
     }, 0);
@@ -333,7 +339,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
   async redeemCode() {
     const el = $('gem-code');
     const r = await redeem(el ? el.value : '');
-    this.gemMsg = r === 'used' ? 'Ce code a déjà été utilisé sur cet appareil.' : r ? '+' + r.gems + ' ' + GEM + ' ajoutés. Merci !' : 'Code invalide (copié en entier ?).';
+    this.gemMsg = r === 'used' ? 'Ce code a déjà été utilisé sur cet appareil.' : r ? '+' + r.gems + ' ' + GEM + ' ajoutés' + (r.bonus ? ' (dont +' + r.bonus + ' de bonus premier achat)' : '') + '. Merci !' : 'Code invalide (copié en entier ?).';
     if (this.screen === 'main') this.show('main');
   }
 

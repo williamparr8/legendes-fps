@@ -318,3 +318,12 @@ button.lo-season:hover{background:#2a3aa088!important}
 .nr{margin:6px 0;font-size:13px}.nr .lo-xp{margin:3px 0 0}
 @media(max-width:900px){.soffers{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .scards{max-height:38vh!important}
+
+/* Calendrier de connexion, bonus premier achat */
+.lo-cals{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:12px 0}
+.lo-cal{position:relative;background:#ffffff0f;border:1px solid #ffffff22;padding:10px 6px;text-align:center}
+.lo-cal small{display:block;opacity:.7;font-size:10px;letter-spacing:.1em}.lo-cal b{display:block;font-size:20px;color:#ffd070;margin:4px 0}.lo-cal span{font-size:11px;opacity:.85;text-transform:none}
+.lo-cal.today{border-color:#ffd070;background:#ffd07022;box-shadow:0 0 12px #ffd07044}.lo-cal.big{border-color:#ff7af0}.lo-cal.big b{color:#ff9af0}
+.lo-cal.done{opacity:.55}.lo-cal i{position:absolute;right:4px;top:2px;color:#6fe06f;font-style:normal;font-size:14px}
+.lo-first{background:linear-gradient(90deg,#ff7a3a33,transparent);border-left:4px solid #ff7a3a;padding:8px 12px;margin:8px 0!important;text-transform:none}
+@media(max-width:700px){.lo-cals{grid-template-columns:repeat(4,minmax(0,1fr))}}

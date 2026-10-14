@@ -280,3 +280,7 @@
 - **Rang classé** (`shop/rank.js`, profil v4 : rp/peak/rseason) : Bronze→Maître (4 divisions de 100 RP) puis Légende ; RP selon classement (+60 victoire ; de -20 à +50 selon rang), +3/élimination, ×0,6 à ×1,4 selon la difficulté, comptés à partir de 4 escouades ; protection : on ne descend pas sous le début de son rang, Bronze sans perte. Fin de saison : points selon le meilleur rang + remise à 60 %. Rang visible dans le hall, le Profil et le salon (roster `rp`).
 - **Fin de partie** : bloc rang (RP, promotion, barre) + « Tu y es presque » (3 objectifs les plus avancés : niveau, palier de saison, rang, défis) + rappel des offres du jour.
 - Testé : barème/protection/saison/promotion, code v4, offres déterministes et achats (Éclats/points), rendu navigateur (bandeau, tuile, résultats factices). Non testé : fin de saison réelle sur plusieurs semaines.
+
+### Calendrier de connexion + bonus premier achat (2026-10-14)
+- Cycle de 7 jours selon la série (`LOGIN` dans profile.js) : +30, +45, +60, +80, +100, +130, puis jour 7 = +250 pts et +25 ✦ ; la tuile du hall ouvre le calendrier (récupération dans la fenêtre). Série : jamais remise à zéro (divisée par 2 après des jours manqués).
+- Premier achat d'Éclats (par appareil, `legendes-fps-firstbuy`) : +500 ✦ de bonus (1500 au lieu de 1000), affiché dans la fenêtre Éclats et dans le message de crédit.

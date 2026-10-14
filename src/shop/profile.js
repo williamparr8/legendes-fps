@@ -141,14 +141,17 @@ export function touchDay() {
   profile.lastDay = today;
   save();
 }
-export const dailyBonus = () => 20 + 15 * Math.min(profile.streak, 7);
+// Calendrier : cycle de 7 jours selon la série (jour 7 : gros bonus + quelques Éclats pour « goûter » la monnaie premium).
+export const LOGIN = [{ pts: 30 }, { pts: 45 }, { pts: 60 }, { pts: 80 }, { pts: 100 }, { pts: 130 }, { pts: 250, gems: 25 }];
+export const loginDay = () => (Math.max(1, profile.streak) - 1) % 7;          // 0..6 : case d'aujourd'hui
+export const dailyBonus = () => LOGIN[loginDay()];
 export const dailyClaimable = () => profile.claimed !== dayNumber() && profile.lastDay === dayNumber();
 export function claimDaily() {
-  if (!dailyClaimable()) return 0;
-  const n = dailyBonus();
-  profile.claimed = dayNumber(); profile.pts += n; profile.earned += n;
+  if (!dailyClaimable()) return null;
+  const b = dailyBonus();
+  profile.claimed = dayNumber(); profile.pts += b.pts; profile.earned += b.pts; profile.gems += b.gems | 0;
   save();
-  return n;
+  return b;
 }
 
 // Points d'une partie : 15 + 6 par élimination + bonus de classement ; × 0,6 sans autre humain ; réduit si peu d'escouades (anti-exploit).

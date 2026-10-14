@@ -11,6 +11,10 @@ import CFG from './passconfig.json';
 // un joueur déterminé peut modifier son propre profil (voir PROGRESS.md).
 const USED = 'legendes-fps-codes';
 export const GEM = '✦';
+const FIRST = 'legendes-fps-firstbuy';
+export const FIRST_BONUS = 500; // bonus du tout premier achat d'Éclats (par appareil)
+export const firstBuyAvailable = () => { try { return !localStorage.getItem(FIRST); } catch (e) { return false; } };
+function takeFirst() { const f = firstBuyAvailable(); if (f) { try { localStorage.setItem(FIRST, '1'); } catch (e) { /* stockage indisponible */ } } return f ? FIRST_BONUS : 0; }
 export const PACK = { gems: CFG.gems || 1000, amount: CFG.amount, currency: CFG.currency };
 export const PASS_PRICE = 950;
 export const hasCheckout = () => !!CFG.paypalClientId;
@@ -48,8 +52,9 @@ export async function redeem(code) {
   if (used.includes(v.nonce)) return 'used';
   used.push(v.nonce);
   try { localStorage.setItem(USED, JSON.stringify(used)); } catch (e) { /* stockage indisponible */ }
-  profile.gems += v.gems; save();
-  return { gems: v.gems, buyer: v.buyer };
+  const bonus = takeFirst();
+  profile.gems += v.gems + bonus; save();
+  return { gems: v.gems + bonus, bonus, buyer: v.buyer };
 }
 
 // Crédite les Éclats d'une commande PayPal capturée (identifiant unique). Renvoie { gems } | 'used'.
@@ -60,8 +65,9 @@ export function creditOrder(orderId) {
   if (used.includes(key)) return 'used';
   used.push(key);
   try { localStorage.setItem(USED, JSON.stringify(used)); } catch (e) { /* stockage indisponible */ }
-  profile.gems += PACK.gems; save();
-  return { gems: PACK.gems };
+  const bonus = takeFirst();
+  profile.gems += PACK.gems + bonus; save();
+  return { gems: PACK.gems + bonus, bonus };
 }
 
 let sdk = null;
