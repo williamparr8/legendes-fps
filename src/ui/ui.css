@@ -219,3 +219,27 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-pr{min-height:150px!important}
 
 .lo-pp{min-width:260px;max-width:340px;font-size:13px;text-transform:none;opacity:.9}
+
+/* Mes légendes : liste à gauche, opérateur 3D au centre (décor du hall), compétences à droite */
+.lo.mine .lo-left,.lo.mine .lo-bl,.lo.mine .lo-center,.lo.mine .lo-br,.lo.mine .lo-season{display:none}
+.lo-mine-l,.lo-mine-r{position:absolute;top:84px;bottom:18px;background:#0a0f32e0;border:1px solid #6a78ff55;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;text-transform:none}
+.lo-mine-l{left:18px;width:min(420px,36vw)}
+.lo-mine-r{right:18px;width:min(360px,32vw);overflow:auto}
+.lo-mine-l h2,.lo-mine-r h2{margin:0 0 4px;text-transform:uppercase;letter-spacing:.1em}
+.lo-mine-list{overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;align-content:start;padding:2px}
+.lo-lg{grid-column:1/-1;text-align:left!important;padding:12px 14px!important;background:#ffffff10!important;border-left:5px solid var(--c)!important;display:flex;flex-direction:column;gap:2px}
+.lo-lg:hover{background:#ffffff1c!important}.lo-lg.on{background:#ffffff26!important;box-shadow:inset 0 0 0 1px var(--c)}
+.lo-lg b{font-size:17px;color:var(--c);text-transform:uppercase}.lo-lg em{font-style:normal;font-size:12px;opacity:.7}
+.lo-sk2{text-align:left!important;padding:8px!important;background:#ffffff10!important;border:2px solid transparent!important;display:flex;flex-direction:column;gap:4px;min-width:0}
+.lo-sk2:hover{background:#ffffff1c!important}.lo-sk2.on{border-color:#6fe06f!important}
+.lo-th2{width:100%;height:110px;object-fit:contain;border-radius:6px;background:#111a24;display:block}
+.lo-th2.none{display:grid;place-items:center;font-size:11px;opacity:.5;text-transform:uppercase;letter-spacing:2px}
+.lo-sk2 b{font-size:14px}.lo-sk2 em{font-style:normal;font-size:12px;color:#9aa5b1}.lo-sk2.on em{color:#6fe06f}
+.lo-link2{text-decoration:underline;opacity:.9;font-size:inherit!important}
+.lo-mine-r small{opacity:.7;letter-spacing:.14em;text-transform:uppercase}
+.lo-role{font-size:13px;opacity:.75;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.lo-ab{background:#ffffff0d;border-left:4px solid #ffd070;padding:10px 12px;margin-top:10px}
+.lo-ab small{display:block;color:#ffd070}.lo-ab b{display:block;font-size:18px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 4px}
+.lo-ab p{margin:0 0 8px;font-size:14px;opacity:.9;text-align:left;line-height:1.35}
+.lo-st{display:flex;flex-wrap:wrap;gap:6px}.lo-st span{background:#ffffff18;padding:3px 8px;font-size:12px;border-radius:3px}
+@media(max-width:900px){.lo-mine-l{width:44vw}.lo-mine-r{width:44vw}.lo-th2{height:80px}}

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { makeRig, WIDS } from '../combat/humanoid.js';
+import { buildWeaponModel, applyWeaponSkin } from '../combat/models.js';
+import { getSkyEnv } from '../world/terrain.js';
 import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
@@ -99,6 +101,8 @@ class ShopView {
     this.scene.add(key);
     this.g = new THREE.Group(); this.scene.add(this.g);
     this.g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.06, 32).translate(0, -0.03, 0), new THREE.MeshLambertMaterial({ color: 0x1b2d40 })));
+    this.wg = new THREE.Group(); this.wg.visible = false; this.g.add(this.wg); // grande arme (onglet Arme)
+    this.wm = {}; this.wkey = null;
     this.a = { health: { downed: false }, stance: 0, wid: WIDS[0], shots: 0, reloading: false, pitch: 0 };
     this.t = 0; this.sig = -1;
   }
@@ -120,11 +124,35 @@ class ShopView {
     if (legend !== this.legend && legends[legend]) { this.legend = legend; this.rig.setAccent(legends[legend].color, legend); }
     const k = S.kind, i = S.sel;
     this.rig.setSkins(k === 'perso' ? i + 1 : profile.eq.perso, k === 'arme' ? i + 1 : profile.eq.arme);
-    this.rig.animate(dt, 0, 0, this.a);
+    const showW = k === 'arme';
+    this.m.visible = !showW; this.wg.visible = showW;
+    const env = showW ? getSkyEnv() : null; // reflets du ciel sur le métal de l'arme (sinon elle ressort noire)
+    if (this.scene.environment !== env) { this.scene.environment = env; this.scene.environmentIntensity = 0.9; }
+    if (showW) this.weaponFrame(w, i);
+    else this.rig.animate(dt, 0, 0, this.a);
     const asp = innerWidth / innerHeight;
     if (this.cam.aspect !== asp) { this.cam.aspect = asp; this.cam.updateProjectionMatrix(); }
     this.g.position.x = 0.55 * 1.49 * asp; // centre de la zone droite (le panneau occupe ~55 % de la largeur)
-    this.g.rotation.y = 2.4 + this.t * 0.5;
+    this.g.rotation.y = showW ? 0 : 2.4 + this.t * 0.5;
+  }
+
+  // Onglet Arme : l'arme seule, en grand, tourne sur le socle (le skin sélectionné est appliqué à toutes les armes qui défilent).
+  weaponFrame(wid, sel) {
+    const def = sel >= 0 ? LIST.arme[sel] : null, key = def ? def.id : '';
+    let m = this.wm[wid];
+    if (!m) {
+      const g = buildWeaponModel(wid), box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+      g.position.sub(c);
+      const o = new THREE.Group(); o.add(g);
+      o.scale.setScalar(1.9 / Math.max(s.x, s.z, 0.5));
+      this.wg.add(o);
+      m = this.wm[wid] = { o, g, key: null };
+    }
+    for (const id in this.wm) this.wm[id].o.visible = id === wid;
+    if (m.key !== key) { applyWeaponSkin(m.g, def); m.key = key; }
+    this.wg.position.y = 1.0 + Math.sin(this.t * 1.3) * 0.05;
+    this.wg.rotation.y = Math.PI / 2 + Math.sin(this.t * 0.5) * 0.9;
+    this.wg.rotation.x = 0.08;
   }
 }
 

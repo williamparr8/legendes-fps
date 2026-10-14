@@ -8,7 +8,7 @@ import { QUALITY } from '../core/post.js';
 import { profile } from '../shop/profile.js';
 import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } from '../shop/quests.js';
 import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
-import { LIST } from '../shop/profile.js';
+import { LIST, owns, equip } from '../shop/profile.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
@@ -104,6 +104,9 @@ export class UI {
       case 'gemsopen': this.lobbyTab = 'gems'; this.show('main'); break;
       case 'gemsbuy': { const u = buyUrl(); if (u) window.open(u, '_blank', 'noopener'); break; }
       case 'gemsredeem': this.redeemCode(); break;
+      case 'mtab': this.mineTab = d.m; this.show('main'); break;
+      case 'mleg': this.legend = d.id; this.show('main'); break;
+      case 'meq': equip(d.k, +d.i); this.show('main'); break;
       case 'lclose': this.lobbyTab = null; this.show('main'); break;
       case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
       case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
@@ -169,12 +172,35 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <p class="lo-how">1. Paie par PayPal (écris ton pseudo en note). 2. Tu reçois ton code. 3. Colle-le ici :</p>
         <div class="linkrow"><input class="t" id="gem-code" placeholder="Code d'Éclats (commence par LE.)" autocomplete="off"><button data-act="gemsredeem">Utiliser le code</button></div>`}
         <small class="lo-msg">${esc(this.gemMsg || '')}</small>`;
-    } else if (this.lobbyTab === 'legends') modal = `<h2>Choisis ta légende</h2><div class="cards">${this.legendCards()}</div>`;
+    } else if (this.lobbyTab === 'legends') modal = '';
     const name = esc(settings.name || 'Joueur');
-    return `<div class="lo">
+    const mine = this.lobbyTab === 'legends';
+    let mineHtml = '';
+    if (mine) {
+      const mt = this.mineTab || 'leg', cnt = (k) => LIST[k].filter((_, i) => owns(k, i)).length;
+      const mtab = (k, n) => `<button class="lo-qt${mt === k ? ' on' : ''}" data-act="mtab" data-m="${k}">${n}</button>`;
+      let list = '', hint = '';
+      if (mt === 'leg') {
+        list = LEGEND_IDS.map((id) => { const L2 = LEGENDS[id]; return `<button class="lo-lg${id === this.legend ? ' on' : ''}" data-act="mleg" data-id="${id}" style="--c:${L2.color}"><b>${L2.name}</b><small>${L2.role}</small><em>${id === this.legend ? 'Équipée' : 'Débloquée'}</em></button>`; }).join('');
+        hint = 'Toutes les légendes sont débloquées. Celle qui est équipée sera jouée au prochain départ.';
+      } else {
+        const eq = profile.eq[mt];
+        const item = (idx, nm, id) => `<button class="lo-sk2${eq === idx ? ' on' : ''}" data-act="meq" data-k="${mt}" data-i="${idx}">${id ? thumbImg(mt, id, 'lo-th2') : '<div class="lo-th2 none">Par défaut</div>'}<b>${nm}</b><em>${eq === idx ? 'Équipé' : 'Débloqué'}</em></button>`;
+        list = item(0, mt === 'perso' ? "Tenue d'origine" : "Arme d'origine", null) + LIST[mt].map((d, i) => (owns(mt, i) ? item(i + 1, esc(d.n), d.id) : '')).join('');
+        hint = `${cnt(mt)} / ${LIST[mt].length} débloqués — les autres sont à gagner : <button class="lo-link2" data-act="shop">Boutique</button> ou <button class="lo-link2" data-act="ltab" data-t="pass">Pass</button>.`;
+      }
+      const stat = (o) => [['cooldown', 'Recharge', ' s'], ['charge', 'Charge', ''], ['duration', 'Durée', ' s'], ['radius', 'Rayon', ' m'], ['splashRadius', 'Rayon', ' m'], ['splashDmg', 'Dégâts', '']]
+        .filter(([k]) => o[k] != null).map(([k, l, u]) => `<span>${l} ${o[k]}${u}</span>`).join('');
+      const ab = (tag, o) => `<div class="lo-ab"><small>${tag}</small><b>${o.name}</b><p>${o.desc}</p><div class="lo-st">${stat(o)}</div></div>`;
+      mineHtml = `<div class="lo-mine-l"><h2>Mes légendes</h2><div class="lo-qts">${mtab('leg', 'Légendes ' + LEGEND_IDS.length)}${mtab('perso', 'Tenues ' + (cnt('perso') + 1))}${mtab('arme', 'Armes ' + (cnt('arme') + 1))}</div>
+          <div class="lo-mine-list">${list}</div><p class="lo-how">${hint}</p></div>
+        <div class="lo-mine-r"><small>Compétences</small><h2 style="color:${LG.color}">${LG.name}</h2><span class="lo-role">${LG.role}</span>
+          ${ab('Passif', LG.passive)}${ab('Tactique · touche F', LG.tactical)}${ab('Ultime · touche G', LG.ultimate)}</div>`;
+    }
+    return `<div class="lo${mine ? ' mine' : ''}">
       <div class="lo-top">
         <div class="lo-id"><div class="lo-lvl">${L.level}</div><div><b>${name}</b>${titleFor(SE.tier, SE.n) ? `<small style="color:#ff7af0">« ${titleFor(SE.tier, SE.n)} »</small>` : ''}<div class="lo-xp"><i style="width:${Math.round(100 * L.xp / L.need)}%"></i></div><small>${L.xp} / ${L.need} XP</small></div></div>
-        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
+        <nav class="lo-tabs">${tab('play', 'Jouer', 'ltab')}${tab('legends', 'Mes légendes', 'ltab')}${tab('quests', 'Défis', 'ltab', left ? `<span class="lo-badge">${left}</span>` : '')}${tab('pass', 'Pass', 'ltab', SE.pass ? '' : '<span class="lo-badge new">!</span>')}${tab('shop', 'Boutique', 'shop')}${tab('opt', 'Options', 'options')}</nav>
         <div class="lo-res"><span class="lo-pts" title="Points (Boutique)">◆ ${profile.pts}</span><button class="lo-gems" data-act="gemsopen" title="Obtenir des Éclats">${GEM} ${profile.gems} <i>+</i></button><button class="lo-gear" data-act="options" title="Options et commandes">⚙</button></div>
       </div>
       <div class="lo-left">
@@ -197,6 +223,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <button class="lo-tile" data-act="ltab" data-t="quests"><small>Défis (jour · semaine)</small><b>${left ? left + ' à accomplir' : 'Tous accomplis ✔'}</b><span>${nextQ ? nextQ.txt : 'Reviens demain'}</span></button>
         <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
       </div>
+      ${mineHtml}
       ${modal ? `<div class="lo-modal" data-act="lclose"><div class="lo-mp${this.lobbyTab === 'pass' ? ' pass' : ''}" data-stop="1">${modal}<div class="row"><button class="primary" data-act="lclose">Fermer</button></div></div></div>` : ''}
     </div>`;
   }
