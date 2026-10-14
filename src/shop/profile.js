@@ -59,12 +59,19 @@ export function importCode(code) {
 }
 
 export const owns = (kind, i) => ((profile.own[kind] >> i) & 1) === 1;
+// Accorde un skin (Pass) : renvoie true s'il était nouveau.
+export function grant(kind, id) {
+  const i = LIST[kind].findIndex((d) => d.id === id);
+  if (i < 0 || owns(kind, i)) return false;
+  profile.own[kind] |= 1 << i; save();
+  return true;
+}
 // Skin équipé (définition) ou null = tenue par défaut.
 export const equippedDef = (kind) => LIST[kind][profile.eq[kind] - 1] || null;
 
 export function buy(kind, i) {
   const def = LIST[kind][i];
-  if (!def || owns(kind, i)) return false;
+  if (!def || def.pass || owns(kind, i)) return false; // les skins du Pass se débloquent par paliers
   const c = price(def);
   if (profile.pts < c) return false;
   profile.pts -= c; profile.own[kind] |= 1 << i;

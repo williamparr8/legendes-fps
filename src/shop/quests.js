@@ -1,4 +1,5 @@
 import { profile, save } from './profile.js';
+import { active as passActive, grantTier } from './pass.js';
 
 // Niveau (dérivé des points gagnés à vie : profile.earned, déjà dans le code de sauvegarde), défis quotidiens, hebdomadaires et de saison.
 // Niveau n atteint à 30·n·(n−1) points cumulés ; 3 défis par jour (graine = date locale), 4 par semaine (du lundi), une saison de 12 semaines
@@ -36,6 +37,7 @@ const SEASON = [ // fixes : objectifs à long terme
 const NAMES = ['Éveil', 'Braise', 'Givre', 'Tempête', 'Aurore', 'Spectre'];
 const SEASON_DAYS = 84, SEASON_START = Date.UTC(2026, 9, 1) / 864e5; // 1er octobre 2026
 const TIERS = 20, TIER_XP = 200, tierReward = (t) => (t % 5 === 0 ? 250 : 40);
+export const freeReward = tierReward;
 
 const dayNum = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); };
 const dateKey = (n) => { const d = new Date(n * 864e5); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
@@ -57,7 +59,7 @@ function load() {
   if (!st || typeof st !== 'object') st = {};
   if (st.day !== dateKey(d) || !Array.isArray(st.q) || st.q.length !== 3) { st.day = dateKey(d); st.q = pick(dateKey(d), DAILY, 3); }
   if (st.wk !== w || !Array.isArray(st.wq) || st.wq.length !== 4) { st.wk = w; st.wq = pick(w * 7919, WEEKLY, 4); }
-  if (st.se !== se || !Array.isArray(st.sq) || st.sq.length !== SEASON.length) { st.se = se; st.sq = SEASON.map(() => ({ p: 0, done: 0 })); st.sxp = 0; st.tier = 0; }
+  if (st.se !== se || !Array.isArray(st.sq) || st.sq.length !== SEASON.length) { st.se = se; st.sq = SEASON.map(() => ({ p: 0, done: 0 })); st.sxp = 0; st.tier = 0; st.pg = 0; }
   return st;
 }
 const store = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* stockage indisponible */ } };
@@ -70,7 +72,7 @@ export const weeklies = () => view(load().wq, WEEKLY);
 export function season() {
   const s = load(), d = dayNum(), n = seasonIdx(d);
   return {
-    n: n + 1, name: NAMES[n % NAMES.length], daysLeft: SEASON_DAYS - ((d - SEASON_START) - n * SEASON_DAYS), xp: s.sxp, tier: s.tier, tiers: TIERS, tierXp: TIER_XP,
+    pass: passActive(n + 1), n: n + 1, name: NAMES[n % NAMES.length], daysLeft: SEASON_DAYS - ((d - SEASON_START) - n * SEASON_DAYS), xp: s.sxp, tier: s.tier, tiers: TIERS, tierXp: TIER_XP,
     toNext: s.tier >= TIERS ? 0 : TIER_XP - (s.sxp - s.tier * TIER_XP), nextReward: s.tier >= TIERS ? 0 : tierReward(s.tier + 1),
     list: s.sq.map((q, i) => { const [k, n2, rw] = SEASON[i]; return { txt: KIND[k].txt(n2), p: Math.min(q.p, n2), n: n2, reward: rw, done: !!q.done }; }),
   };
@@ -106,7 +108,21 @@ export function questsMatch(res) {
     profile.pts += r; profile.earned += r;
     got.push({ txt: `Saison : palier ${s.tier} atteint`, reward: r });
   }
+  premiumSync(s, got);
   res.quests = got;
   store(); if (got.length) save();
+  return got;
+}
+
+// Récompenses du Pass pour les paliers atteints et pas encore réclamés (pg : masque de bits par palier, remis à zéro à chaque saison).
+function premiumSync(s, got) {
+  if (!passActive(seasonIdx(dayNum()) + 1)) return;
+  for (let t = 1; t <= s.tier; t++) if (!((s.pg >> t) & 1)) { s.pg |= 1 << t; grantTier(t, got); }
+}
+// À appeler après l'activation du Pass (rattrapage des paliers déjà atteints) : renvoie les récompenses accordées.
+export function passSync() {
+  const s = load(), got = [];
+  premiumSync(s, got);
+  store();
   return got;
 }

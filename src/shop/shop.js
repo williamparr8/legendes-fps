@@ -18,13 +18,14 @@ export function shopHtml() {
   cards.push(card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`));
   list.forEach((d, i) => {
     const c = price(d);
-    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">${c} pts</em>`;
-    cards.push(card(i, d.n, RAR[d.r], d.p || d.w, st));
+    const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">${c} pts</em>`;
+    cards.push(card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : RAR[d.r], d.p || d.w, st));
   });
   // action pour le skin sélectionné
   let act;
   if (S.sel === -1) act = eq === -1 ? '<button disabled>Équipé</button>' : '<button class="primary" data-act="seq" data-i="-1">Équiper la tenue d\'origine</button>';
   else if (owns(k, S.sel)) act = eq === S.sel ? '<button disabled>Équipé</button>' : `<button class="primary" data-act="seq" data-i="${S.sel}">Équiper</button>`;
+  else if (list[S.sel].pass) act = `<button disabled>Exclusif au Pass de saison — palier ${list[S.sel].pass}</button>`;
   else {
     const c = price(list[S.sel]);
     act = profile.pts >= c ? `<button class="primary" data-act="sbuy" data-i="${S.sel}">Acheter — ${c} pts</button>` : `<button disabled>Il manque ${c - profile.pts} pts (${c})</button>`;

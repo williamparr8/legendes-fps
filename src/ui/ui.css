@@ -174,3 +174,24 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-qt{padding:8px 14px!important;background:#ffffff14!important;font-size:14px;opacity:.75}.lo-qt.on{opacity:1;background:#e0452f!important}
 .lo-tier{background:#ffffff0f;padding:10px 14px;margin-bottom:6px}.lo-tier b{font-size:18px;color:#ffd070}
 .lo-mp h3{margin:14px 0 2px;font-size:14px;letter-spacing:.12em;opacity:.7}
+
+.lo-badge.new{background:#ff4af0}
+.lo-mp.pass{max-width:1100px}
+.lo-buy{display:flex;gap:18px;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#3a1a78,#7a2a14);padding:14px 18px;margin:8px 0}
+.lo-buy small{display:block;max-width:560px;text-transform:none;letter-spacing:.02em;margin-top:4px}
+.lo-price{font-size:30px;color:#ffd070}
+.lo-buy button{padding:14px 22px!important;font-size:16px;background:#2a7a4b!important;white-space:nowrap}
+.lo-buy button:disabled{background:#444!important;opacity:.7}
+.lo-how{font-size:13px;text-transform:none;opacity:.8;margin:10px 0 6px!important}
+.lo-msg{color:#ff8a80;text-transform:none}
+.lo-passok{background:#1d4a30;padding:10px 14px;margin:8px 0!important;text-transform:none;color:#9affc0}
+.lo-track{display:flex;gap:6px;overflow-x:auto;padding:6px 2px 12px;margin-top:10px}
+.lo-tr{flex:0 0 118px;display:flex;flex-direction:column;gap:5px;font-size:12px;text-transform:none}
+.lo-tr>b{text-align:center;font-size:16px;background:#ffffff14;padding:3px}
+.lo-tr.got>b{background:#e0452f}
+.lo-fr{background:#ffffff0d;padding:8px;text-align:center;min-height:42px;opacity:.85}
+.lo-pr{background:linear-gradient(160deg,#4a1a6a,#1a1a50);border:1px solid #ff4af0;padding:8px;min-height:104px;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.lo-pr.lock{filter:grayscale(.7) brightness(.7)}
+.lo-sk{display:flex;gap:6px;align-items:center;font-weight:700;color:#fff}
+.lo-sk i{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+.lo-ti{color:#ff7af0;font-style:italic}
