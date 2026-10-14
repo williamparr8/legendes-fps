@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeRig, WIDS } from '../combat/humanoid.js';
+import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, validCode } from './profile.js';
 
@@ -84,14 +85,22 @@ class ShopView {
     this.scene.add(key);
     this.g = new THREE.Group(); this.scene.add(this.g);
     this.g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.06, 32).translate(0, -0.03, 0), new THREE.MeshLambertMaterial({ color: 0x1b2d40 })));
-    const m = new THREE.Group(); this.g.add(m);
-    this.rig = makeRig(m, true);
     this.a = { health: { downed: false }, stance: 0, wid: WIDS[0], shots: 0, reloading: false, pitch: 0 };
-    this.t = 0; this.legend = '';
+    this.t = 0; this.sig = -1;
+  }
+
+  // (Re)construit l'opérateur quand le modèle animé / les corps de skins finissent de charger (sinon silhouette procédurale).
+  build() {
+    if (this.m) this.g.remove(this.m);
+    this.m = new THREE.Group(); this.g.add(this.m);
+    this.rig = makeRig(this.m, true);
+    this.legend = '';
+    this.sig = (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2;
   }
 
   frame(dt, legend) {
     this.t += dt;
+    if (this.sig !== (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2) this.build();
     const w = WIDS[Math.floor(this.t / 5) % WIDS.length];
     this.a.wid = w;
     if (legend !== this.legend && legends[legend]) { this.legend = legend; this.rig.setAccent(legends[legend].color, legend); }

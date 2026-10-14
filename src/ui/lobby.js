@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeRig, WIDS } from '../combat/humanoid.js';
+import { human } from '../combat/humanrig.js';
 import legends from '../legends/legends.json';
 import { profile } from '../shop/profile.js';
 
@@ -62,14 +63,23 @@ class LobbyView {
     const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.9, 0.07, 40).translate(0, -0.035, 0), new THREE.MeshStandardMaterial({ color: 0x1a1d3a, roughness: 0.35, metalness: 0.6 }));
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.02, 8, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff7a3a }));
     this.g.add(pad, ring);
-    const m = new THREE.Group(); this.g.add(m);
-    this.rig = makeRig(m, true);
     this.a = { health: { downed: false }, stance: 0, wid: WIDS[0], shots: 0, reloading: false, pitch: 0 };
-    this.t = 0; this.legend = ''; this.asp = 0;
+    this.t = 0; this.asp = 0; this.sig = -1;
+  }
+
+  // (Re)construit l'opérateur : le modèle animé et les corps de skins se chargent en arrière-plan ; tant qu'ils ne sont pas là,
+  // makeRig donne la silhouette procédurale, qu'on remplace donc dès qu'un modèle arrive.
+  build() {
+    if (this.m) this.g.remove(this.m);
+    this.m = new THREE.Group(); this.g.add(this.m);
+    this.rig = makeRig(this.m, true);
+    this.legend = '';
+    this.sig = (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2;
   }
 
   frame(dt, legend) {
     this.t += dt;
+    if (this.sig !== (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2) this.build();
     const asp = innerWidth / innerHeight;
     if (Math.abs(asp - this.asp) > 0.02) {
       this.asp = asp;
