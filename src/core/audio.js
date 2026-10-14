@@ -78,5 +78,6 @@ Object.assign(sfx, {
   hit(kind) { tone(kind === 1 ? 1700 : kind === 2 ? 900 : 1200, kind === 2 ? 400 : 900, kind === 2 ? 0.2 : 0.06, 'square', kind === 2 ? 0.12 : 0.07); },
   hurt() { burst(0.45, 700, 120, 0.18, 'lowpass', 1, 90); },
   reload() { burst(0.2, 3000, 1500, 0.04, 'bandpass', 4); setTimeout(() => burst(0.25, 2400, 1200, 0.06, 'bandpass', 4, 220), 420); },
+  pickup() { tone(620, 940, 0.07, 'sine', 0.05); },
   heal() { tone(520, 780, 0.25, 'sine', 0.1); setTimeout(() => tone(780, 1040, 0.2, 'sine', 0.08), 130); },
 });

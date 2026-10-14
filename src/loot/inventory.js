@@ -20,6 +20,12 @@ export class Inventory {
     return n;
   }
 
+  // Place restante pour cet objet (munitions / soins) ; sert au ramassage automatique.
+  room(kind, key) {
+    const store = kind === 'ammo' ? this.ammo : this.heal;
+    return (kind === 'ammo' ? items.ammoCaps : items.healCaps)[key] - store[key];
+  }
+
   get progress() { return this.useKey ? 1 - this.useT / this.useDur : 0; }
 
   cancel(player) { this.useKey = null; player.useMul = 1; }

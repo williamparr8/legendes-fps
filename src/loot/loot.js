@@ -1,10 +1,14 @@
 import items from './items.json';
 import { buildItemModel, makeBeacons, setBeacon } from './itemModels.js';
+import { sfx } from '../core/audio.js';
+
+const AUTO_R2 = 1.7 * 1.7; // ramassage automatique des munitions et des soins en passant dessus (rayon 1,7 m)
 
 const N = 700;
 
 // Objets au sol (pool de 400 emplacements). Chaque emplacement crée à la demande un modèle par type d'objet (puis le réutilise).
 // Ramassage avec E (même étage : écart de hauteur < 2,4 m) ; les armes remplacent l'arme tenue (l'ancienne tombe au sol).
+// Munitions et soins : ramassés automatiquement en passant dessus tant qu'il reste de la place dans le sac.
 export class LootField {
   constructor(scene, rand = Math.random, groundY = () => 0) {
     this.scene = scene; this.rand = rand; this.groundY = groundY;
@@ -74,7 +78,8 @@ export class LootField {
   tick(dt, player, inv, weapons, input) {
     this.t += dt;
     if (this.pendT > 0) this.pendT -= dt;
-    let best = null, bd = 2.4 * 2.4;
+    let best = null, bd = 2.4 * 2.4, auto = null;
+    const alive = player.health.alive;
     for (const l of this.list) {
       if (!l.on) continue;
       l.m.rotation.y += dt * 1.5;
@@ -82,11 +87,14 @@ export class LootField {
       const dx = l.x - player.x, dz = l.z - player.z, d = dx * dx + dz * dz;
       l.m.userData.body.visible = d < 4900; // le modèle n'est dessiné que dans un rayon de 70 m (la balise reste visible de loin)
       if (d < bd && Math.abs(l.y - player.y) < 2.4) { bd = d; best = l; }
+      if (!auto && alive && d < AUTO_R2 && l.it.kind !== 'weapon' && Math.abs(l.y - player.y) < 2.4 && inv.room(l.it.kind, l.it.key) > 0) auto = l;
     }
+    if (auto && this.pendT <= 0) { this.tryPickup(auto, player, inv, weapons); if (!auto.on && best === auto) best = null; }
     this.near = player.health.alive ? best : null;
     player.lootNear = !!this.near;
     if (!this.near) return;
-    if (!player.prompt) player.prompt = 'E — Ramasser : ' + this.near.it.name + (this.near.it.kind === 'weapon' ? '' : ' x' + this.near.amount);
+    // pas d'invite pour ce qui est ramassé automatiquement
+    if (!player.prompt && this.near !== auto) player.prompt = 'E — Ramasser : ' + this.near.it.name + (this.near.it.kind === 'weapon' ? '' : ' x' + this.near.amount);
     if (input.pressed.KeyE) this.tryPickup(this.near, player, inv, weapons);
   }
 
@@ -123,6 +131,7 @@ export class LootField {
     }
     const n = inv.add(it.kind, it.key, l.amount);
     if (n === 0) return;
+    sfx.pickup();
     l.amount -= n; this.dirty.add(l.i);
     if (l.amount <= 0) this.hide(l);
   }
