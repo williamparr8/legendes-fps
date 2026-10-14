@@ -1,6 +1,7 @@
 import { hostListen, connectTo, makeCode } from './transport.js';
 import { RemotePlayer, r1, r2 } from './actors.js';
 import { packInfo } from '../combat/humanoid.js';
+import { myCode, cleanFc } from '../shop/friends.js';
 import items from '../loot/items.json';
 
 export const MAX_PLAYERS = 8;
@@ -54,15 +55,15 @@ export class HostSession {
 
   async open() {
     for (let i = 0; i < 6; i++) {
-      const code = makeCode();
+      const code = i === 0 ? myCode() : makeCode(); // d'abord le code ami (permanent) : les amis qui l'ont peuvent rejoindre sans lien
       try { this.srv = await hostListen(code, (l) => this.onLink(l)); this.code = code; return; }
       catch (e) { if (!e || e.type !== 'unavailable-id' || i === 5) throw e; }
     }
   }
 
   roster() {
-    const r = [{ id: 0, name: this.name, legend: this.legend, host: 1 }];
-    for (const p of this.players.values()) r.push({ id: p.id, name: p.name, legend: p.legend });
+    const r = [{ id: 0, name: this.name, legend: this.legend, host: 1, fc: myCode() }];
+    for (const p of this.players.values()) r.push({ id: p.id, name: p.name, legend: p.legend, fc: p.fc || '' });
     return r;
   }
   broadcast(msg, except) { for (const p of this.players.values()) if (p !== except && !p.link.closed) p.link.send(msg); }
@@ -87,7 +88,7 @@ export class HostSession {
       let name = clean(m.name, 'Joueur'), k = 2;
       const taken = (n) => n === this.name || [...this.players.values()].some((p) => p.name === n);
       while (taken(name)) name = clean(m.name, 'Joueur').slice(0, 13) + k++;
-      ent.id = this.nextId++; ent.name = name; ent.legend = String(m.legend || 'scout'); ent.joined = true;
+      ent.id = this.nextId++; ent.name = name; ent.legend = String(m.legend || 'scout'); ent.joined = true; ent.fc = cleanFc(m.fc);
       this.players.set(ent.id, ent);
       ent.link.send({ t: 'welcome', id: ent.id, name });
       this.lobby();
@@ -280,7 +281,7 @@ export class ClientSession {
     const welcome = new Promise((res, rej) => { this.joinOk = res; this.joinFail = rej; setTimeout(() => rej({ type: 'timeout' }), 8000); });
     link.onmessage = (m) => this.onMsg(m);
     link.onclose = () => { if (this.joinFail) this.joinFail({ type: 'closed' }); this.closed('Connexion perdue avec l\'hôte.'); };
-    link.send({ t: 'join', name: this.name, legend: this.legend });
+    link.send({ t: 'join', name: this.name, legend: this.legend, fc: myCode() });
     try { await welcome; } catch (e) { this.left = true; link.close(); throw e; }
     this.joinOk = this.joinFail = null;
     this.seen = performance.now();

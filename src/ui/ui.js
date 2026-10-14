@@ -10,7 +10,7 @@ import { levelInfo, dailies, weeklies, season, pending, passSync, freeReward } f
 import { premium, buyUrl, priceText, redeem, buyPass, hasCheckout, mountCheckout, PACK, PASS_PRICE, GEM, TIERS as PASS_TIERS, titleFor } from '../shop/pass.js';
 import { LIST, owns, equip, legendUnlocked, legendPrice, unlockLegend, firstUnlockedLegend, dailyBonus, dailyClaimable, claimDaily } from '../shop/profile.js';
 import { ACH, hasAch, achCount, titleName, setTitle } from '../shop/achievements.js';
-import { friends, seen as seenFriends, forget as forgetFriend, ago } from '../shop/friends.js';
+import { friends, seen as seenFriends, forget as forgetFriend, add as addFriend, myCode, ago } from '../shop/friends.js';
 import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
@@ -113,6 +113,9 @@ export class UI {
       case 'ptab': this.profTab = d.p; this.show('main'); break;
       case 'title': setTitle(+d.i); this.show('main'); break;
       case 'forget': forgetFriend(d.n); this.show('main'); break;
+      case 'addfriend': { this.friendMsg = addFriend($('fc-code') ? $('fc-code').value : '', $('fc-name') ? $('fc-name').value : '') || 'Ami ajouté.'; this.show('main'); break; }
+      case 'copyfc': { try { navigator.clipboard.writeText(myCode()); } catch (e) { /* ignoré */ } this.game.banner('Code ami copié : ' + myCode()); break; }
+      case 'joinfriend': this.joinFriend(d.c, d.n); break;
       case 'claim': { const n = claimDaily(); if (n) this.game.banner('+' + n + ' points : bonus quotidien'); this.show('main'); break; }
       case 'invite': this.quickInvite(); break;
       case 'meq': equip(d.k, +d.i); this.show('main'); break;
@@ -215,9 +218,11 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
           return `<div class="lo-q${got ? ' done' : ''}"><span>${got ? '🏆 ' : ''}<b>${esc(a.n)}</b> — ${esc(a.d)}</span><i style="--p:${pc}%"></i><em>${got ? (profile.title === i + 1 ? 'Titre actif' : '<button class="lo-link2" data-act="title" data-i="' + (i + 1) + '">Titre « ' + esc(a.t) + ' »</button>') : (a.m ? 'non accompli' : Math.min(v, g) + ' / ' + g) + ' · +' + a.r + ' pts'}</em></div>`;
         }).join('');
       } else {
-        const fl = friends();
-        body = `<p>Les joueurs rencontrés en ligne s'ajoutent ici automatiquement. Le jeu n'a pas de serveur central : on ne voit donc pas qui est connecté, mais le lien d'invitation s'envoie en un clic.</p>
-          <div class="row" style="justify-content:flex-start"><button class="primary" data-act="invite">Inviter des amis : créer le salon et copier le lien</button></div>` + (fl.length ? fl.map((f) => `<div class="lo-q"><span><b>${esc(f.n)}</b> — vu ${ago(f.d)} · ${f.c} partie${f.c > 1 ? 's' : ''} ensemble</span><i style="--p:0%"></i><em><button class="lo-link2" data-act="forget" data-n="${esc(f.n)}">retirer</button></em></div>`).join('') : '<p class="lo-how">Aucun ami récent pour le moment : joue une partie en ligne pour les retrouver ici.</p>');
+        const fl = friends(), me = myCode();
+        body = `<p>Ton <b>code ami</b> est aussi le code de ton salon quand tu en ouvres un : donne-le à tes amis, ils l'ajoutent ci-dessous puis cliquent « Rejoindre » dès que tu as un salon ouvert. Les joueurs avec qui tu joues s'ajoutent tout seuls.</p>
+          <div class="lo-fc"><span>Mon code ami</span><b id="fc-me">${me}</b><button data-act="copyfc">Copier</button><button class="primary" data-act="invite">Inviter par lien</button></div>
+          <div class="linkrow"><input class="t" id="fc-code" maxlength="8" placeholder="Code ami" style="text-transform:uppercase;letter-spacing:3px;max-width:150px" autocomplete="off"><input class="t" id="fc-name" maxlength="16" placeholder="Nom (facultatif)" autocomplete="off"><button data-act="addfriend">Ajouter</button></div>
+          <small class="lo-msg">${esc(this.friendMsg || '')}</small>` + (fl.length ? fl.map((f) => `<div class="lo-q"><span><b>${esc(f.n)}</b>${f.code ? ' · <span class="lo-code">' + esc(f.code) + '</span>' : ''} — vu ${ago(f.d)}${f.c ? ' · ' + f.c + ' partie' + (f.c > 1 ? 's' : '') + ' ensemble' : ''}</span><i style="--p:0%"></i><em>${f.code ? '<button class="lo-link2" data-act="joinfriend" data-c="' + esc(f.code) + '" data-n="' + esc(f.n) + '">Rejoindre</button> · ' : ''}<button class="lo-link2" data-act="forget" data-n="${esc(f.code || f.n)}">retirer</button></em></div>`).join('') : '<p class="lo-how">Aucun ami pour le moment : ajoute un code ci-dessus, ou joue une partie en ligne pour les retrouver ici.</p>');
       }
       modal = `<h2>Profil — ${esc(settings.name || 'Joueur')}</h2><div class="lo-qts">${ptab('stats', 'Statistiques')}${ptab('ach', 'Succès ' + achCount() + '/' + ACH.length)}${ptab('friends', 'Amis')}</div>${body}`;
     } else if (this.lobbyTab === 'legends') modal = '';
@@ -270,7 +275,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <div class="lo-friend"><div class="lo-av" style="background:${LG.color}">${esc((settings.name || 'J')[0].toUpperCase())}</div><div><b>${name}</b><small>Niveau ${L.level} · ${LG.name}</small></div></div>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
         <button class="lo-slot" data-act="invite" title="Inviter : crée le salon et copie le lien d'invitation">+</button>
-        ${fr.length ? `<div class="lo-fr2"><small>Amis récents</small>${fr.map((f) => `<button data-act="invite" title="Copier le lien d'invitation"><b>${esc(f.n)}</b><span>${ago(f.d)} · inviter</span></button>`).join('')}</div>` : ''}
+        ${fr.length ? `<div class="lo-fr2"><small>Amis récents</small>${fr.map((f) => f.code ? `<button data-act="joinfriend" data-c="${esc(f.code)}" data-n="${esc(f.n)}" title="Rejoindre le salon de ${esc(f.n)}"><b>${esc(f.n)}</b><span>${ago(f.d)} · rejoindre</span></button>` : `<button data-act="invite" title="Copier le lien d'invitation"><b>${esc(f.n)}</b><span>${ago(f.d)} · inviter</span></button>`).join('')}</div>` : ''}
       </div>
       <button class="lo-season" data-act="qopen" data-q="season" title="Défis de saison"><small>Saison ${SE.n}</small><b>${SE.name}</b><span>Palier ${SE.tier} / ${SE.tiers} · ${SE.daysLeft} j restants${SE.pass ? ' · PASS ✔' : ''}</span><div class="lo-xp wide"><i style="width:${SE.tier >= SE.tiers ? 100 : Math.round(100 * (SE.tierXp - SE.toNext) / SE.tierXp)}%"></i></div></button>
       <div class="lo-bl">
@@ -312,6 +317,20 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     const r = await redeem(el ? el.value : '');
     this.gemMsg = r === 'used' ? 'Ce code a déjà été utilisé sur cet appareil.' : r ? '+' + r.gems + ' ' + GEM + ' ajoutés. Merci !' : 'Code invalide (copié en entier ?).';
     if (this.screen === 'main') this.show('main');
+  }
+
+  // Rejoint le salon d'un ami par son code ami (le salon de l'hôte porte son code ami).
+  async joinFriend(code, name) {
+    const g = this.game;
+    if (g.session && g.session.role === 'host' && g.session.players.size && !confirm('Tu héberges un salon avec des joueurs : le quitter pour rejoindre ' + name + ' ?')) return;
+    if (g.session) g.leaveSession();
+    this.friendMsg = 'Connexion au salon de ' + name + '…';
+    if (this.screen === 'main') this.show('main');
+    try { await g.joinRoom(settings.name || 'Joueur', code, this.legend); }
+    catch (e) {
+      this.friendMsg = e && (e.type === 'peer-unavailable' || e.type === 'timeout' || e.type === 'network') ? name + " n'a pas de salon ouvert pour le moment (ou le réseau bloque la connexion)." : errorText(e);
+      if (this.screen === 'main') this.show('main');
+    }
   }
 
   // Invitation en un clic : crée le salon si besoin puis copie le lien d'invitation.
@@ -412,7 +431,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
   }
 
   updateLobby(roster) {
-    try { seenFriends(roster.map((p) => p.name), settings.name); } catch (e) { /* ignoré */ }
+    try { seenFriends(roster, settings.name); } catch (e) { /* ignoré */ }
     const el = $('lb-players');
     if (!el || this.screen !== 'lobby') return;
     el.innerHTML = roster.map((p) => `<div class="pl"><b>${esc(p.name)}</b>${p.host ? ' <small>(hôte)</small>' : ''}<i style="color:${LEGENDS[p.legend] ? LEGENDS[p.legend].color : '#fff'}">${LEGENDS[p.legend] ? LEGENDS[p.legend].name : ''}</i></div>`).join('');

@@ -278,3 +278,7 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-tile.daily:not(.on){cursor:default;opacity:.8}
 .lo-br{gap:6px!important}.lo-br .lo-tile{padding:8px 14px!important}.lo-br .lo-tile b{font-size:16px}.lo-br .lo-tile span{display:block;max-width:260px}
 @media(max-height:760px){.lo-br .lo-tile span{display:none}}
+
+.lo-fc{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#ffffff0f;padding:10px 12px;margin:8px 0}
+.lo-fc span{opacity:.7;font-size:12px;letter-spacing:.12em}.lo-fc b{font-size:24px;letter-spacing:.25em;color:#ffd070;font-family:ui-monospace,Consolas,monospace}
+.lo-code{font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;color:#ffd070}

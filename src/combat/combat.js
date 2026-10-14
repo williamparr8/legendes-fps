@@ -101,7 +101,7 @@ export class Combat {
       this.hitmark = 0.18; sfx.hit(this.hitKind);
       if (t.team !== this.player.team) { this.mstat.hits++; if (zone === 0) this.mstat.hs++; }
       if (kill && t.team !== this.player.team) { const wi = Object.keys(defs).indexOf(this.weapons.id); if (wi >= 0) this.mstat.wk[wi] = (this.mstat.wk[wi] | 0) + 1; }
-      if (kill) { this.killMsg = { text: (dead && !wasDead ? 'ÉLIMINÉ' : 'ASSOMMÉ') + (t.name ? ' · ' + t.name : ''), t: 1.8 }; sfx.kill(); }
+      if (kill) sfx.kill();
       this.dmgSum += amount; this.dmgT = 1;
       const mk = this.player.pv.markOnHit;
       if (mk > 0 && t.markT < mk) t.markT = mk;
