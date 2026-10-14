@@ -4,7 +4,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // Modèles d'armes procéduraux : corps en profil latéral extrudé et biseauté (la lumière accroche les arêtes) + boîtes et cylindres.
 // Repère : canon vers -z, culasse à l'origine.
 // userData : muzzle = z de la bouche, sightY = hauteur de la ligne de visée (ADS), grip/fore = [y, z] des mains.
-const phong = (color, shininess = 40, specular = 0x555555) => new THREE.MeshPhongMaterial({ color, shininess, specular });
+// Matériaux PBR (reflets de l'environnement du ciel) : métal/rugosité déduits de l'ancien brillant.
+const pbrFromShine = (shininess) => ({ metalness: Math.min(0.9, Math.max(0, shininess / 90 - 0.1)), roughness: Math.min(0.85, Math.max(0.25, 1 - shininess / 120)) });
+const phong = (color, shininess = 40) => new THREE.MeshStandardMaterial({ color, ...pbrFromShine(shininess) });
 const MAT = {
   metal: phong(0x4a515b, 70, 0x888888), dark: phong(0x2b2e34, 30, 0x333333), steel: phong(0xaab0b9, 90, 0xdddddd),
   poly: phong(0x1d2025, 22, 0x2a2d33), wood: phong(0x6e4b2f, 14, 0x2a1c10),
@@ -183,7 +185,7 @@ function addHands(g) {
 // Retourne un Group (ombre désactivée pour la vue subjective, activée pour les armes posées au sol).
 export function buildWeaponModel(id, hands = false) {
   const g = new THREE.Group();
-  const accent = new THREE.MeshPhongMaterial({ color: ACCENT[id] || 0x888888, shininess: 50 });
+  const accent = new THREE.MeshStandardMaterial({ color: ACCENT[id] || 0x888888, ...pbrFromShine(50) });
   (BUILD[id] || BUILD.rifle)(g, accent);
   g.userData.accent = accent;
   if (hands) addHands(g);
@@ -247,7 +249,7 @@ export function applyWeaponSkin(g, def) {
     if (!def || s < 0) { o.material = base; return; }
     const key = def.id + '|' + s;
     let m = SKM.get(key);
-    if (!m) SKM.set(key, m = new THREE.MeshPhongMaterial({ color: def.w[s], shininess: base.shininess, specular: base.specular }));
+    if (!m) SKM.set(key, m = new THREE.MeshStandardMaterial({ color: def.w[s], metalness: base.metalness, roughness: base.roughness }));
     o.material = m;
   });
 }

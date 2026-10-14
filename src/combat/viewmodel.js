@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildWeaponModel, applyWeaponSkin } from './models.js';
+import { getSkyEnv } from '../world/terrain.js';
 
 // Armes en vue subjective : modèles détaillés rendus dans une scène à part (profondeur effacée, FOV fixe, éclairage propre),
 // dessinée par-dessus le monde par Game.render.
@@ -12,6 +13,7 @@ export class Viewmodel {
   constructor(camera, weapons) {
     this.w = weapons;
     this.scene = new THREE.Scene();
+    if (getSkyEnv()) { this.scene.environment = getSkyEnv(); this.scene.environmentIntensity = 0.7; } // reflets du ciel sur le métal
     this.cam = new THREE.PerspectiveCamera(58, camera.aspect, 0.02, 10);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.2));
     const key = new THREE.DirectionalLight(0xfff0dc, 1.6);

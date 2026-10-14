@@ -10,12 +10,23 @@ import legends from '../legends/legends.json';
 // Même interface que le Rig procédural (humanoid.js) : constructor(group, friendly), setFriendly, setAccent, setSkins, animate.
 // Le modèle est chargé une fois et cloné par acteur (géométrie et textures partagées) ; un AnimationMixer par acteur.
 const LEGS = Object.keys(legends), WIDS = Object.keys(wdefs);
-export const human = { ready: false, scene: null, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
+export const human = { ready: false, scene: null, variants: [], next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
 
-export function loadHuman(url) {
+// url : premier modèle (avec les clips) ; extras : autres corps (même squelette, sans clips) pour varier les acteurs.
+export function loadHuman(url, extras = []) {
+  const prep = (scene) => scene.traverse((o) => { // pas d'environnement propre : matériaux mats (sinon le métal ressort noir)
+    if (!o.isMesh) return;
+    o.castShadow = false;
+    const m = o.material;
+    if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
+  });
+  for (const u of extras) {
+    new GLTFLoader().load(u, (g) => { prep(g.scene); human.variants.push(g.scene); }, undefined, () => {});
+  }
   return new Promise((res) => {
     new GLTFLoader().load(url, (g) => {
       human.scene = g.scene;
+      human.variants.unshift(g.scene);
       for (const c of g.animations) human.clips[c.name] = c;
       g.scene.traverse((o) => { // pas d'environnement : matériaux mats (sinon le métal ressort noir)
         if (!o.isMesh) return;
@@ -30,7 +41,7 @@ export function loadHuman(url) {
 }
 
 const FRIEND = new THREE.MeshBasicMaterial({ color: 0x4080e0 }), ENEMY = new THREE.MeshBasicMaterial({ color: 0xd04040 });
-const WPN = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: 0x333333 });
+const WPN = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 });
 const FLASH = new THREE.MeshBasicMaterial({ color: 0xffd070 });
 const CANOPY = new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide });
 const accents = new Map();
@@ -56,7 +67,7 @@ const _v = new THREE.Vector3();
 export class HumanRig {
   constructor(group, friendly) {
     this.g = group;
-    this.root = clone(human.scene);
+    this.root = clone(human.variants[human.next++ % human.variants.length] || human.scene); // corps varié d'un acteur à l'autre
     this.root.rotation.y = Math.PI; // le modèle regarde +z, le jeu -z
     const box = new THREE.Box3().setFromObject(this.root);
     this.root.position.y = -box.min.y;

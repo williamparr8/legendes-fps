@@ -33,7 +33,7 @@ export function buildIsland(scene, seed = 1, opts = {}) {
   sun.position.set(60, 100, 30);
   scene.add(sun, sun.target);
   buildSky(scene, new THREE.Vector3(60, 100, 30));
-  if (getSkyEnv()) { scene.environment = getSkyEnv(); scene.environmentIntensity = 0.55; }
+  if (getSkyEnv()) { scene.environment = getSkyEnv(); scene.environmentIntensity = 0.42; }
   buildMountains(scene, seed);
   buildWater(scene);
 

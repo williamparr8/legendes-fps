@@ -18,26 +18,30 @@ function tex(name, srgb) {
 
 // kind → { tex, scale (m par motif), ns (force du relief), tint (part de la teinte d'instance), metal }
 export const PBR_KINDS = {
-  0: { tex: 'concrete', scale: 3.0, ns: 1.0, tint: 0.7, metal: 0 },
-  1: { tex: 'wood', scale: 1.6, ns: 1.0, tint: 0.6, metal: 0 },
-  2: { tex: 'rock', scale: 3.0, ns: 1.2, tint: 0.5, metal: 0 },
-  3: { tex: 'tole', scale: 2.2, ns: 1.0, tint: 0.6, metal: 0.25 },
-  6: { tex: 'rock', scale: 2.4, ns: 1.2, tint: 0.4, metal: 0 },
-  9: { tex: 'brick', scale: 1.6, ns: 1.0, tint: 0.35, metal: 0 },
-  10: { tex: 'siding', scale: 1.8, ns: 1.0, tint: 0.6, metal: 0 },
-  11: { tex: 'tiles', scale: 2.0, ns: 1.0, tint: 0.55, metal: 0 },
-  12: { tex: 'plaster', scale: 2.5, ns: 0.8, tint: 0.75, metal: 0 },
-  13: { tex: 'metal', scale: 2.0, ns: 0.8, tint: 0.85, metal: 0.45 },
-  14: { tex: 'rust', scale: 2.0, ns: 1.0, tint: 0.5, metal: 0.2 },
+  0: { tex: 'concrete', scale: 3.0, ns: 1.0, tint: 0.7, metal: 0, br: 0.85 },
+  1: { tex: 'wood', scale: 1.6, ns: 1.0, tint: 0.6, metal: 0, br: 0.9 },
+  2: { tex: 'rock', scale: 3.0, ns: 1.2, tint: 0.5, metal: 0, br: 0.88 },
+  3: { tex: 'tole', scale: 2.2, ns: 1.0, tint: 0.5, metal: 0.25, br: 1.0 },
+  6: { tex: 'rock', scale: 2.4, ns: 1.2, tint: 0.4, metal: 0, br: 0.88 },
+  9: { tex: 'brick', scale: 1.6, ns: 1.0, tint: 0.35, metal: 0, br: 0.95 },
+  10: { tex: 'siding', scale: 1.8, ns: 1.0, tint: 0.6, metal: 0, br: 0.88 },
+  11: { tex: 'tiles', scale: 2.0, ns: 1.0, tint: 0.55, metal: 0, br: 0.92 },
+  12: { tex: 'plaster', scale: 2.5, ns: 0.8, tint: 0.75, metal: 0, br: 0.85 },
+  13: { tex: 'metal', scale: 2.0, ns: 0.8, tint: 0.85, metal: 0.45, br: 0.8 },
+  14: { tex: 'rust', scale: 2.0, ns: 1.0, tint: 0.5, metal: 0.2, br: 0.9 },
 };
 
-const VERT_COMMON = '#include <common>\nvarying vec3 vWP2; varying vec3 vLN2;';
+const VERT_COMMON = '#include <common>\nvarying vec3 vWP2; varying vec3 vLN2; varying vec3 vED2;';
 const VERT_BEGIN = `#include <begin_vertex>
   { vec4 wp = vec4(transformed, 1.0);
     #ifdef USE_INSTANCING
       wp = instanceMatrix * wp;
     #endif
-    vWP2 = (modelMatrix * wp).xyz; vLN2 = abs(normal); }`;
+    vec3 sc = vec3(1.0);
+    #ifdef USE_INSTANCING
+      sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+    #endif
+    vWP2 = (modelMatrix * wp).xyz; vLN2 = abs(normal); vED2 = (0.5 - abs(position)) * sc; }`;
 
 // Normale par dérivées d'écran (même formule que perturbNormal2Arb de three) à partir d'une normale tangente décodée.
 const NORMAL_FN = `
@@ -61,14 +65,14 @@ export function pbrMaterial(kind, flat = false) {
   if (cacheMat.has(key)) return cacheMat.get(key);
   const p = PBR_KINDS[kind];
   const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: p.metal, flatShading: flat });
-  const uni = { uC: { value: tex(p.tex, true) }, uN: { value: tex(p.tex, false) }, uScale: { value: p.scale }, uNS: { value: p.ns }, uTint: { value: p.tint } };
+  const uni = { uC: { value: tex(p.tex, true) }, uN: { value: tex(p.tex, false) }, uScale: { value: p.scale }, uNS: { value: p.ns }, uTint: { value: p.tint }, uBr: { value: p.br } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uni);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_COMMON).replace('#include <begin_vertex>', VERT_BEGIN);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform sampler2D uC, uN; uniform float uScale, uNS, uTint;
-        varying vec3 vWP2; varying vec3 vLN2;
+        uniform sampler2D uC, uN; uniform float uScale, uNS, uTint, uBr;
+        varying vec3 vWP2; varying vec3 vLN2; varying vec3 vED2;
         vec2 tuv;` + NORMAL_FN)
       .replace('#include <color_fragment>', `
         {
@@ -78,9 +82,13 @@ export function pbrMaterial(kind, flat = false) {
           vec3 tint = vec3(1.0);
           #ifdef USE_COLOR
             float mx = max(max(vColor.r, vColor.g), max(vColor.b, 0.001));
-            tint = mix(vec3(1.0), vColor / mx, uTint) * mix(1.0, mx * 1.4, uTint * 0.5);
+            tint = mix(vec3(1.0), vColor / mx, uTint) * mix(1.0, mx * 1.1, uTint * 0.5);
           #endif
-          diffuseColor.rgb *= t * tint;
+          diffuseColor.rgb *= t * tint * uBr;
+          // occlusion fictive : pied des murs (salissure, ombre de contact) et arêtes de la boîte
+          float foot = an.y > 0.7 ? 1.0 : mix(0.62, 1.0, smoothstep(0.0, 1.4, vWP2.y));
+          vec3 e = vED2; float ed = an.y > 0.7 ? min(e.x, e.z) : (an.x > an.z ? min(e.z, e.y) : min(e.x, e.y));
+          diffuseColor.rgb *= foot * (0.86 + 0.14 * smoothstep(0.0, 0.22, ed));
         }`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(roughness * texture2D(uN, tuv).b, 0.05, 1.0);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>

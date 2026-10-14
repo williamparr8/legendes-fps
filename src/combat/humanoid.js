@@ -128,7 +128,7 @@ const lam = c => new THREE.MeshLambertMaterial({ color: c });
 const M = {
   friend: lam(0x4080e0), enemy: lam(0xd04040), dark: lam(DARK),
   vc: new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 14, specular: 0x1c1c1c }), canopy: new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide }), flash: new THREE.MeshBasicMaterial({ color: 0xffd070 }),
-  wpn: new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: 0x333333 }), cord: new THREE.LineBasicMaterial({ color: 0xe6e6e6 }),
+  wpn: new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 }), cord: new THREE.LineBasicMaterial({ color: 0xe6e6e6 }),
 };
 const accents = new Map();
 const accentMat = hex => {

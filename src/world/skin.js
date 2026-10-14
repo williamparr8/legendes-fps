@@ -143,7 +143,7 @@ export function skinMaterial(kind, flat = false) {
   const key = kind + (flat ? 'f' : '');
   if (cache[key]) return cache[key];
   const mat = kind === 8 // verre : spéculaire + transparence
-    ? new THREE.MeshPhongMaterial({ specular: 0xbfd8e6, shininess: 90, transparent: true, opacity: 0.5, depthWrite: false })
+    ? new THREE.MeshStandardMaterial({ roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.55, depthWrite: false, envMapIntensity: 1.4 })
     : new THREE.MeshLambertMaterial({ flatShading: flat });
   mat.defines = { SKIN: kind };
   return (cache[key] = patch(mat));
