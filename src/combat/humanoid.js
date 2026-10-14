@@ -15,11 +15,11 @@ export const WIDS = Object.keys(wdefs);
 export const LEGS = Object.keys(legends);
 export const CROUCH_HS = 1.0 / 1.8;
 
-// Apparence transmise par le réseau : arme (3 bits) | posture (3 : 0-2 au sol, 4 vaisseau, 5 chute libre, 6 parachute) | rechargement (1) | compteur de tirs (4) | légende (3)
-// | skin de personnage (4, <<14) | skin d'arme (4, <<18) ; les skins sont des indices + 1 dans skins.json (0 = défaut).
+// Apparence transmise par le réseau : arme (3 bits) | posture (3 : 0-2 au sol, 4 vaisseau, 5 chute libre, 6 parachute) | rechargement (1) | compteur de tirs (4) | légende (4, <<11)
+// | skin de personnage (6, <<15) | skin d'arme (6, <<21) ; les skins sont des indices + 1 dans skins.json (0 = défaut).
 export const packInfo = (a, legend) =>
   (WIDS.indexOf(a.wid) + 1) | ((a.stance || 0) << 3) | ((a.reloading ? 1 : 0) << 6) | ((a.shots & 15) << 7) | ((LEGS.indexOf(legend) + 1) << 11)
-  | (((a.skinP | 0) & 15) << 14) | (((a.skinW | 0) & 15) << 18);
+  | (((a.skinP | 0) & 63) << 15) | (((a.skinW | 0) & 63) << 21);
 
 const C = new THREE.Color();
 // Peint une géométrie d'une couleur par sommet (non indexée : boîtes, cylindres et extrusions fusionnent sans conflit).

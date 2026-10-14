@@ -62,9 +62,9 @@ export class Target {
   // Apparence reçue du réseau (voir packInfo) : arme, posture, rechargement, tirs, légende, skins.
   setInfo(i) {
     this.wid = WIDS[(i & 7) - 1] || null; this.stance = (i >> 3) & 7; this.reloading = !!((i >> 6) & 1); this.shots = (i >> 7) & 15;
-    const lg = LEGS[(i >> 11) - 1];
+    const lg = LEGS[((i >> 11) & 15) - 1];
     if (lg && lg !== this.legend) { this.legend = lg; this.rig.setAccent(legends[lg].color, lg); }
-    const ps = (i >> 14) & 15, ws = (i >> 18) & 15;
+    const ps = (i >> 15) & 63, ws = (i >> 21) & 63;
     if (ps !== (this.skinP | 0) || ws !== (this.skinW | 0)) { this.skinP = ps; this.skinW = ws; this.rig.setSkins(ps, ws); }
   }
 
