@@ -70,7 +70,7 @@ function loadSdk() {
   if (!sdk) {
     sdk = new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(CFG.paypalClientId)}&currency=${CFG.currency}&intent=capture&components=buttons`;
+      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(CFG.paypalClientId)}&currency=${CFG.currency}&intent=capture&components=buttons&disable-funding=paylater`;
       s.onload = () => res(window.paypal); s.onerror = () => { sdk = null; rej(new Error('sdk')); };
       document.head.appendChild(s);
     });
