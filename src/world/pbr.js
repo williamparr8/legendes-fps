@@ -104,8 +104,9 @@ export function pbrMaterial(kind, flat = false) {
 export function terrainPbr() {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
   const uni = {
-    uG: { value: tex('grass', true) }, uGN: { value: tex('grass', false) }, uD: { value: tex('dirt', true) },
+    uG: { value: tex('grass', true) }, uGN: { value: tex('grass', false) }, uD: { value: tex('soil', true) }, uM: { value: tex('moss', true) },
     uS: { value: tex('gravel', true) }, uR: { value: tex('rock', true) },
+    uDN: { value: tex('soil', false) }, uSN: { value: tex('gravel', false) }, uRN: { value: tex('rock', false) },
   };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uni);
@@ -114,14 +115,21 @@ export function terrainPbr() {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP2 = (modelMatrix * vec4(transformed, 1.0)).xyz; vSplat = splat;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform sampler2D uG, uGN, uD, uS, uR;
+        uniform sampler2D uG, uGN, uD, uS, uR, uDN, uSN, uRN, uM;
+        vec2 tuv2;
         varying vec3 vWP2; varying vec4 vSplat;
         vec2 tuv;` + NORMAL_FN)
       .replace('#include <color_fragment>', `
         {
           tuv = vWP2.xz / 3.2;
           vec4 w = vSplat; w /= max(w.x + w.y + w.z + w.w, 1e-3);
-          vec3 g = texture2D(uG, tuv).rgb, d = texture2D(uD, tuv * 0.7).rgb, s = texture2D(uS, tuv * 0.8).rgb, r = texture2D(uR, tuv * 0.5).rgb;
+          // deux échelles tournées l'une par rapport à l'autre : plus de répétition visible ; détail fin proche
+          tuv2 = mat2(0.8, -0.6, 0.6, 0.8) * vWP2.xz / 7.3;
+          vec3 g = mix(texture2D(uG, tuv).rgb, texture2D(uG, tuv2).rgb, 0.5), d = mix(texture2D(uD, tuv * 0.7).rgb, texture2D(uD, tuv2 * 0.8).rgb, 0.5);
+          vec3 s = mix(texture2D(uS, tuv * 0.8).rgb, texture2D(uS, tuv2 * 0.9).rgb, 0.5), r = mix(texture2D(uR, tuv * 0.5).rgb, texture2D(uR, tuv2 * 0.6).rgb, 0.5);
+          g *= 0.8 + 0.4 * texture2D(uG, vWP2.xz * 0.9).g;
+          // plaques de mousse / sol riche : rompt l'uniformité de l'herbe
+          g = mix(g, texture2D(uM, tuv * 0.8).rgb * 1.1, smoothstep(0.5, 0.72, texture2D(uG, vWP2.xz / 29.0 + 0.37).r));
           // variation à grande échelle : casse la répétition
           float big = 0.85 + 0.3 * texture2D(uG, vWP2.xz / 41.0).g;
           vec3 t = (g * w.x + d * w.y + s * w.z + r * w.w) * big;
@@ -131,7 +139,37 @@ export function terrainPbr() {
         }`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = 0.95;')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        normal = tbnNormal(normal, -vViewPosition, tuv, mix(vec3(0.0, 0.0, 1.0), unpackNM(texture2D(uGN, tuv).rgb, 0.9), vSplat.x * 0.85));`);
+        {
+          vec4 w = vSplat; w /= max(w.x + w.y + w.z + w.w, 1e-3);
+          vec3 nm = unpackNM(texture2D(uGN, tuv).rgb, 0.9) * w.x + unpackNM(texture2D(uDN, tuv * 0.7).rgb, 0.8) * w.y
+                  + unpackNM(texture2D(uSN, tuv * 0.8).rgb, 0.9) * w.z + unpackNM(texture2D(uRN, tuv * 0.5).rgb, 1.0) * w.w;
+          normal = tbnNormal(normal, -vViewPosition, tuv, normalize(nm));
+        }`);
   };
+  return mat;
+}
+
+// Détail photo pour les armes : micro-relief et rugosité (métal brossé / polymère) projetés en espace objet (l'arme bouge, le grain la suit),
+// grain sombre sur la couleur. kind : 'gunmetal' | 'rubber'. Le matériau garde sa couleur et son métal.
+export function weaponDetail(mat, kind = 'gunmetal', scale = 0.16, ns = 0.9) {
+  const uni = { uWN: { value: tex(kind, false) }, uWC: { value: tex(kind, true) }, uWS: { value: scale }, uWNS: { value: ns } };
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, uni);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWL; varying vec3 vWN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWL = position; vWN = abs(normal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform sampler2D uWN, uWC; uniform float uWS, uWNS;
+        varying vec3 vWL; varying vec3 vWN;
+        vec2 wuv;` + NORMAL_FN)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        wuv = (vWN.y > max(vWN.x, vWN.z) ? vWL.xz : (vWN.x > vWN.z ? vWL.zy : vWL.xy)) / uWS;
+        diffuseColor.rgb *= 0.55 + 0.9 * dot(texture2D(uWC, wuv).rgb, vec3(0.33));`)
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(roughness * (0.5 + texture2D(uWN, wuv).b), 0.08, 1.0);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        normal = tbnNormal(normal, -vViewPosition, wuv, unpackNM(texture2D(uWN, wuv).rgb, uWNS));`);
+  };
+  mat.needsUpdate = true;
   return mat;
 }

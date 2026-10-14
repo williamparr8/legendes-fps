@@ -83,6 +83,7 @@ export class Game {
     settings.name = name; saveSettings();
     const s = new HostSession(this, name, legend);
     await s.open();
+    s.preSeed = this.ui.seed;
     this.wire(s);
     this.ui.show('lobby');
   }
@@ -97,7 +98,7 @@ export class Game {
 
   wire(s) {
     this.session = s;
-    s.onLobby = (r) => this.ui.updateLobby(r);
+    s.onLobby = (r) => { this.ui.updateLobby(r); if (s.seed != null) setTimeout(() => this.prewarm(s.seed), 60); };
     s.onChat = (from, text) => this.chatLine(from, text);
     s.onClosed = (text) => this.sessionLost(text);
     this.ui.chatBuf = [];
@@ -154,15 +155,29 @@ export class Game {
   }
 
   // ---------- parties ----------
+  // Construit le monde d'avance (salon / préparation) : le lancement ne coûte plus la génération.
+  prewarm(seed) {
+    const sh = settings.shadows;
+    if (this.pre && this.pre.seed === seed && this.pre.sh === sh) return;
+    const scene = new THREE.Scene();
+    try { this.pre = { seed, sh, scene, world: buildIsland(scene, seed, { shadows: sh }) }; } catch (e) { this.pre = null; }
+  }
+
+  takeWorld(seed, scene) {
+    const p = this.pre; this.pre = null;
+    return p && p.seed === seed && p.sh === settings.shadows ? p : null;
+  }
+
   start(cfg, net = null) {
     this.dispose();
     this.ema = 0; this.playT = 0; this.slowT = 0;
     const training = cfg.map === 'training';
-    const scene = new THREE.Scene();
+    const pre = training ? null : this.takeWorld(cfg.seed);
+    const scene = pre ? pre.scene : new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = !training && settings.shadows;
     this.renderer.shadowMap.autoUpdate = false; // ombres statiques : voir World.followSun
-    const world = training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows });
+    const world = pre ? pre.world : training ? buildTestScene(scene) : buildIsland(scene, cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     player.allowRespawn = training;
@@ -197,11 +212,12 @@ export class Game {
   startClient(msg, net) {
     this.dispose();
     this.ema = 0; this.playT = 0; this.slowT = 0;
-    const scene = new THREE.Scene();
+    const pre = this.takeWorld(msg.cfg.seed);
+    const scene = pre ? pre.scene : new THREE.Scene();
     scene.add(this.camera);
     this.renderer.shadowMap.enabled = settings.shadows;
     this.renderer.shadowMap.autoUpdate = false;
-    const world = buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows });
+    const world = pre ? pre.world : buildIsland(scene, msg.cfg.seed, { shadows: settings.shadows });
     const inv = new Inventory();
     const player = new Player(world, this.input, sfx);
     const combat = new Combat(scene, world, player, this.input, inv, {});

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { skinnedWeapon, mergedWeapon } from './models.js';
+import { weaponDetail } from '../world/pbr.js';
 import skinData from '../shop/skins.json';
 import wdefs from './weapons.json';
 import legends from '../legends/legends.json';
@@ -41,7 +42,7 @@ export function loadHuman(url, extras = []) {
 }
 
 const FRIEND = new THREE.MeshBasicMaterial({ color: 0x4080e0 }), ENEMY = new THREE.MeshBasicMaterial({ color: 0xd04040 });
-const WPN = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 });
+const WPN = weaponDetail(new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 }), 'gunmetal', 0.22, 0.8);
 const FLASH = new THREE.MeshBasicMaterial({ color: 0xffd070 });
 const CANOPY = new THREE.MeshLambertMaterial({ color: 0xf08a30, side: THREE.DoubleSide });
 const accents = new Map();
@@ -157,9 +158,11 @@ export class HumanRig {
         this.mats = [];
         this.root.traverse((o) => { if (o.isSkinnedMesh) { o.material = o.material.clone(); this.mats.push(o.material); } });
       }
-      const c = new THREE.Color(0xffffff);
-      if (def) { c.set(def.p[2]).lerp(new THREE.Color(0xffffff), 0.55).multiplyScalar(1.5); }
-      for (const m of this.mats) m.color.copy(c);
+      // teinte franche (le jaune/vert/bleu du skin domine la texture) ; rares et au-delà : lueur de l'accent, éclat métallique
+      const c = new THREE.Color(0xffffff), em = new THREE.Color(0x000000);
+      let ei = 0, me = 0;
+      if (def) { c.set(def.p[2]).lerp(new THREE.Color(0xffffff), 0.12).multiplyScalar(1.7); ei = def.r >= 2 ? 0.55 : def.r === 1 ? 0.18 : 0; me = def.r >= 3 ? 0.55 : def.r >= 2 ? 0.3 : 0; em.set(def.p[5]); }
+      for (const m of this.mats) { m.color.copy(c); if (m.emissive) { m.emissive.copy(em); m.emissiveIntensity = ei; } if (me && m.metalness !== undefined) m.metalness = Math.max(m.metalness, me); }
     }
     if (ws !== this.wskin) { this.wskin = ws; if (this.wid) this.setWeapon(this.wid); }
   }

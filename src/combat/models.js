@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { weaponDetail } from '../world/pbr.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Modèles d'armes procéduraux : corps en profil latéral extrudé et biseauté (la lumière accroche les arêtes) + boîtes et cylindres.
@@ -15,6 +16,8 @@ const MAT = {
   lens: new THREE.MeshPhongMaterial({ color: 0x5aa0ff, shininess: 120, specular: 0xffffff, transparent: true, opacity: 0.75 }),
   olive: phong(0x4d5a3a, 30, 0x222222), orange: phong(0xd9792b, 60, 0x555555),
 };
+for (const k of ['metal', 'dark', 'steel']) weaponDetail(MAT[k], 'gunmetal');
+weaponDetail(MAT.poly, 'rubber', 0.1, 0.8);
 const ACCENT = { rifle: 0x4f8fc0, smg: 0x9b6fd0, shotgun: 0xd05a3a, sniper: 0x4fb070, launcher: 0xe09030 };
 // Emplacement de palette d'une matière (skins d'arme) : 0 metal, 1 dark, 2 steel, 3 poly, 4 wood (+ olive), 5 accent ; -1 = jamais recoloré.
 const SLOT_MATS = [MAT.metal, MAT.dark, MAT.steel, MAT.poly, MAT.wood];
@@ -185,7 +188,7 @@ function addHands(g) {
 // Retourne un Group (ombre désactivée pour la vue subjective, activée pour les armes posées au sol).
 export function buildWeaponModel(id, hands = false) {
   const g = new THREE.Group();
-  const accent = new THREE.MeshStandardMaterial({ color: ACCENT[id] || 0x888888, ...pbrFromShine(50) });
+  const accent = weaponDetail(new THREE.MeshStandardMaterial({ color: ACCENT[id] || 0x888888, ...pbrFromShine(50) }), 'gunmetal');
   (BUILD[id] || BUILD.rifle)(g, accent);
   g.userData.accent = accent;
   if (hands) addHands(g);
@@ -249,7 +252,7 @@ export function applyWeaponSkin(g, def) {
     if (!def || s < 0) { o.material = base; return; }
     const key = def.id + '|' + s;
     let m = SKM.get(key);
-    if (!m) SKM.set(key, m = new THREE.MeshStandardMaterial({ color: def.w[s], metalness: base.metalness, roughness: base.roughness }));
+    if (!m) SKM.set(key, m = weaponDetail(new THREE.MeshStandardMaterial({ color: def.w[s], metalness: Math.min(1, base.metalness + (def.r >= 3 ? 0.5 : def.r >= 2 ? 0.3 : 0)), roughness: Math.max(0.15, base.roughness - def.r * 0.08), emissive: s >= 5 ? def.w[5] : 0x000000, emissiveIntensity: s >= 5 ? 0.25 + def.r * 0.45 : 0 }), s === 3 ? 'rubber' : 'gunmetal'));
     o.material = m;
   });
 }

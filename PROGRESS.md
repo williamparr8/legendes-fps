@@ -179,3 +179,7 @@
 
 ### Session 2026-10-14 (suite)
 - bot.js : dégâts bot/bot x0,6 (parties plus longues) ; fx.js : étincelles d impact qui retombent. Build OK, non testé en partie ni sur GPU.
+- **Zone** (zone.js) : le cercle suivant reste à ≤ 40 % de son rayon du centre de la carte (contenu dans le courant) ; vérifié par simulation : converge vers (0,0).
+- **Préchargement** : `Game.prewarm(seed)` construit le monde dès l'écran de préparation / salon (graine choisie d'avance : `ui.seed`, envoyée aux clients dans le message `lobby`) ; `start`/`startClient` le réutilisent (162 ms au lancement mesuré). Un seul usage (`takeWorld`).
+- **Sol** : herbe/terre/gravier/roche à 2 échelles tournées (moins de répétition), normales de toutes les couches, plaques de mousse (`moss`), sol `soil`. **Armes** : `weaponDetail` (pbr.js) = micro-relief + rugosité photo (gunmetal/rubber) en espace objet. **Skins** : teinte franche, lueur d'accent (rare+), éclat métallique (épique+), arme : lueur + métal + rugosité par rareté. Textures ajoutées (ambientCG CC0) : Metal038, Rubber004, Ground037, Ground048 (+3 Mo ; public/tex = 14 Mo).
+- Testé par simulation seulement (pas de GPU réel, pas de réseau à plusieurs machines pour la graine du salon). Skins/armes : aucune capture visuelle faite.

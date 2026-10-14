@@ -49,7 +49,7 @@ export class HostSession {
     return r;
   }
   broadcast(msg, except) { for (const p of this.players.values()) if (p !== except && !p.link.closed) p.link.send(msg); }
-  lobby() { const r = this.roster(); this.broadcast({ t: 'lobby', players: r }); if (this.onLobby) this.onLobby(r); }
+  lobby() { const r = this.roster(); this.broadcast({ t: 'lobby', players: r, seed: this.preSeed }); if (this.onLobby) this.onLobby(r); }
   say(from, text) { text = String(text).slice(0, 200); this.broadcast({ t: 'chat', from, text }); if (this.onChat) this.onChat(from, text); }
   setLegend(l) { this.legend = l; if (this.state === 'lobby') this.lobby(); }
   setName(n) { this.name = clean(n, 'Hôte'); }
@@ -292,7 +292,7 @@ export class ClientSession {
     switch (m.t) {
       case 'welcome': this.id = m.id; this.name = m.name; if (this.joinOk) this.joinOk(); break;
       case 'refuse': if (this.joinFail) this.joinFail({ type: 'refused', why: m.why }); break;
-      case 'lobby': this.roster = m.players; if (this.onLobby) this.onLobby(m.players); break;
+      case 'lobby': this.roster = m.players; this.seed = m.seed; if (this.onLobby) this.onLobby(m.players); break;
       case 'chat': if (this.onChat) this.onChat(m.from, m.text); break;
       case 'start': this.game.startClient(m, this); break;
       case 's': if (this.m) this.snapshot(m); break;

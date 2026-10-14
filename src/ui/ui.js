@@ -55,8 +55,11 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; this.root.classList.toggle('shopmode', screen === 'shop'); if ((screen === 'setup' && this.mode !== 'training') || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
+
+  // Graine choisie d'avance : le monde peut être construit pendant que le joueur règle sa partie.
+  get seed() { if (this._seed == null) this._seed = (Math.random() * 1e6) | 0; return this._seed; }
 
   joinOrHost() { return $('n-code') && $('n-code').value.trim() ? 'join' : 'host'; }
 
@@ -153,8 +156,9 @@ export class UI {
       mode: m, map: m === 'training' ? 'training' : 'island', legend: this.legend,
       difficulty: v('c-diff', 'normal'), enemySquads: +v('c-bots', 0), squadSize: m === 'solo' ? 1 : +v('c-size', 3),
       zone: ch('c-zone', false), timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
-      weapons: list('.wc', Object.keys(wdefs)), legends: list('.lc', LEGEND_IDS), seed: (Math.random() * 1e6) | 0,
+      weapons: list('.wc', Object.keys(wdefs)), legends: list('.lc', LEGEND_IDS), seed: this.seed,
     };
+    this._seed = null;
     this.lastCfg = cfg;
     return cfg;
   }

@@ -34,8 +34,11 @@ export class Zone {
     this.nr = Math.min(P.r, this.r);
     const maxOff = Math.max(0, this.r - this.nr) * 0.8;
     for (let k = 0; k < 14; k++) {
-      const a = this.rand() * 6.2832, d = this.rand() * maxOff;
-      this.nx = this.cx + Math.cos(a) * d; this.nz = this.cz + Math.sin(a) * d;
+      // le cercle suivant reste proche du centre de la carte (écart ≤ 40 % de son rayon), contenu dans le courant
+      const a = this.rand() * 6.2832, d = Math.sqrt(this.rand()) * this.nr * 0.4;
+      this.nx = Math.cos(a) * d; this.nz = Math.sin(a) * d;
+      const ox = this.nx - this.cx, oz = this.nz - this.cz, ol = Math.hypot(ox, oz);
+      if (ol > maxOff) { this.nx = this.cx + ox / ol * maxOff; this.nz = this.cz + oz / ol * maxOff; }
       if (!this.land || this.land(this.nx, this.nz)) break;
     }
     this.t = P.wait; this.shrinking = false; this.dps = P.dps; this.P = P;
