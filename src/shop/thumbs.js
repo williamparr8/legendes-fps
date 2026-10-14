@@ -5,23 +5,27 @@ import { buildWeaponModel, applyWeaponSkin } from '../combat/models.js';
 import { getSkyEnv } from '../world/terrain.js';
 import { LIST } from './profile.js';
 
-// Aperçus (miniatures) des skins pour la Boutique et le Pass : chaque skin est rendu une fois dans une petite zone du canvas
-// principal puis copié dans une image (dataURL), mise en cache. Le rendu se fait en début de trame du menu (thumbTick), avant le rendu
-// principal, donc rien n'est visible à l'écran. Les motifs animés sont figés sur l'instant du rendu.
+// Aperçus (miniatures) des skins pour la Boutique, le Pass et « Mes légendes » : chaque skin est rendu une fois dans une petite zone
+// du canvas principal puis copié dans une image (dataURL), mise en cache. Le rendu se fait en début de trame du menu (thumbTick),
+// avant le rendu principal, donc rien n'est visible à l'écran. Les motifs animés sont figés sur l'instant du rendu.
+// Version « grande » (big) : même rendu à 1,8× pour l'agrandissement du Pass (réduit si la fenêtre est trop petite).
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 const SIZE = { perso: [200, 250], arme: [260, 150] };
+const BIG = 1.8;
 const BG = 0x111a24;
 const cache = new Map(), pending = new Set(), queue = [];
 let rigScene = null, wScene = null, c2d = null;
 
-export function thumbUrl(kind, id) {
-  const k = kind + ':' + id, u = cache.get(k);
+const keyOf = (kind, id, big) => (big ? 'big-' : '') + kind + ':' + id;
+
+export function thumbUrl(kind, id, big = false) {
+  const k = keyOf(kind, id, big), u = cache.get(k);
   if (u) return u;
-  if (!pending.has(k)) { pending.add(k); queue.push([kind, id]); }
+  if (!pending.has(k)) { pending.add(k); if (big) queue.unshift([kind, id, true]); else queue.push([kind, id, false]); }
   return BLANK;
 }
 // <img> d'aperçu ; src remplacé dès que la miniature est prête (voir thumbTick).
-export const thumbImg = (kind, id, cls = '') => `<img class="th th-${kind} ${cls}" data-th="${kind}:${id}" src="${thumbUrl(kind, id)}" alt="">`;
+export const thumbImg = (kind, id, cls = '', big = false) => `<img class="th th-${kind} ${cls}" data-th="${keyOf(kind, id, big)}" src="${thumbUrl(kind, id, big)}" alt="">`;
 
 const ready = () => human.ready && (Object.keys(human.bodies).length >= 2 || performance.now() > 30000);
 
@@ -49,9 +53,14 @@ function weaponScene() {
   return { sc, cam, g: null };
 }
 
-function frame(renderer, sc, cam, kind) {
-  const [w, h] = SIZE[kind], pr = renderer.getPixelRatio(), cv = renderer.domElement;
-  if (cv.width < w * pr || cv.height < h * pr) return null; // fenêtre trop petite : on réessaiera plus tard
+// Rend dans un coin du canvas principal puis copie ; renvoie null si le canvas est trop petit pour la taille demandée.
+function frame(renderer, sc, cam, kind, big) {
+  const pr = renderer.getPixelRatio(), cv = renderer.domElement;
+  let [w, h] = SIZE[kind];
+  if (big) { w *= BIG; h *= BIG; }
+  const fit = Math.min(1, cv.width / pr / w, cv.height / pr / h); // fenêtre étroite : on réduit (même proportions)
+  if (fit < 0.3) return null;
+  w = Math.floor(w * fit); h = Math.floor(h * fit);
   const vp = new THREE.Vector4(), sc0 = new THREE.Vector4(), st = renderer.getScissorTest();
   renderer.getViewport(vp); renderer.getScissor(sc0);
   renderer.setScissorTest(true); renderer.setViewport(0, 0, w, h); renderer.setScissor(0, 0, w, h);
@@ -60,10 +69,10 @@ function frame(renderer, sc, cam, kind) {
   c2d.width = w; c2d.height = h;
   c2d.getContext('2d').drawImage(cv, 0, cv.height - h * pr, w * pr, h * pr, 0, 0, w, h);
   renderer.setViewport(vp); renderer.setScissor(sc0); renderer.setScissorTest(st);
-  return c2d.toDataURL('image/jpeg', 0.88);
+  return c2d.toDataURL('image/jpeg', big ? 0.92 : 0.88);
 }
 
-function renderOne(renderer, kind, id) {
+function renderOne(renderer, kind, id, big) {
   const def = LIST[kind].find((d) => d.id === id);
   if (!def) return BLANK;
   if (kind === 'perso') {
@@ -71,7 +80,7 @@ function renderOne(renderer, kind, id) {
     const { rig, a, sc, cam } = rigScene;
     rig.setSkins(LIST.perso.indexOf(def) + 1, 0);
     for (let i = 0; i < 8; i++) rig.animate(0.05, 0, 0, a);
-    return frame(renderer, sc, cam, 'perso');
+    return frame(renderer, sc, cam, 'perso', big);
   }
   if (!wScene) wScene = weaponScene();
   if (wScene.g) wScene.sc.remove(wScene.g);
@@ -83,7 +92,7 @@ function renderOne(renderer, kind, id) {
   wScene.sc.add(o); wScene.g = o;
   const len = Math.max(s.x, s.z), d = (len * 0.62) / Math.tan(THREE.MathUtils.degToRad(14)) / (SIZE.arme[0] / SIZE.arme[1]) * 1.15;
   wScene.cam.position.set(0, 0.1, Math.max(1.2, d)); wScene.cam.lookAt(0, 0, 0);
-  return frame(renderer, wScene.sc, wScene.cam, 'arme');
+  return frame(renderer, wScene.sc, wScene.cam, 'arme', big);
 }
 
 // À appeler en début de trame du menu (avant le rendu principal) : produit jusqu'à 2 miniatures.
@@ -91,12 +100,12 @@ export function thumbTick(renderer) {
   if (!queue.length || !ready()) return;
   if (rigScene && !rigScene.built) rigScene = null;
   for (let n = 0; n < 2 && queue.length; n++) {
-    const [kind, id] = queue[0];
+    const [kind, id, big] = queue[0];
     let url = null;
-    try { url = renderOne(renderer, kind, id); } catch (e) { url = BLANK; }
+    try { url = renderOne(renderer, kind, id, big); } catch (e) { url = BLANK; }
     if (url === null) return; // pas possible pour l'instant
     queue.shift();
-    const k = kind + ':' + id;
+    const k = keyOf(kind, id, big);
     cache.set(k, url); pending.delete(k);
     for (const img of document.querySelectorAll(`img[data-th="${k}"]`)) img.src = url;
   }

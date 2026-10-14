@@ -236,3 +236,4 @@
 ### Mes légendes + armes en grand dans la Boutique (2026-10-14, local)
 - Onglet « Mes légendes » (ex-fenêtre Légendes) : liste à gauche (3 sous-onglets : légendes / tenues / armes débloquées, avec miniatures ; un clic équipe), opérateur 3D au centre (décor du hall, accent = légende choisie), compétences à droite (passif, tactique F, ultime G + recharge/charge/durée/rayon/dégâts). Toutes les légendes sont débloquées (il n'existe pas de système de déverrouillage de légende).
 - Boutique, onglet Arme : l'arme seule, en grand, tourne sur le socle (armes qui défilent, skin sélectionné appliqué, reflets du ciel) à la place de l'opérateur, où l'arme était à peine visible.
+- Pass : clic sur une récompense = agrandissement (miniature 1,8x générée à la demande par thumbs.js, nom, palette, état de déblocage, palier, bonus) ; fermeture par bouton ou clic extérieur.

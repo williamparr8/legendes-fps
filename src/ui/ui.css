@@ -243,3 +243,14 @@ button.lo-season:hover{background:#2a3aa088!important}
 .lo-ab p{margin:0 0 8px;font-size:14px;opacity:.9;text-align:left;line-height:1.35}
 .lo-st{display:flex;flex-wrap:wrap;gap:6px}.lo-st span{background:#ffffff18;padding:3px 8px;font-size:12px;border-radius:3px}
 @media(max-width:900px){.lo-mine-l{width:44vw}.lo-mine-r{width:44vw}.lo-th2{height:80px}}
+
+/* Agrandissement d'une récompense du Pass */
+.lo-sk{cursor:zoom-in}.lo-sk:hover .lo-th{outline:2px solid #ff7af0}
+.lo-zoom{position:absolute;inset:0;z-index:5;background:#02031099;display:grid;place-items:center;padding:20px;box-sizing:border-box;text-transform:none;cursor:default}
+.lo-zp{display:flex;gap:26px;align-items:center;background:#0a0f32f5;border:1px solid #ff4af0;padding:22px;max-width:min(980px,96vw);max-height:92vh;overflow:auto;box-sizing:border-box}
+.lo-zimg{max-height:min(70vh,520px);max-width:min(560px,52vw);width:auto;height:auto;border-radius:8px;background:#111a24;display:block}
+.lo-zinfo{min-width:220px;max-width:300px}.lo-zinfo small{color:#ff7af0;letter-spacing:.1em;text-transform:uppercase}
+.lo-zinfo h3{margin:6px 0 10px;font-size:26px;text-transform:uppercase;letter-spacing:.06em}
+.lo-zinfo p{font-size:14px;opacity:.9;text-align:left;margin:10px 0}
+.lo-zpal{display:flex;gap:3px}.lo-zpal s{display:block;width:20px;height:20px;border-radius:4px;border:1px solid #0006}
+@media(max-width:760px){.lo-zp{flex-direction:column}.lo-zimg{max-width:80vw}}

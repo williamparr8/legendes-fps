@@ -35,7 +35,7 @@ export class UI {
     this.chatBuf = [];
     this.root.addEventListener('click', (e) => {
       const el = e.target.closest('[data-act]');
-      if (el && el.classList.contains('lo-modal') && e.target !== el) return; // clic dans la fenêtre : ne la ferme pas
+      if (el && (el.classList.contains('lo-modal') || el.classList.contains('lo-zoom')) && e.target !== el) return; // clic dans la fenêtre : ne la ferme pas
       if (el) this.act(el.dataset.act, el.dataset);
     });
     this.root.addEventListener('change', (e) => {
@@ -60,7 +60,7 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; this.zoom = null; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
 
   // Graine choisie d'avance : le monde peut être construit pendant que le joueur règle sa partie.
@@ -107,7 +107,9 @@ export class UI {
       case 'mtab': this.mineTab = d.m; this.show('main'); break;
       case 'mleg': this.legend = d.id; this.show('main'); break;
       case 'meq': equip(d.k, +d.i); this.show('main'); break;
-      case 'lclose': this.lobbyTab = null; this.show('main'); break;
+      case 'pzoom': this.zoom = { k: d.k, id: d.id, t: d.t }; this.show('main'); break;
+      case 'zclose': this.zoom = null; this.show('main'); break;
+      case 'lclose': this.zoom = null; this.lobbyTab = null; this.show('main'); break;
       case 'lmodes': this.modesOpen = !this.modesOpen; this.show('main'); break;
       case 'lmode': this.mode = d.mode; this.modesOpen = false; this.show('main'); break;
       case 'lleg': { const i = LEGEND_IDS.indexOf(this.legend); this.legend = LEGEND_IDS[(i + (+d.d) + LEGEND_IDS.length) % LEGEND_IDS.length]; this.show('main'); break; }
@@ -150,7 +152,7 @@ export class UI {
     } else if (this.lobbyTab === 'pass') {
       const reward = (t) => {
         const r = premium(t);
-        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk">${thumbImg(k, id, 'lo-th')}<span><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id}</span></span>`; }).join('');
+        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk" data-act="pzoom" data-k="${k}" data-id="${id}" data-t="${t}" title="Agrandir">${thumbImg(k, id, 'lo-th')}<span><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id} 🔍</span></span>`; }).join('');
         return `<div class="lo-tr${t <= SE.tier ? ' got' : ''}"><b>${t}</b><div class="lo-fr">Gratuit<br>+${freeReward(t)} pts</div><div class="lo-pr${SE.pass ? '' : ' lock'}">${sk}${r.title ? `<span class="lo-ti">« ${r.title} »</span>` : ''}<span>+${r.pts} pts</span></div></div>`;
       };
       let t = '';
@@ -175,6 +177,20 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     } else if (this.lobbyTab === 'legends') modal = '';
     const name = esc(settings.name || 'Joueur');
     const mine = this.lobbyTab === 'legends';
+    let zoomHtml = '';
+    if (this.zoom && this.lobbyTab === 'pass') {
+      const { k, id, t } = this.zoom, d = LIST[k].find((x) => x.id === id), i = LIST[k].indexOf(d), r = premium(+t);
+      if (d) {
+        const got = owns(k, i), pal = (d.p || d.w || []).slice(0, 9).map((c) => `<s style="background:${c}"></s>`).join('');
+        zoomHtml = `<div class="lo-zoom" data-act="zclose"><div class="lo-zp">
+          ${thumbImg(k, id, 'lo-zimg', true)}
+          <div class="lo-zinfo"><small>${k === 'perso' ? 'Tenue' : 'Arme'} exclusive du Pass · palier ${d.pass}</small><h3>${esc(d.n)}</h3>
+            <span class="lo-zpal">${pal}</span>
+            <p>${got ? '✔ Débloqué : tu peux l\'équiper dans « Mes légendes ».' : SE.pass ? 'Se débloque au palier ' + d.pass + ' (palier actuel : ' + SE.tier + ').' : 'Se débloque au palier ' + d.pass + ' avec le Pass de saison (' + PASS_PRICE + ' ' + GEM + ').'}</p>
+            <p>Bonus du palier : +${r.pts} pts${r.title ? ' · titre « ' + esc(r.title) + ' »' : ''}</p>
+            <button class="primary" data-act="zclose">Fermer</button></div></div></div>`;
+      }
+    }
     let mineHtml = '';
     if (mine) {
       const mt = this.mineTab || 'leg', cnt = (k) => LIST[k].filter((_, i) => owns(k, i)).length;
@@ -224,6 +240,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         <button class="lo-tile alt" data-act="shop"><small>Boutique</small><b>${profile.pts} points</b><span>Skins d'opérateur et d'arme</span></button>
       </div>
       ${mineHtml}
+      ${zoomHtml}
       ${modal ? `<div class="lo-modal" data-act="lclose"><div class="lo-mp${this.lobbyTab === 'pass' ? ' pass' : ''}" data-stop="1">${modal}<div class="row"><button class="primary" data-act="lclose">Fermer</button></div></div></div>` : ''}
     </div>`;
   }
