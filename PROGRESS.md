@@ -115,6 +115,13 @@
 - **Testé (simulation, sans GPU)** : captures du village (brique, tuiles, crépi, terre photo), plage (galets/sable), mer, montagnes ; 143 appels de dessin et ~370 k triangles par image, 39 textures ; partie solo 40–60 bots OK avant le palier. **Non testé** : FPS réels (shaders plus lourds : 2 textures + normale par fragment sur les murs ; GTX 1650 du joueur), mémoire vidéo (≈ 14 matières × 2 textures 1024), rendu avec post-traitement et ombres actives en jeu réel.
 - **Limites** : arbres/feuillage/herbe restent procéduraux ; pas d'occlusion ambiante temps réel (SSAO) ; objets simples (boîtes) ; sable = texture de galets teintée.
 
+### Fin de session 2026-10-14 — ajouts après la partie 3
+- **Armes** : matériaux PBR (métal/rugosité déduits du brillant) + environnement du ciel dans la scène de la vue subjective ; **verre** réfléchissant (PBR transparent) ; **occlusion fictive** des murs (pied plus sombre, arêtes) dans pbr.js ; luminosité par matière (`br`) ; environnement 0,42.
+- **Personnages** : 2e corps « Gas Mask » (Mixamo Ch35, `public/models/gasmask.glb` 1,5 Mo, converti par `tools/convert_variant.py`, même squelette → mêmes clips) ; corps distribué à tour de rôle (`human.variants`). **Arbres** : étages de branches en dents/retombants (props.js), tronc en texture d'écorce (Bark007, kind 5). Total textures : 10,5 Mo ; `tools/make_textures.mjs` demande `npm i --no-save sharp`.
+- **Bug corrigé en route** : la multiplication par la texture avait sauté des murs PBR (murs blancs) — rétablie.
+- **Testé** : partie solo 60 s à 30 bots avec rendu réel (post-traitement) : 0 erreur ; captures bâtiments/eau/plage/montagnes/personnages/arme. **Non testé** : FPS réels sur GTX 1650 (shaders PBR + 40 humains), mémoire vidéo, 2 onglets/en ligne avec ces matériaux, mode « Bas ».
+- **Pistes restantes** : bras/mains en vue subjective (modèle humain), modèles d'arbres/rochers/bâtiments réalistes (glTF), SSAO, lumière dynamique (cycle jour), décals (impacts), sons réalistes, vrais bruitages de pas, plus de corps de personnages (3 à 5), animations de saut/relève, équilibrage des parties de bots (trop rapides).
+
 ## À venir (priorité)
 0. **I-b : à valider par l'utilisateur** (retours visuels). Limites : hitboxes accroupi/glissade/à terre approximatives (tête du modèle jusqu'à ~0,2 m décalée de la sphère), pitch non transmis aux ProxyActor (clients : visée à l'horizontale), flash de tir à 20 Hz côté distant, mannequins d'entraînement sans arme.
 1. **I-c** : profilage, équilibrage (voir ci-dessous), effets/sons, finition (lunette sniper, minimap, parachutage).

@@ -19,7 +19,19 @@ function tint(g, a, b) {
 export function makeTrees(scene, list) {
   const n = list.length;
   if (!n) return;
-  const tier = (r, h, y, a, b) => tint(new THREE.ConeGeometry(r, h, 8).translate(0, y, 0), a, b);
+  // étage de branches : cône à bord en dents, qui retombe au bout, anneaux irréguliers
+  const tier = (r, h, y, a, b) => {
+    const g = new THREE.ConeGeometry(r, h, 14, 3), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), yy = p.getY(i), z = p.getZ(i), t = (yy + h / 2) / h, ang = Math.atan2(z, x);
+      if (t > 0.98) continue; // pointe
+      const bottom = 1 - t, zig = Math.sin(ang * 7 + yy * 5) * 0.2 + Math.sin(ang * 13 + 1.7) * 0.1;
+      const k = 1 + zig * bottom * 1.1;
+      p.setXYZ(i, x * k, yy - bottom * bottom * r * 0.22 + Math.abs(zig) * bottom * 0.12, z * k);
+    }
+    g.computeVertexNormals();
+    return tint(g.translate(0, y, 0), a, b);
+  };
   const foliage = mergeGeometries([
     tier(2.1, 2.8, 3.8, 0x22522c, 0x2f6b3a), tier(1.7, 2.6, 5.0, 0x2a5f33, 0x3a7a43),
     tier(1.25, 2.4, 6.3, 0x2f6b3a, 0x47894c), tier(0.8, 2.0, 7.4, 0x3a7a43, 0x58a05a),
@@ -31,7 +43,7 @@ export function makeTrees(scene, list) {
   const m = new THREE.Matrix4(), c = new THREE.Color(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   for (const part of parts) {
     const mat = part.mat.clone();
-    mat.vertexColors = true; mat.defines = part.mat.defines; mat.onBeforeCompile = part.mat.onBeforeCompile;
+    mat.vertexColors = true; if (part.mat.defines) mat.defines = part.mat.defines; mat.onBeforeCompile = part.mat.onBeforeCompile;
     const mesh = new THREE.InstancedMesh(part.geo, mat, n);
     for (let i = 0; i < n; i++) {
       const [x, y, z, k, t] = list[i];

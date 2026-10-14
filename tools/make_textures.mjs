@@ -11,7 +11,7 @@ const SRC = 'assets-src/tex/src', OUT = 'public/tex';
 const LIST = {
   brick: 'Bricks059', concrete: 'Concrete034', plaster: 'PaintedPlaster017', siding: 'WoodSiding008', tiles: 'RoofingTiles014A',
   tole: 'CorrugatedSteel005', wood: 'Wood051', rock: 'Rock030', metal: 'Metal032', rust: 'Rust003',
-  asphalt: 'Asphalt031', grass: 'Grass004', dirt: 'Ground054', gravel: 'Gravel023',
+  asphalt: 'Asphalt031', grass: 'Grass004', dirt: 'Ground054', gravel: 'Gravel023', bark: 'Bark007',
 };
 const SIZE = 1024;
 fs.mkdirSync(OUT, { recursive: true });

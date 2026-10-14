@@ -28,6 +28,7 @@ export const PBR_KINDS = {
   11: { tex: 'tiles', scale: 2.0, ns: 1.0, tint: 0.55, metal: 0, br: 0.92 },
   12: { tex: 'plaster', scale: 2.5, ns: 0.8, tint: 0.75, metal: 0, br: 0.85 },
   13: { tex: 'metal', scale: 2.0, ns: 0.8, tint: 0.85, metal: 0.45, br: 0.8 },
+  5: { tex: 'bark', scale: 1.1, ns: 1.3, tint: 0.55, metal: 0, br: 0.95 },
   14: { tex: 'rust', scale: 2.0, ns: 1.0, tint: 0.5, metal: 0.2, br: 0.9 },
 };
 
