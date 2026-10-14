@@ -28,7 +28,7 @@ import { questsMatch } from './shop/quests.js';
 import { achMatch } from './shop/achievements.js';
 import { touchDay } from './shop/profile.js';
 import { shopFrame } from './shop/shop.js';
-import { lobbyFrame } from './ui/lobby.js';
+import { lobbyFrame, squadFrame } from './ui/lobby.js';
 import { Pings } from './combat/pings.js';
 import { MOVE } from './player/config.js';
 import { eventById, currentEvent } from './match/events.js';
@@ -452,7 +452,7 @@ export class Game {
     const m = this.m;
     if (m && this.state === 'playing') this.autoQuality(dt);
     if (!m || this.state === 'menu') {
-      if (this.ui.screen === 'shop') shopFrame(this, dt); else if (this.ui.screen === 'main') lobbyFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
+      if (this.ui.screen === 'shop') shopFrame(this, dt); else if (this.ui.screen === 'main') lobbyFrame(this, dt); else if (this.ui.screen === 'lobby') squadFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
       return;
     }
     if (this.input.locked && !m.player.health.dead) m.player.look(this.input.mx, this.input.my, this.input.sens * (1 - 0.6 * m.player.ads));

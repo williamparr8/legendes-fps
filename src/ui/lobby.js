@@ -97,6 +97,83 @@ class LobbyView {
 }
 LobbyView.FACE = Math.PI; // orientation de face (à ajuster : dépend du modèle)
 
+// ---------- Salon : tous les joueurs de la session côte à côte (chacun avec sa tenue, son arme et la couleur de sa légende) ----------
+let squadList = [];
+export function setSquad(list) { squadList = list || []; }
+
+class SquadView {
+  constructor() {
+    this.scene = new THREE.Scene();
+    this.cam = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
+    this.scene.add(new THREE.HemisphereLight(0xb8c8ff, 0x402060, 1.1));
+    const key = new THREE.DirectionalLight(0xfff0dc, 2.4); key.position.set(-2, 4, 6); this.scene.add(key);
+    const r1 = new THREE.DirectionalLight(0xff4fd8, 2.0); r1.position.set(5, 2, -3); this.scene.add(r1);
+    const r2 = new THREE.DirectionalLight(0x4fa8ff, 2.0); r2.position.set(-5, 2, -3); this.scene.add(r2);
+    this.slots = []; this.sig = -1; this.asp = 0; this.t = 0; this.pos = [];
+    this.padG = new THREE.CylinderGeometry(0.55, 0.6, 0.06, 28).translate(0, -0.03, 0);
+    this.padM = new THREE.MeshStandardMaterial({ color: 0x1a1d3a, roughness: 0.35, metalness: 0.6 });
+    this.ringG = new THREE.TorusGeometry(0.58, 0.015, 8, 40).rotateX(Math.PI / 2);
+    this.a = { health: { downed: false }, stance: 0, wid: 'rifle', shots: 0, reloading: false, pitch: 0 };
+    this.v = new THREE.Vector3();
+  }
+
+  // (Re)construit un emplacement par joueur ; refait tout quand le modèle animé ou un corps de skin finit de charger.
+  build(n) {
+    for (const s of this.slots) this.scene.remove(s.root);
+    this.slots = [];
+    for (let i = 0; i < n; i++) {
+      const root = new THREE.Group(), m = new THREE.Group();
+      root.add(new THREE.Mesh(this.padG, this.padM), new THREE.Mesh(this.ringG, new THREE.MeshBasicMaterial({ color: 0xff7a3a })), m);
+      this.scene.add(root);
+      this.slots.push({ root, rig: makeRig(m, true), leg: '', sp: -1, sw: -1 });
+    }
+    this.sig = (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2;
+  }
+
+  frame(dt, list) {
+    this.t += dt;
+    const n = list.length, sig = (human.ready ? 1 : 0) + Object.keys(human.bodies).length * 2;
+    if (n !== this.slots.length || sig !== this.sig) this.build(n);
+    const asp = innerWidth / innerHeight;
+    if (Math.abs(asp - this.asp) > 0.02) {
+      this.asp = asp; this.cam.aspect = asp; this.cam.updateProjectionMatrix();
+      if (this.scene.background) this.scene.background.dispose();
+      this.scene.background = backdrop(Math.min(1600, Math.round(innerHeight * Math.min(asp, 2.4)) || 1280), Math.min(900, innerHeight || 720));
+    }
+    const sp = Math.min(1.35, 9.5 / Math.max(n, 1)), dist = Math.max(7.2, n * 0.72 + 4.6);
+    this.cam.position.set(0, 1.7, dist); this.cam.lookAt(0, 0.95, 0); // personnages dans la moitié haute : les panneaux du bas cachent les socles
+    this.pos.length = n;
+    for (let i = 0; i < n; i++) {
+      const s = this.slots[i], p = list[i], x = (i - (n - 1) / 2) * sp;
+      s.root.position.set(x, 0, 0);
+      s.root.rotation.y = Math.PI - x * 0.06 + Math.sin(this.t * 0.6 + i) * 0.05; // tournés vers la caméra, légèrement vers le centre
+      if (p.legend !== s.leg && legends[p.legend]) { s.leg = p.legend; s.rig.setAccent(legends[p.legend].color, p.legend); }
+      const ps = p.sp | 0, ws = p.sw | 0;
+      if (ps !== s.sp || ws !== s.sw) { s.sp = ps; s.sw = ws; s.rig.setSkins(ps, ws); }
+      s.rig.animate(dt, 0, 0, this.a);
+      this.pos[i] = x;
+    }
+  }
+
+  // Place les étiquettes DOM (.sq-lab) au-dessus de chaque joueur.
+  labels() {
+    const els = document.querySelectorAll('.sq-lab');
+    for (let i = 0; i < els.length && i < this.pos.length; i++) {
+      this.v.set(this.pos[i], 2.05, 0).project(this.cam);
+      els[i].style.left = ((this.v.x * 0.5 + 0.5) * innerWidth).toFixed(0) + 'px';
+      els[i].style.top = ((-this.v.y * 0.5 + 0.5) * innerHeight).toFixed(0) + 'px';
+    }
+  }
+}
+
+let sview = null;
+export function squadFrame(game, dt) {
+  if (!sview) sview = new SquadView();
+  sview.frame(dt, squadList);
+  game.renderer.render(sview.scene, sview.cam);
+  sview.labels();
+}
+
 let view = null;
 export function lobbyFrame(game, dt) {
   if (!view) view = new LobbyView();

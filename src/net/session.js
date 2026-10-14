@@ -2,6 +2,13 @@ import { hostListen, connectTo, makeCode } from './transport.js';
 import { RemotePlayer, r1, r2 } from './actors.js';
 import { packInfo } from '../combat/humanoid.js';
 import { myCode, cleanFc } from '../shop/friends.js';
+import { profile as myProfile } from '../shop/profile.js';
+import { levelInfo } from '../shop/quests.js';
+import { powerOf, recommend } from '../match/balance.js';
+
+const nint = (v, hi) => Math.max(0, Math.min(hi, Math.round(Number(v) || 0)));
+// Mes caractéristiques annoncées dans le salon : skins équipés, niveau, force (voir match/balance.js).
+const myInfo = () => { const lv = levelInfo().level; return { sp: myProfile.eq.perso, sw: myProfile.eq.arme, lv, pw: powerOf(myProfile, lv) }; };
 import items from '../loot/items.json';
 
 export const MAX_PLAYERS = 8;
@@ -68,12 +75,12 @@ export class HostSession {
   }
 
   roster() {
-    const r = [{ id: 0, name: this.name, legend: this.legend, host: 1, fc: myCode() }];
-    for (const p of this.players.values()) r.push({ id: p.id, name: p.name, legend: p.legend, fc: p.fc || '' });
+    const r = [{ id: 0, name: this.name, legend: this.legend, host: 1, fc: myCode(), ...myInfo() }];
+    for (const p of this.players.values()) r.push({ id: p.id, name: p.name, legend: p.legend, fc: p.fc || '', sp: p.sp | 0, sw: p.sw | 0, lv: p.lv | 0, pw: p.pw | 0 });
     return r;
   }
   broadcast(msg, except) { for (const p of this.players.values()) if (p !== except && !p.link.closed) p.link.send(msg); }
-  lobby() { const r = this.roster(); this.broadcast({ t: 'lobby', players: r, seed: this.preSeed }); if (this.onLobby) this.onLobby(r); }
+  lobby() { const r = this.roster(); this.broadcast({ t: 'lobby', players: r, seed: this.preSeed, rec: recommend(r, 3) }); if (this.onLobby) this.onLobby(r); }
   say(from, text) { text = String(text).slice(0, 200); this.broadcast({ t: 'chat', from, text }); if (this.onChat) this.onChat(from, text); }
   setLegend(l) { this.legend = l; if (this.state === 'lobby') this.lobby(); }
   setName(n) { this.name = clean(n, 'Hôte'); }
@@ -94,7 +101,7 @@ export class HostSession {
       let name = clean(m.name, 'Joueur'), k = 2;
       const taken = (n) => n === this.name || [...this.players.values()].some((p) => p.name === n);
       while (taken(name)) name = clean(m.name, 'Joueur').slice(0, 13) + k++;
-      ent.id = this.nextId++; ent.name = name; ent.legend = String(m.legend || 'scout'); ent.joined = true; ent.fc = cleanFc(m.fc);
+      ent.id = this.nextId++; ent.name = name; ent.legend = String(m.legend || 'scout'); ent.joined = true; ent.fc = cleanFc(m.fc); ent.sp = nint(m.sp, 63); ent.sw = nint(m.sw, 63); ent.lv = nint(m.lv, 99); ent.pw = nint(m.pw, 100);
       this.players.set(ent.id, ent);
       ent.link.send({ t: 'welcome', id: ent.id, name });
       this.lobby();
@@ -287,7 +294,7 @@ export class ClientSession {
     const welcome = new Promise((res, rej) => { this.joinOk = res; this.joinFail = rej; setTimeout(() => rej({ type: 'timeout' }), 8000); });
     link.onmessage = (m) => this.onMsg(m);
     link.onclose = () => { if (this.joinFail) this.joinFail({ type: 'closed' }); this.closed('Connexion perdue avec l\'hôte.'); };
-    link.send({ t: 'join', name: this.name, legend: this.legend, fc: myCode() });
+    link.send({ t: 'join', name: this.name, legend: this.legend, fc: myCode(), ...myInfo() });
     try { await welcome; } catch (e) { this.left = true; link.close(); throw e; }
     this.joinOk = this.joinFail = null;
     this.seen = performance.now();
@@ -316,7 +323,7 @@ export class ClientSession {
     switch (m.t) {
       case 'welcome': this.id = m.id; this.name = m.name; if (this.joinOk) this.joinOk(); break;
       case 'refuse': if (this.joinFail) this.joinFail({ type: 'refused', why: m.why }); break;
-      case 'lobby': this.roster = m.players; this.seed = m.seed; if (this.onLobby) this.onLobby(m.players); break;
+      case 'lobby': this.roster = m.players; this.seed = m.seed; this.rec = m.rec; if (this.onLobby) this.onLobby(m.players); break;
       case 'chat': if (this.onChat) this.onChat(m.from, m.text); break;
       case 'start': this.game.startClient(m, this); break;
       case 's': if (this.m) this.snapshot(m); break;

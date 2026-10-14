@@ -12,6 +12,8 @@ import { LIST, owns, equip, legendUnlocked, legendPrice, unlockLegend, firstUnlo
 import { ACH, hasAch, achCount, titleName, setTitle } from '../shop/achievements.js';
 import { friends, seen as seenFriends, forget as forgetFriend, add as addFriend, myCode, ago } from '../shop/friends.js';
 import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
+import { recommend, powerLabel } from '../match/balance.js';
+import { setSquad } from './lobby.js';
 import { thumbImg } from '../shop/thumbs.js';
 import { shopHtml, shopAct, shopOpen } from '../shop/shop.js';
 
@@ -42,6 +44,8 @@ export class UI {
       if (el) this.act(el.dataset.act, el.dataset);
     });
     this.root.addEventListener('change', (e) => {
+      if (e.target.id === 'lb-auto') { this.autoBalance = e.target.checked; const g = this.game; if (g.session && g.session.role === 'host') this.updateLobby(g.session.roster()); return; }
+      if (e.target.id === 'c-size' && this.game.session && this.game.session.role === 'host') this.updateLobby(this.game.session.roster());
       if (e.target.id === 'lb-legend') { this.legend = e.target.value; const s = this.game.session; if (s) s.setLegend(this.legend); }
     });
     this.root.addEventListener('keydown', (e) => {
@@ -64,7 +68,7 @@ export class UI {
     });
   }
 
-  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; this.zoom = null; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
+  show(screen, data) { this.root.innerHTML = this[screen](data); this.root.style.display = 'flex'; this.screen = screen; if (screen === 'main' && this.lobbyTab === 'gems') this.mountPay(); this.root.classList.toggle('shopmode', screen === 'shop'); this.root.classList.toggle('lobbymode', screen === 'main' || screen === 'lobby'); if (screen !== 'main') { this.lobbyTab = null; this.modesOpen = false; this.zoom = null; } if ((screen === 'setup' && this.mode !== 'training') || (screen === 'main' && (this.mode === 'solo' || this.mode === 'squad')) || (screen === 'lobby' && this.game.session.role === 'host')) { const sd = this.seed, ss = this.game.session; if (screen === 'lobby' && ss.preSeed !== sd) { ss.preSeed = sd; ss.lobby(); } setTimeout(() => this.game.prewarm(sd), 60); } if (screen === 'lobby') { this.updateLobby(this.game.session.role === 'host' ? this.game.session.roster() : this.game.session.roster); this.redrawChat(); } }
   hide() { this.root.style.display = 'none'; }
 
   // Le salon personnel vient de s'ouvrir / se fermer : on redessine le hall.
@@ -409,6 +413,10 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       zone: ch('c-zone', m !== 'training'), event: m === 'training' || !currentEvent() ? null : currentEvent().id, timeLimit: +v('c-time', 0), killLimit: +v('c-kills', 0),
       weapons: list('.wc', Object.keys(wdefs)), legends: list('.lc', LEGEND_IDS), seed: this.seed,
     };
+    if (m === 'online' && this.autoBalance !== false && this.game.session && this.game.session.role === 'host') {
+      const r = recommend(this.game.session.roster(), cfg.squadSize);
+      cfg.difficulty = r.diff; cfg.enemySquads = r.enemySquads;
+    }
     this._seed = null;
     this.lastCfg = cfg;
     return cfg;
@@ -428,25 +436,43 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       <div class="row"><button data-act="menu">Retour</button></div></div>`;
   }
 
+  // Salon : les joueurs de la session côte à côte (3D) ; difficulté et nombre d'escouades choisis d'après la force moyenne.
   lobby() {
     const s = this.game.session, host = s.role === 'host';
     const opts = LEGEND_IDS.filter((id) => legendUnlocked(id)).map((id) => `<option value="${id}" ${id === this.legend ? 'selected' : ''}>${LEGENDS[id].name}</option>`).join('');
     const link = location.origin + location.pathname + '?salon=' + s.code + (transportKind() === 'local' ? '&local' : '');
-    return `<div class="panel"><h2>Salon <span class="code">${s.code}</span></h2>
-      <div class="linkrow"><input class="t" id="lb-link" readonly value="${esc(link)}"><button data-act="copylink">Copier le lien</button><span id="lb-copied"></span></div>
-      <div class="lobbygrid"><div><h3>Joueurs <small id="lb-count"></small></h3><div id="lb-players"></div>
-        <label class="lbl">Ma légende<select class="t" id="lb-legend">${opts}</select></label>
-        <h3>Chat</h3><div id="lb-chat" class="chatlog"></div><input class="t" id="lb-say" maxlength="200" placeholder="Message… (Entrée pour envoyer)"></div>
-        <div>${host ? `<h3>Options de la partie</h3>${this.optionsHtml('online')}` : '<h3>Partie</h3><p style="text-align:left">En attente du lancement par l\'hôte…</p>'}</div></div>
-      <div class="row"><button data-act="lleave">Quitter le salon</button>${host ? '<button class="primary" data-act="lstart">Lancer la partie</button>' : ''}</div></div>`;
+    return `<div class="lo sq">
+      <div class="sq-top"><div><small>Salon</small><b class="code">${s.code}</b></div>
+        <div class="linkrow"><input class="t" id="lb-link" readonly value="${esc(link)}"><button data-act="copylink">Copier le lien</button><span id="lb-copied"></span></div>
+        <label class="lbl" style="margin:0">Ma légende<select class="t" id="lb-legend">${opts}</select></label></div>
+      <div id="sq-labels"></div>
+      <div class="sq-bot">
+        <div class="sq-chat"><div id="lb-chat" class="chatlog"></div><input class="t" id="lb-say" maxlength="200" placeholder="Message… (Entrée pour envoyer)"></div>
+        <div class="sq-mid"><div id="sq-rec"></div>
+          <div class="row" style="justify-content:center;gap:10px;align-items:center">${host ? '<button class="primary sq-go" data-act="lstart">Lancer la partie</button>' : '<span style="opacity:.8">En attente du lancement par l\'hôte…</span>'}<button data-act="lleave">Quitter</button></div></div>
+        <div class="sq-adv">${host ? `<label class="chk"><input type="checkbox" id="lb-auto" ${this.autoBalance !== false ? 'checked' : ''}> Équilibrage automatique (difficulté et escouades d'après la force du groupe)</label>
+          <details><summary>Réglages manuels</summary>${this.optionsHtml('online')}</details>` : '<small style="opacity:.7">L\'hôte choisit les réglages ; la difficulté et le nombre d\'escouades sont calculés d\'après la force du groupe.</small>'}</div>
+      </div></div>`;
   }
 
   updateLobby(roster) {
     try { seenFriends(roster, settings.name); } catch (e) { /* ignoré */ }
-    const el = $('lb-players');
+    setSquad(roster); // alignement 3D des joueurs (lobby.js)
+    const el = $('sq-labels');
     if (!el || this.screen !== 'lobby') return;
-    el.innerHTML = roster.map((p) => `<div class="pl"><b>${esc(p.name)}</b>${p.host ? ' <small>(hôte)</small>' : ''}<i style="color:${LEGENDS[p.legend] ? LEGENDS[p.legend].color : '#fff'}">${LEGENDS[p.legend] ? LEGENDS[p.legend].name : ''}</i></div>`).join('');
-    $('lb-count').textContent = `${roster.length} / ${MAX_PLAYERS}`;
+    el.innerHTML = roster.map((p) => {
+      const L = LEGENDS[p.legend], pw = p.pw | 0;
+      return `<div class="sq-lab"><b>${esc(p.name)}${p.host ? ' 👑' : ''}</b><span style="color:${L ? L.color : '#fff'}">${L ? L.name : ''}</span>
+        <i><u style="width:${pw}%"></u></i><small>Niv. ${p.lv | 0} · ${powerLabel(pw)} (${pw})</small></div>`;
+    }).join('');
+    // recommandation : calculée ici pour l'hôte (avec la taille d'équipe choisie), reçue de l'hôte pour les autres
+    const sz = $('c-size') ? +$('c-size').value : 3, s = this.game.session;
+    const rec = s.role === 'host' ? recommend(roster, sz) : (s.rec || recommend(roster, 3));
+    this.rec = rec;
+    const auto = s.role !== 'host' || this.autoBalance !== false;
+    const rc = $('sq-rec');
+    if (rc) rc.innerHTML = `<small>${auto ? 'Partie équilibrée automatiquement' : 'Réglages manuels actifs'}</small>
+      <div class="sq-stats"><span>Force moyenne<b>${rec.avg}</b><em>${rec.label}</em></span><span>Difficulté des bots<b>${rec.diffName}</b></span><span>Escouades ennemies<b>${rec.enemySquads}</b></span><span>Joueurs<b>${roster.length} / ${MAX_PLAYERS}</b></span></div>`;
   }
 
   addChat(from, text) {
