@@ -295,3 +295,9 @@
 - Bibliothèques séparées du code du jeu (`three`, `net` : le jeu seul fait ~133 Ko gzip à retélécharger à chaque version) ; service worker `public/sw.js` (production seulement) : fichiers hachés en cache d'abord, textures/modèles en cache puis mise à jour, page réseau d'abord.
 - Récompenses de niveau (`shop/levels.js`, profil v6 : `lvClaimed`) : points à chaque niveau, paliers 5/10/15/20/25/30 (emblème, bannière, Éclats, légende) ; accordées en fin de partie et au démarrage (rattrapage) ; affichées dans les résultats et dans le Profil (prochaines récompenses).
 - Testé : étapes du chargeur au lancement (navigateur), textures .webp, ouverture de la boutique, code v6. Non testé : vraie connexion lente, service worker en production (vérifier après déploiement), GPU réel.
+
+### Boutique allégée (2026-10-14)
+- Boutique : ouverture immédiate (cartes en texte, plus de miniatures ni de pastilles de couleur ; aussi retirées du Pass et de l'agrandissement). L'aperçu 3D n'apparaît qu'une fois le personnage chargé (pastille de progression en bas à gauche).
+- Corps de skins (`eve`, `maria`) téléchargés à la demande seulement : skin sélectionné dans la boutique, équipé, ou porté par un joueur de la partie (`Game.bodiesFor`, attendu au lancement avec progression). Au démarrage seuls swat + gasmask sont téléchargés (−1,4 Mo).
+- Menu principal : fusil invisible corrigé (la distance de caméra de la partie précédente — 1e6 par défaut — masquait l'arme et ralentissait l'animation des personnages des menus).
+- Testé : ouverture 2 ms, 23 cartes sans image, téléchargement de eve.glb au clic, arme visible dans le hall (capture). Non testé : réseau lent, GPU réel.

@@ -8,7 +8,8 @@ import { profile, LIST, RAR, price, owns, buy, equip, exportCode, importCode, va
 import { buySkin, GEM } from './pass.js';
 import { offers, offerFor, buyOffer, leftText, markSeen } from './daily.js';
 import { COSM, buyCosm } from './cosmetics.js';
-import { thumbImg, thumbTick } from './thumbs.js';
+import { bodyProgress, mainProgress } from '../combat/humanrig.js';
+import { Loader } from '../ui/loader.js';
 
 // Écran Boutique : cartes de skins (personnage / arme), aperçu 3D à droite (rendu par Game.render via shopFrame), sauvegarde.
 const S = { kind: 'perso', sel: -1, msg: '', saveOpen: false }; // sel : indice du skin affiché (-1 = tenue par défaut)
@@ -44,16 +45,16 @@ function cosmHtml() {
 export function shopHtml() {
   if (S.kind === 'emb' || S.kind === 'ban') return cosmHtml();
   const k = S.kind, list = LIST[k], eq = profile.eq[k] - 1, cards = [];
-  const card = (i, name, rar, pal, st, th = '') => `<div class="sc${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${rar ? rar.c : '#5a6573'}">
-      ${th}<b>${name}</b><small style="color:${rar ? rar.c : '#9aa5b1'}">${rar ? rar.n : 'Par défaut'}</small>
-      <span class="sw">${pal ? pal.map((c) => `<s style="background:${c}"></s>`).join('') : ''}</span>${st}</div>`;
+  // cartes en texte seulement : rien à télécharger ni à dessiner ; le skin n'est chargé que quand on le sélectionne (aperçu 3D à droite)
+  const card = (i, name, rar, st) => `<div class="sc${S.sel === i ? ' sel' : ''}" data-act="spick" data-i="${i}" style="border-color:${rar ? rar.c : '#5a6573'}">
+      <b>${name}</b><small style="color:${rar ? rar.c : '#9aa5b1'}">${rar ? rar.n : 'Par défaut'}</small>${st}</div>`;
   // sections : points ◆ (gratuit + points), Éclats ✦ (premium), Pass (paliers)
-  const groups = { pts: [card(-1, 'Tenue d\'origine', null, null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`, '<div class="th th-none">Par défaut</div>')], gems: [], pass: [] };
+  const groups = { pts: [card(-1, 'Tenue d\'origine', null, `<em class="${eq === -1 ? 'eq' : 'ow'}">${eq === -1 ? 'Équipé' : 'Gratuit'}</em>`)], gems: [], pass: [] };
   list.forEach((d, i) => {
     if (d.daily && !owns(k, i)) return; // visible seulement dans les offres du jour
     const c = price(d);
     const st = eq === i ? '<em class="eq">Équipé</em>' : owns(k, i) ? '<em class="ow">Possédé</em>' : d.pass ? `<em class="pr" style="color:#ff7af0">Pass · palier ${d.pass}</em>` : d.gems ? `<em class="${profile.gems >= d.gems ? 'ok' : 'pr'}" style="color:#ffd070">${GEM} ${d.gems}</em>` : `<em class="${profile.pts >= c ? 'ok' : 'pr'}">◆ ${c} pts</em>`;
-    const html = card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], d.p || d.w, st, thumbImg(k, d.id));
+    const html = card(i, d.n, d.pass ? { c: '#ff4af0', n: 'Exclusif Pass' } : d.gems ? { c: '#ffd070', n: 'Premium' } : RAR[d.r], st);
     (d.pass ? groups.pass : d.gems ? groups.gems : groups.pts).push(html);
   });
   const sec = (cls, title, sub, arr) => (arr.length ? `<div class="sgrp ${cls}"><b>${title}</b><span>${sub}</span></div>${arr.join('')}` : '');
@@ -84,7 +85,7 @@ export function shopHtml() {
     <div class="sdaily"><div class="sgrp daily"><b>⏱ Offres du jour</b><span>Se renouvellent dans ${leftText()} · -25 % à -40 %</span></div><div class="soffers">${offers().map((o) => {
       const own = owns(o.kind, o.i), sym = o.cur === 'gems' ? GEM : '◆', rar = o.def.gems ? { c: '#ffd070' } : RAR[o.def.r];
       return `<div class="sc offer${S.kind === o.kind && S.sel === o.i ? ' sel' : ''}" data-act="soffsel" data-k="${o.kind}" data-i="${o.i}" style="border-color:${rar.c}">${o.star ? '<i class="star">-' + o.pct + ' %</i>' : '<i class="star n">-' + o.pct + ' %</i>'}
-        ${thumbImg(o.kind, o.def.id)}<b>${o.def.n}</b><small>${o.kind === 'perso' ? 'Tenue' : 'Arme'}${o.def.daily ? ' · exclusif du jour' : ''}</small>
+        <b>${o.def.n}</b><small>${o.kind === 'perso' ? 'Tenue' : 'Arme'}${o.def.daily ? ' · exclusif du jour' : ''}</small>
         ${own ? '<em class="ow">Possédé</em>' : `<em class="ok">${sym} ${o.price} <s>${o.base}</s></em>`}</div>`;
     }).join('')}</div></div>
     <div class="tabs">${tab('perso', 'Personnage')}${tab('arme', 'Arme')}${tab('emb', 'Emblèmes')}${tab('ban', 'Bannières')}</div>
@@ -168,7 +169,7 @@ class ShopView {
     const k = S.kind, i = S.sel;
     this.rig.setSkins(k === 'perso' ? i + 1 : profile.eq.perso, k === 'arme' ? i + 1 : profile.eq.arme);
     const showW = k === 'arme';
-    this.m.visible = !showW; this.wg.visible = showW;
+    this.m.visible = !showW && human.ready; this.wg.visible = showW; // pas de silhouette provisoire : le personnage apparaît une fois chargé
     const env = showW ? getSkyEnv() : null; // reflets du ciel sur le métal de l'arme (sinon elle ressort noire)
     if (this.scene.environment !== env) { this.scene.environment = env; this.scene.environmentIntensity = 0.9; }
     if (showW) this.weaponFrame(w, i);
@@ -203,7 +204,11 @@ let view = null;
 // Appelé par Game.render quand l'écran Boutique est affiché : rend l'aperçu à la place du décor de menu.
 export function shopFrame(game, dt) {
   if (!view) view = new ShopView();
-  thumbTick(game.renderer); // miniatures des cartes : avant le rendu principal
   view.frame(dt, game.ui.legend);
+  // progression du téléchargement affichée tant que le personnage (ou le corps du skin choisi) n'est pas là
+  let p = -1, txt = '';
+  if (!human.ready) { p = mainProgress(); txt = 'Chargement du personnage'; }
+  else if (S.kind === 'perso' && S.sel >= 0) { const d = LIST.perso[S.sel]; if (d && d.body && !human.bodies[d.body]) { p = bodyProgress(d.body); txt = 'Téléchargement : ' + d.n; } }
+  if (p >= 0 && p < 1) { Loader.chip(Math.max(0.01, p), txt); game._shopChip = true; } else if (game._shopChip) { Loader.chip(null); game._shopChip = false; }
   game.renderer.render(view.scene, view.cam);
 }

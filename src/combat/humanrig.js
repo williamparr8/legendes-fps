@@ -14,11 +14,11 @@ import legends from '../legends/legends.json';
 const LEGS = Object.keys(legends), WIDS = Object.keys(wdefs);
 export const human = { ready: false, scene: null, variants: [], bodies: {}, next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
 
-// Tailles approximatives (octets) des modèles : sert au calcul de progression tant que le serveur n'a pas annoncé la taille.
-const EST = { 'swat.glb': 2839128, 'gasmask.glb': 1517244, 'eve.glb': 823248, 'maria.glb': 1002564 };
-human.prog = {}; human.extrasLeft = 0;
+// Tailles (octets) des modèles : sert au calcul de progression tant que le serveur n'a pas annoncé la taille.
+const EST = { 'swat.glb': 2401544, 'gasmask.glb': 702944, 'eve.glb': 641392, 'maria.glb': 764504 };
+human.prog = {}; human.extrasLeft = 0; human.failed = {}; human.loading = {};
 
-// Progression globale des modèles (0..1) : ready = modèle principal prêt (suffit pour afficher les personnages), all = tous chargés.
+// Progression globale du chargement de fond (0..1) : ready = modèle principal prêt (suffit pour afficher les personnages), all = variantes chargées.
 export function humanProgress() {
   let l = 0, t = 0;
   for (const u in human.prog) { const p = human.prog[u]; l += Math.min(p.l, p.t); t += p.t; }
@@ -29,31 +29,41 @@ export function mainProgress() {
   const k = Object.keys(human.prog)[0], p = k && human.prog[k];
   return human.ready ? 1 : p ? Math.min(1, p.l / p.t) : 0;
 }
+// Progression d'un corps de skin (0..1 ; 1 une fois chargé ou si le chargement a échoué).
+export function bodyProgress(name) {
+  if (human.bodies[name] || human.failed[name]) return 1;
+  const u = human.loading[name], p = u && human.prog[u];
+  return p ? Math.min(0.99, p.l / p.t) : 0;
+}
 
-// url : premier modèle (avec les clips), chargé en premier ; extras : autres corps (même squelette, sans clips), chargés ensuite un par un
+const prep = (scene) => scene.traverse((o) => { // pas d'environnement propre : matériaux mats (sinon le métal ressort noir)
+  if (!o.isMesh) return;
+  o.castShadow = false;
+  const m = o.material;
+  if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
+});
+const fname = (u) => u.split('/').pop();
+const track = (u) => (e) => { const p = human.prog[u]; if (p && e && e.loaded) { p.l = e.loaded; if (e.lengthComputable && e.total) p.t = e.total; } };
+const done = (u) => { const p = human.prog[u]; if (p) p.l = p.t; };
+
+// Corps de skin (eve, maria) : téléchargé seulement quand un skin qui l'utilise est affiché (boutique, équipé, joueur de la partie).
+export function loadBody(name) {
+  if (human.bodies[name] || human.loading[name] || human.failed[name] || !EST[name + '.glb']) return;
+  const u = import.meta.env.BASE_URL + 'models/' + name + '.glb';
+  human.prog[u] = { l: 0, t: EST[name + '.glb'] }; human.loading[name] = u;
+  const fin = () => { done(u); delete human.loading[name]; };
+  new GLTFLoader().load(u, (g) => { prep(g.scene); human.bodies[name] = g.scene; fin(); }, track(u), () => { human.failed[name] = true; fin(); });
+}
+
+// url : premier modèle (avec les clips), chargé en premier ; extras : variantes (même squelette, sans clips) chargées ensuite une par une
 // pour ne pas se disputer la bande passante avec le modèle principal.
 export function loadHuman(url, extras = []) {
-  const prep = (scene) => scene.traverse((o) => { // pas d'environnement propre : matériaux mats (sinon le métal ressort noir)
-    if (!o.isMesh) return;
-    o.castShadow = false;
-    const m = o.material;
-    if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
-  });
-  const name = (u) => u.split('/').pop();
-  for (const u of [url, ...extras]) human.prog[u] = { l: 0, t: EST[name(u)] || 1e6 };
+  for (const u of [url, ...extras]) human.prog[u] = { l: 0, t: EST[fname(u)] || 1e6 };
   human.extrasLeft = extras.length;
-  const track = (u) => (e) => { const p = human.prog[u]; if (e && e.loaded) { p.l = e.loaded; if (e.lengthComputable && e.total) p.t = e.total; } };
-  const done = (u) => { const p = human.prog[u]; p.l = p.t; };
   const loadExtras = (list) => {
     if (!list.length) return;
-    const u = list[0];
-    new GLTFLoader().load(u, (g) => {
-      prep(g.scene);
-      const nm = name(u).replace('.glb', '');
-      if (nm === 'eve' || nm === 'maria') human.bodies[nm] = g.scene; // corps réservés aux skins (pas dans la rotation par défaut)
-      else human.variants.push(g.scene);
-      done(u); human.extrasLeft--; loadExtras(list.slice(1));
-    }, track(u), () => { done(u); human.extrasLeft--; loadExtras(list.slice(1)); });
+    const u = list[0], next = () => { done(u); human.extrasLeft--; loadExtras(list.slice(1)); };
+    new GLTFLoader().load(u, (g) => { prep(g.scene); human.variants.push(g.scene); next(); }, track(u), next);
   };
   return new Promise((res) => {
     new GLTFLoader().load(url, (g) => {
@@ -215,8 +225,10 @@ export class HumanRig {
 
   // Skins cosmétiques (indices + 1 dans skins.json) : teinte du personnage ; skin d'arme appliqué à l'arme tenue.
   setSkins(ps, ws) {
-    if (ps !== this.pskin) {
-      const def = skinData.perso[ps - 1];
+    const d0 = skinData.perso[ps - 1], wb = d0 && d0.body;
+    if (wb && !human.bodies[wb]) loadBody(wb);
+    if (ps !== this.pskin || (wb && this.body !== wb && human.bodies[wb])) {
+      const def = d0;
       const want = def && def.body && human.bodies[def.body] ? def.body : null;
       if (want !== this.body) this.setBody(want);
       this.pskin = ps;

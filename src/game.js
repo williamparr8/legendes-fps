@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { startLoop } from './core/loop.js';
 import { Post } from './core/post.js';
-import { loadHuman, human, humanProgress, mainProgress } from './combat/humanrig.js';
+import { loadHuman, human, humanProgress, mainProgress, bodyProgress, loadBody } from './combat/humanrig.js';
 import { Loader, assets, whenIdle, nextFrame } from './ui/loader.js';
 import { bakeSky } from './world/terrain.js';
 import { Input } from './core/input.js';
@@ -24,7 +24,7 @@ import { ClientMatch } from './net/clientMatch.js';
 import { cleanCode } from './net/transport.js';
 import { InventoryPanel } from './ui/inventory.js';
 import { MapView } from './ui/map.js';
-import { profile, equippedDef, awardMatch } from './shop/profile.js';
+import { profile, LIST, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
 import { achMatch } from './shop/achievements.js';
 import { rankMatch, rankSeason } from './shop/rank.js';
@@ -52,10 +52,11 @@ export class Game {
     bakeSky(this.renderer, new THREE.Vector3(60, 100, 30).normalize());
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
-    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb', import.meta.env.BASE_URL + 'models/eve.glb', import.meta.env.BASE_URL + 'models/maria.glb']); // personnage animé ; en attendant, silhouette procédurale
+    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb']); // personnage animé ; en attendant, silhouette procédurale
     // téléchargement de fond : pastille discrète tant que modèles et textures arrivent
     this._chipT = setInterval(() => {
       const hp = humanProgress(), tf = assets.total ? assets.loaded / assets.total : 1;
+      if (this.ui && this.ui.screen === 'shop') return;
       const idle = hp.all && !assets.active;
       if (idle) { Loader.chip(null); clearInterval(this._chipT); return; }
       Loader.chip((hp.f * 6.2 + (assets.active ? tf : 1) * 3) / 9.2, 'Chargement des ressources');
@@ -240,19 +241,25 @@ export class Game {
     return p && p.seed === seed && p.sh === settings.shadows && p.ev === (ev ? ev.id : '') ? p : null;
   }
 
-  // Attend le modèle de personnage principal (barre de progression si ce n'est pas déjà fait).
-  async needHuman(title) {
-    if (human.ready) return;
-    Loader.show(title);
-    await new Promise((res) => {
+  // Corps de skins utiles à la partie (le mien et ceux des joueurs du salon) : téléchargés maintenant, pas avant.
+  bodiesFor(net) {
+    const ids = new Set([profile.eq.perso | 0]);
+    if (net) for (const p of (net.role === 'host' ? net.roster() : net.roster) || []) ids.add(p.sp | 0);
+    const names = [];
+    for (const i of ids) { const d = i > 0 && LIST.perso[i - 1]; if (d && d.body) { names.push(d.body); loadBody(d.body); } }
+    return names;
+  }
+
+  // Attend le modèle principal et les corps demandés ; la barre va de f0 à f1.
+  waitModels(names, f0, f1) {
+    return new Promise((res) => {
       const t = setInterval(() => {
-        const f = mainProgress();
-        Loader.set(f, 'Personnages : ' + Math.round(f * 100) + ' %');
-        if (human.ready) { clearInterval(t); res(); }
+        const f = Math.min(mainProgress(), ...names.map(bodyProgress));
+        Loader.set(f0 + f * (f1 - f0), 'Personnages : ' + Math.round(f * 100) + ' %');
+        if (human.ready && names.every((n) => human.bodies[n] || human.failed[n])) { clearInterval(t); res(); }
       }, 100);
       setTimeout(() => { clearInterval(t); res(); }, 30000);
     });
-    Loader.hide();
   }
 
   // Lancement d'une partie avec progression visible : personnages → carte → textures → départ. (start() reste le départ synchrone.)
@@ -263,10 +270,7 @@ export class Game {
     try {
       Loader.show(training ? "Lancement de l'entraînement" : 'Lancement de la partie');
       Loader.set(0.02, 'Chargement des personnages');
-      await new Promise((res) => {
-        const t = setInterval(() => { const f = mainProgress(); Loader.set(0.02 + f * 0.38, 'Personnages : ' + Math.round(f * 100) + ' %'); if (human.ready) { clearInterval(t); res(); } }, 100);
-        setTimeout(() => { clearInterval(t); res(); }, 30000);
-      });
+      await this.waitModels(this.bodiesFor(net), 0.02, 0.4);
       if (!training) {
         Loader.set(0.42, 'Génération de la carte'); await nextFrame();
         this.prewarm(cfg.seed, eventById(cfg.event));
@@ -286,10 +290,7 @@ export class Game {
     try {
       Loader.show('Rejoindre la partie');
       Loader.set(0.02, 'Chargement des personnages');
-      await new Promise((res) => {
-        const t = setInterval(() => { const f = mainProgress(); Loader.set(0.02 + f * 0.38, 'Personnages : ' + Math.round(f * 100) + ' %'); if (human.ready) { clearInterval(t); res(); } }, 100);
-        setTimeout(() => { clearInterval(t); res(); }, 30000);
-      });
+      await this.waitModels(this.bodiesFor(net), 0.02, 0.4);
       Loader.set(0.42, 'Génération de la carte'); await nextFrame();
       this.prewarm(msg.cfg.seed, eventById(msg.cfg.event));
       Loader.set(0.55, 'Chargement des textures'); await nextFrame();
@@ -532,6 +533,8 @@ export class Game {
     const m = this.m;
     if (m && this.state === 'playing') this.autoQuality(dt);
     if (!m || this.state === 'menu') {
+      human.cam.set(0, 1, 0); // les personnages des menus sont « proches » : arme visible, animation à pleine cadence
+      if (this._shopChip && this.ui.screen !== 'shop') { Loader.chip(null); this._shopChip = false; }
       if (this.ui.screen === 'shop') shopFrame(this, dt); else if (this.ui.screen === 'main') lobbyFrame(this, dt); else if (this.ui.screen === 'lobby') squadFrame(this, dt); else this.renderer.render(this.menuScene, this.camera);
       return;
     }

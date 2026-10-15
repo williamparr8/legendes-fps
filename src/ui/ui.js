@@ -193,7 +193,7 @@ export class UI {
     } else if (this.lobbyTab === 'pass') {
       const reward = (t) => {
         const r = premium(t);
-        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); const c = d ? (d.p ? d.p[2] : d.w[0]) : '#fff'; return `<span class="lo-sk" data-act="pzoom" data-k="${k}" data-id="${id}" data-t="${t}" title="Agrandir">${thumbImg(k, id, 'lo-th')}<span><i style="background:${c}"></i>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id} 🔍</span></span>`; }).join('');
+        const sk = r.skins.map(([k, id]) => { const d = LIST[k].find((x) => x.id === id); return `<span class="lo-sk" data-act="pzoom" data-k="${k}" data-id="${id}" data-t="${t}" title="Agrandir">${thumbImg(k, id, 'lo-th')}<span>${k === 'perso' ? 'Tenue' : 'Arme'} ${d ? esc(d.n) : id} 🔍</span></span>`; }).join('');
         return `<div class="lo-tr${t <= SE.tier ? ' got' : ''}"><b>${t}</b><div class="lo-fr">Gratuit<br>+${freeReward(t)} pts</div><div class="lo-pr${SE.pass ? '' : ' lock'}">${sk}${r.title ? `<span class="lo-ti">« ${r.title} »</span>` : ''}<span>+${r.pts} pts</span></div></div>`;
       };
       let t = '';
@@ -258,11 +258,10 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     if (this.zoom && this.lobbyTab === 'pass') {
       const { k, id, t } = this.zoom, d = LIST[k].find((x) => x.id === id), i = LIST[k].indexOf(d), r = premium(+t);
       if (d) {
-        const got = owns(k, i), pal = (d.p || d.w || []).slice(0, 9).map((c) => `<s style="background:${c}"></s>`).join('');
+        const got = owns(k, i);
         zoomHtml = `<div class="lo-zoom" data-act="zclose"><div class="lo-zp">
           ${thumbImg(k, id, 'lo-zimg', true)}
           <div class="lo-zinfo"><small>${k === 'perso' ? 'Tenue' : 'Arme'} exclusive du Pass · palier ${d.pass}</small><h3>${esc(d.n)}</h3>
-            <span class="lo-zpal">${pal}</span>
             <p>${got ? '✔ Débloqué : tu peux l\'équiper dans « Mes légendes ».' : SE.pass ? 'Se débloque au palier ' + d.pass + ' (palier actuel : ' + SE.tier + ').' : 'Se débloque au palier ' + d.pass + ' avec le Pass de saison (' + PASS_PRICE + ' ' + GEM + ').'}</p>
             <p>Bonus du palier : +${r.pts} pts${r.title ? ' · titre « ' + esc(r.title) + ' »' : ''}</p>
             <button class="primary" data-act="zclose">Fermer</button></div></div></div>`;
@@ -360,9 +359,8 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     }
   }
 
-  // Boutique : attend le modèle de personnage (barre de progression) avant d'ouvrir l'aperçu 3D.
-  async openShop() {
-    await this.game.needHuman('Ouverture de la boutique');
+  // Boutique : s'ouvre tout de suite (cartes en texte) ; l'aperçu 3D n'apparaît que quand le personnage est prêt, avec sa progression.
+  openShop() {
     shopOpen(); this.from = 'main'; this.show('shop');
   }
 

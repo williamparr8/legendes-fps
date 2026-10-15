@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { makeRig } from '../combat/humanoid.js';
-import { human } from '../combat/humanrig.js';
+import { human, loadBody } from '../combat/humanrig.js';
 import { buildWeaponModel, applyWeaponSkin } from '../combat/models.js';
 import { getSkyEnv } from '../world/terrain.js';
 import { LIST } from './profile.js';
@@ -25,9 +25,17 @@ export function thumbUrl(kind, id, big = false) {
   return BLANK;
 }
 // <img> d'aperçu ; src remplacé dès que la miniature est prête (voir thumbTick).
-export const thumbImg = (kind, id, cls = '', big = false) => `<img class="th th-${kind} ${cls}" data-th="${keyOf(kind, id, big)}" src="${thumbUrl(kind, id, big)}" alt="">`;
+// Skin à corps propre (eve, maria) pas encore téléchargé : pas de miniature tant qu'on n'a pas cliqué dessus (agrandissement).
+const needsBody = (kind, id) => {
+  if (kind !== 'perso') return null;
+  const d = LIST.perso.find((x) => x.id === id);
+  return d && d.body && !human.bodies[d.body] && !human.failed[d.body] ? d.body : null;
+};
+export const thumbImg = (kind, id, cls = '', big = false) => (!big && needsBody(kind, id)
+  ? `<div class="th th-none ${cls}">Tenue spéciale<br><small>aperçu au clic</small></div>`
+  : `<img class="th th-${kind} ${cls}" data-th="${keyOf(kind, id, big)}" src="${thumbUrl(kind, id, big)}" alt="">`);
 
-const ready = () => human.ready && (Object.keys(human.bodies).length >= 2 || performance.now() > 30000);
+const ready = () => human.ready;
 
 function lights(sc) {
   sc.background = new THREE.Color(BG);
@@ -99,8 +107,11 @@ function renderOne(renderer, kind, id, big) {
 export function thumbTick(renderer) {
   if (!queue.length || !ready()) return;
   if (rigScene && !rigScene.built) rigScene = null;
-  for (let n = 0; n < 2 && queue.length; n++) {
+  for (let n = 0, guard = queue.length; n < 2 && queue.length && guard-- > 0;) {
     const [kind, id, big] = queue[0];
+    const nb = needsBody(kind, id);
+    if (nb) { if (big) loadBody(nb); queue.push(queue.shift()); continue; } // corps pas encore là : suivant, on réessaie plus tard
+    n++;
     let url = null;
     try { url = renderOne(renderer, kind, id, big); } catch (e) { url = BLANK; }
     if (url === null) return; // pas possible pour l'instant
