@@ -336,3 +336,15 @@ button.lo-season:hover{background:#2a3aa088!important}
 .idline{text-align:center;margin:0 0 8px!important;padding:5px 10px;border-radius:4px;font-weight:700;letter-spacing:.05em;background:#ffffff0f}
 .sq-lab[style*="gradient"]{padding:3px 6px;border-radius:5px;width:auto;min-width:130px}
 .lo-friend[style*="gradient"]{border-left-color:#fff}
+
+/* Chargement : fenêtre de progression et pastille de fond */
+#loader{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(5,8,18,.82);font-family:Bahnschrift,"Segoe UI",system-ui,sans-serif}
+#loader.on{display:flex}
+.ld-box{width:min(460px,86vw);text-align:center}
+.ld-title{display:block;font-size:22px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px}
+.ld-bar{height:10px;background:#ffffff22;border-radius:5px;overflow:hidden}
+.ld-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff7a3a,#ffd070);border-radius:5px;transition:width .15s linear}
+.ld-pct{display:block;margin-top:10px;font-size:26px;font-weight:700;color:#ffd070}
+.ld-detail{display:block;margin-top:4px;opacity:.7;letter-spacing:.06em}
+#ld-chip{position:fixed;left:14px;bottom:14px;z-index:60;display:none;width:210px;font:12px system-ui,sans-serif;color:#cfd8e8;background:rgba(5,8,18,.7);padding:6px 10px;border-radius:6px;pointer-events:none}
+#ld-chip.on{display:block}#ld-chip .ld-bar{height:4px;margin-top:5px}

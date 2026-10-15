@@ -15,6 +15,7 @@ import { currentEvent, eventInfo, EVENT_MULT } from '../match/events.js';
 import { recommend, powerLabel } from '../match/balance.js';
 import { setSquad } from './lobby.js';
 import { rankInfo } from '../shop/rank.js';
+import { nextRewards } from '../shop/levels.js';
 import { embHtml, banCss } from '../shop/cosmetics.js';
 import { openOffers, leftText as offersLeft, unseen as offersUnseen } from '../shop/daily.js';
 import { thumbImg } from '../shop/thumbs.js';
@@ -142,19 +143,19 @@ export class UI {
         this.legend = LEGEND_IDS[i]; this.show('main'); break;
       }
       case 'pick': if (!legendUnlocked(d.id)) break; this.legend = d.id; if (this.screen === 'main') this.show('main'); else document.querySelectorAll('.card').forEach((c) => c.classList.toggle('sel', c.dataset.id === d.id)); break;
-      case 'start': g.start(this.readConfig()); break;
+      case 'start': g.launch(this.readConfig()); break;
       case 'menu': g.quit(); break;
       case 'options': this.from = this.screen; this.show('options'); break;
       case 'back': this.show(this.from === 'pause' ? 'pause' : 'main'); break;
       case 'resume': g.input.lock(); if (g.m && g.m.net && g.m.net.role === 'client') g.m.net.setReady(); break;
-      case 'replay': g.start(this.lastCfg); break;
+      case 'replay': g.launch(this.lastCfg); break;
       case 'reopenroom': this.game.openMyRoom(); break;
       case 'online': if (this.game.session && this.game.session.role === 'host') this.show('lobby'); else this.show('online'); break;
       case 'host': case 'join': this.connect(a); break;
       case 'lstart': { this.mode = 'online'; g.session.start(this.readConfig()); break; }
       case 'lleave': g.quit(); break;
       case 'tolobby': g.session.backToLobby(); g.toLobby(); break;
-      case 'shop': shopOpen(); this.from = 'main'; this.show('shop'); break;
+      case 'shop': this.openShop(); break;
       case 'copylink': { const el = $('lb-link'); el.select(); try { navigator.clipboard.writeText(el.value); } catch (e) { document.execCommand('copy'); } $('lb-copied').textContent = 'Copié !'; break; }
       default: shopAct(this, a, d);
     }
@@ -234,6 +235,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
         const bars = st.hist.map((v, i) => `<rect x="${i * 24 + 4}" y="${(70 - 60 * v / mx).toFixed(1)}" width="18" height="${(60 * v / mx).toFixed(1)}" rx="2"><title>${v} pts</title></rect>`).join('');
         body = `<div class="lo-sgrid">${box(RK.name, 'Rang classé')}${box(rankInfo(profile.peak).name, 'Meilleur rang de la saison')}${box(L.level, 'Niveau')}${box(profile.games, 'Parties')}${box(profile.wins + ' (' + wr + ' %)', 'Victoires')}${box(st.top3, 'Top 3')}${box(st.bestPlace ? '#' + st.bestPlace : '—', 'Meilleur rang')}
           ${box(profile.kills, 'Éliminations')}${box(kpg, 'Élim. / partie')}${box(st.bestKills, 'Record d\'élim.')}${box(st.dmg, 'Dégâts')}${box(acc + ' %', 'Précision')}${box(hsr + ' %', 'Tirs à la tête')}${box(favW, 'Arme préférée')}${box(favL, 'Légende préférée')}${box(profile.streak + ' j', 'Série de connexion')}${box(profile.earned, 'Points gagnés')}</div>
+          <h3>Prochaines récompenses de niveau</h3>${nextRewards(3).map((x) => `<div class="lo-q"><span>Niveau ${x.level}${x.special ? ' ★' : ''}</span><i style="--p:${x.level === L.level + 1 ? Math.round(100 * L.xp / L.need) : 0}%"></i><em>${esc(x.txt)}</em></div>`).join('') || '<p class="lo-how">Toutes les récompenses de niveau sont obtenues.</p>'}
           <h3>Points gagnés sur les 12 dernières parties</h3><svg class="lo-chart" viewBox="0 0 292 80"><g fill="#ffd070">${bars}</g></svg>`;
       } else if (pf === 'ach') {
         const cur = titleName();
@@ -358,6 +360,12 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     }
   }
 
+  // Boutique : attend le modèle de personnage (barre de progression) avant d'ouvrir l'aperçu 3D.
+  async openShop() {
+    await this.game.needHuman('Ouverture de la boutique');
+    shopOpen(); this.from = 'main'; this.show('shop');
+  }
+
   // Invitation en un clic : crée le salon si besoin puis copie le lien d'invitation.
   async quickInvite() {
     const g = this.game;
@@ -375,7 +383,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
     const m = this.mode;
     if (m === 'custom') this.show('setup');
     else if (m === 'online') this.act('online', {});
-    else this.game.start(this.readConfig());
+    else this.game.launch(this.readConfig());
   }
 
   shop() { return shopHtml(); }
@@ -551,6 +559,7 @@ ${hasCheckout() ? `<div class="lo-buy"><div><b class="lo-price">${PACK.gems} ${G
       ${rankHtml}
       ${(r.quests || []).map((q) => `<p class="gain">Défi accompli : ${q.txt} · +${q.reward} points</p>`).join('')}
       ${(r.ach || []).map((q) => `<p class="gain" style="color:#ff9af0">${q.txt} · +${q.reward} points</p>`).join('')}
+      ${(r.lvl || []).map((q) => `<p class="gain" style="color:#7dff9d">⬆ Niveau ${q.level} : ${esc(q.txt)}</p>`).join('')}
       ${r.event ? `<p class="gain">Événement actif : points ×${EVENT_MULT}</p>` : ''}
       ${nearHtml}
       <div class="stats"><div><b>${r.kills}</b>Éliminations</div><div><b>${r.damage}</b>Dégâts infligés</div><div><b>${t}</b>Temps de survie</div><div><b>${LEGENDS[this.legend].name}</b>Légende</div></div>

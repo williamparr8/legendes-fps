@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { THEME } from './terrain.js';
 
-// Matériaux PBR à textures photo (ambientCG, CC0 ; préparées par tools/make_textures.mjs : <nom>_c.jpg couleur, <nom>_n.jpg normale xy + rugosité).
+// Matériaux PBR à textures photo (ambientCG, CC0 ; préparées par tools/make_textures.mjs : <nom>_c.webp couleur, <nom>_n.webp normale xy + rugosité).
 // Projection « boîte » par la position monde (aucune UV nécessaire, pas d'étirement quelle que soit la taille de la boîte), normale
 // par dérivées d'écran. La couleur d'instance sert de teinte relative (la photo garde sa luminosité propre).
 const base = () => `${import.meta.env.BASE_URL}tex/`;
@@ -9,7 +9,7 @@ const cache = new Map();
 function tex(name, srgb) {
   const key = name + srgb;
   if (cache.has(key)) return cache.get(key);
-  const t = new THREE.TextureLoader().load(base() + name + (srgb ? '_c.jpg' : '_n.jpg'));
+  const t = new THREE.TextureLoader().load(base() + name + (srgb ? '_c.webp' : '_n.webp'));
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 8;
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;

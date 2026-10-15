@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { startLoop } from './core/loop.js';
 import { Post } from './core/post.js';
-import { loadHuman, human } from './combat/humanrig.js';
+import { loadHuman, human, humanProgress, mainProgress } from './combat/humanrig.js';
+import { Loader, assets, whenIdle, nextFrame } from './ui/loader.js';
 import { bakeSky } from './world/terrain.js';
 import { Input } from './core/input.js';
 import { Hud } from './core/hud.js';
@@ -27,6 +28,7 @@ import { profile, equippedDef, awardMatch } from './shop/profile.js';
 import { questsMatch } from './shop/quests.js';
 import { achMatch } from './shop/achievements.js';
 import { rankMatch, rankSeason } from './shop/rank.js';
+import { claimLevels } from './shop/levels.js';
 import { touchDay } from './shop/profile.js';
 import { shopFrame } from './shop/shop.js';
 import { lobbyFrame, squadFrame } from './ui/lobby.js';
@@ -51,6 +53,13 @@ export class Game {
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
     loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb', import.meta.env.BASE_URL + 'models/eve.glb', import.meta.env.BASE_URL + 'models/maria.glb']); // personnage animé ; en attendant, silhouette procédurale
+    // téléchargement de fond : pastille discrète tant que modèles et textures arrivent
+    this._chipT = setInterval(() => {
+      const hp = humanProgress(), tf = assets.total ? assets.loaded / assets.total : 1;
+      const idle = hp.all && !assets.active;
+      if (idle) { Loader.chip(null); clearInterval(this._chipT); return; }
+      Loader.chip((hp.f * 6.2 + (assets.active ? tf : 1) * 3) / 9.2, 'Chargement des ressources');
+    }, 300);
     this.menuScene = new THREE.Scene();
     this.menuScene.background = new THREE.Color(0x0b0f14);
     addEventListener('resize', () => {
@@ -79,6 +88,8 @@ export class Game {
     touchDay(); // série de connexion
     const rkNote = rankSeason(); // fin de saison classée : récompense + remise à niveau douce
     if (rkNote) setTimeout(() => this.banner(rkNote), 2500);
+    const lvGot = claimLevels(); // niveaux déjà atteints : rattrapage
+    if (lvGot.length) setTimeout(() => this.banner(lvGot.length + ' récompense' + (lvGot.length > 1 ? 's' : '') + ' de niveau récupérée' + (lvGot.length > 1 ? 's' : '') + ' !'), 1500);
     const invite = cleanCode(new URLSearchParams(location.search).get('salon'));
     if (invite) this.ui.show('online', { code: invite }); else { this.ui.show('main'); setTimeout(() => this.openMyRoom(), 1200); }
     startLoop((dt) => this.update(dt), (a, dt) => this.render(a, dt), () => !!this.m && !!this.m.net);
@@ -217,8 +228,8 @@ export class Game {
 
   // ---------- parties ----------
   // Construit le monde d'avance (salon / préparation) : le lancement ne coûte plus la génération.
-  prewarm(seed) {
-    const sh = settings.shadows, ev = currentEvent(), key = ev ? ev.id : '';
+  prewarm(seed, evIn) {
+    const sh = settings.shadows, ev = evIn !== undefined ? evIn : currentEvent(), key = ev ? ev.id : '';
     if (this.pre && this.pre.seed === seed && this.pre.sh === sh && this.pre.ev === key) return;
     const scene = new THREE.Scene();
     try { this.pre = { seed, sh, ev: key, scene, world: buildIsland(scene, seed, { shadows: sh, theme: ev ? ev.theme : undefined }) }; } catch (e) { this.pre = null; }
@@ -227,6 +238,70 @@ export class Game {
   takeWorld(seed, ev = null) {
     const p = this.pre; this.pre = null;
     return p && p.seed === seed && p.sh === settings.shadows && p.ev === (ev ? ev.id : '') ? p : null;
+  }
+
+  // Attend le modèle de personnage principal (barre de progression si ce n'est pas déjà fait).
+  async needHuman(title) {
+    if (human.ready) return;
+    Loader.show(title);
+    await new Promise((res) => {
+      const t = setInterval(() => {
+        const f = mainProgress();
+        Loader.set(f, 'Personnages : ' + Math.round(f * 100) + ' %');
+        if (human.ready) { clearInterval(t); res(); }
+      }, 100);
+      setTimeout(() => { clearInterval(t); res(); }, 30000);
+    });
+    Loader.hide();
+  }
+
+  // Lancement d'une partie avec progression visible : personnages → carte → textures → départ. (start() reste le départ synchrone.)
+  async launch(cfg, net = null) {
+    if (this.launching) return;
+    this.launching = true;
+    const training = cfg.map === 'training';
+    try {
+      Loader.show(training ? "Lancement de l'entraînement" : 'Lancement de la partie');
+      Loader.set(0.02, 'Chargement des personnages');
+      await new Promise((res) => {
+        const t = setInterval(() => { const f = mainProgress(); Loader.set(0.02 + f * 0.38, 'Personnages : ' + Math.round(f * 100) + ' %'); if (human.ready) { clearInterval(t); res(); } }, 100);
+        setTimeout(() => { clearInterval(t); res(); }, 30000);
+      });
+      if (!training) {
+        Loader.set(0.42, 'Génération de la carte'); await nextFrame();
+        this.prewarm(cfg.seed, eventById(cfg.event));
+        Loader.set(0.55, 'Chargement des textures'); await nextFrame();
+        await whenIdle((f, l, t) => Loader.set(0.55 + f * 0.38, 'Textures : ' + l + ' / ' + t));
+      }
+      Loader.set(0.95, 'Préparation de la partie'); await nextFrame();
+      this.start(cfg, net);
+    } catch (e) { console.error(e); } finally { Loader.hide(); this.launching = false; }
+    this.afterLaunch();
+  }
+
+  // Côté client : même progression, puis construction du monde de l'hôte.
+  async launchClient(msg, net) {
+    if (this.launching) return;
+    this.launching = true;
+    try {
+      Loader.show('Rejoindre la partie');
+      Loader.set(0.02, 'Chargement des personnages');
+      await new Promise((res) => {
+        const t = setInterval(() => { const f = mainProgress(); Loader.set(0.02 + f * 0.38, 'Personnages : ' + Math.round(f * 100) + ' %'); if (human.ready) { clearInterval(t); res(); } }, 100);
+        setTimeout(() => { clearInterval(t); res(); }, 30000);
+      });
+      Loader.set(0.42, 'Génération de la carte'); await nextFrame();
+      this.prewarm(msg.cfg.seed, eventById(msg.cfg.event));
+      Loader.set(0.55, 'Chargement des textures'); await nextFrame();
+      await whenIdle((f, l, t) => Loader.set(0.55 + f * 0.38, 'Textures : ' + l + ' / ' + t));
+      Loader.set(0.95, 'Préparation de la partie'); await nextFrame();
+      this.startClient(msg, net);
+    } catch (e) { console.error(e); } finally { Loader.hide(); this.launching = false; }
+  }
+
+  // Après un lancement asynchrone, le geste de l'utilisateur peut avoir expiré : sans verrouillage de la souris, on propose « Jouer ».
+  afterLaunch() {
+    setTimeout(() => { if (this.state === 'playing' && !this.input.locked && this.ui.screen !== 'go') this.ui.show('go'); }, 400);
   }
 
   start(cfg, net = null) {
@@ -327,6 +402,7 @@ export class Game {
     questsMatch(res); // défis quotidiens, hebdomadaires, saison
     achMatch(res); // succès
     rankMatch(res); // rang classé (RP)
+    if (!res.lvl) res.lvl = claimLevels(); // récompenses de niveau (après tous les gains de points)
     this.state = 'results';
     this.chatting = false; this.chatIn.style.display = 'none';
     document.exitPointerLock();

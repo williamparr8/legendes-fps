@@ -14,7 +14,24 @@ import legends from '../legends/legends.json';
 const LEGS = Object.keys(legends), WIDS = Object.keys(wdefs);
 export const human = { ready: false, scene: null, variants: [], bodies: {}, next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
 
-// url : premier modèle (avec les clips) ; extras : autres corps (même squelette, sans clips) pour varier les acteurs.
+// Tailles approximatives (octets) des modèles : sert au calcul de progression tant que le serveur n'a pas annoncé la taille.
+const EST = { 'swat.glb': 2839128, 'gasmask.glb': 1517244, 'eve.glb': 823248, 'maria.glb': 1002564 };
+human.prog = {}; human.extrasLeft = 0;
+
+// Progression globale des modèles (0..1) : ready = modèle principal prêt (suffit pour afficher les personnages), all = tous chargés.
+export function humanProgress() {
+  let l = 0, t = 0;
+  for (const u in human.prog) { const p = human.prog[u]; l += Math.min(p.l, p.t); t += p.t; }
+  return { f: t ? l / t : 0, ready: human.ready, all: human.ready && human.extrasLeft === 0 };
+}
+// Progression du modèle principal seul (celui qui conditionne l'affichage).
+export function mainProgress() {
+  const k = Object.keys(human.prog)[0], p = k && human.prog[k];
+  return human.ready ? 1 : p ? Math.min(1, p.l / p.t) : 0;
+}
+
+// url : premier modèle (avec les clips), chargé en premier ; extras : autres corps (même squelette, sans clips), chargés ensuite un par un
+// pour ne pas se disputer la bande passante avec le modèle principal.
 export function loadHuman(url, extras = []) {
   const prep = (scene) => scene.traverse((o) => { // pas d'environnement propre : matériaux mats (sinon le métal ressort noir)
     if (!o.isMesh) return;
@@ -22,28 +39,32 @@ export function loadHuman(url, extras = []) {
     const m = o.material;
     if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
   });
-  for (const u of extras) {
+  const name = (u) => u.split('/').pop();
+  for (const u of [url, ...extras]) human.prog[u] = { l: 0, t: EST[name(u)] || 1e6 };
+  human.extrasLeft = extras.length;
+  const track = (u) => (e) => { const p = human.prog[u]; if (e && e.loaded) { p.l = e.loaded; if (e.lengthComputable && e.total) p.t = e.total; } };
+  const done = (u) => { const p = human.prog[u]; p.l = p.t; };
+  const loadExtras = (list) => {
+    if (!list.length) return;
+    const u = list[0];
     new GLTFLoader().load(u, (g) => {
       prep(g.scene);
-      const nm = u.split('/').pop().replace('.glb', '');
+      const nm = name(u).replace('.glb', '');
       if (nm === 'eve' || nm === 'maria') human.bodies[nm] = g.scene; // corps réservés aux skins (pas dans la rotation par défaut)
       else human.variants.push(g.scene);
-    }, undefined, () => {});
-  }
+      done(u); human.extrasLeft--; loadExtras(list.slice(1));
+    }, track(u), () => { done(u); human.extrasLeft--; loadExtras(list.slice(1)); });
+  };
   return new Promise((res) => {
     new GLTFLoader().load(url, (g) => {
       human.scene = g.scene;
       human.variants.unshift(g.scene);
       for (const c of g.animations) human.clips[c.name] = c;
-      g.scene.traverse((o) => { // pas d'environnement : matériaux mats (sinon le métal ressort noir)
-        if (!o.isMesh) return;
-        o.castShadow = false;
-        const m = o.material;
-        if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
-      });
-      human.ready = true;
+      prep(g.scene);
+      human.ready = true; done(url);
+      loadExtras(extras);
       res(true);
-    }, undefined, () => res(false));
+    }, track(url), () => { done(url); loadExtras(extras); res(false); });
   });
 }
 

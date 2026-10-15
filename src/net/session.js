@@ -160,7 +160,7 @@ export class HostSession {
     const humans = [{ id: 0, name: this.name, legend: this.legend, local: true }];
     for (const p of this.players.values()) humans.push({ id: p.id, name: p.name, legend: p.legend, ent: p });
     cfg.humans = humans; cfg.legend = this.legend;
-    this.game.start(cfg, this);
+    this.game.launch(cfg, this);
   }
 
   // Appelé par Match pour chaque joueur distant.
@@ -325,7 +325,7 @@ export class ClientSession {
       case 'refuse': if (this.joinFail) this.joinFail({ type: 'refused', why: m.why }); break;
       case 'lobby': this.roster = m.players; this.seed = m.seed; this.rec = m.rec; if (this.onLobby) this.onLobby(m.players); break;
       case 'chat': if (this.onChat) this.onChat(m.from, m.text); break;
-      case 'start': this.game.startClient(m, this); break;
+      case 'start': this.game.launchClient(m, this); break;
       case 's': if (this.m) this.snapshot(m); break;
       case 'loot': if (this.m) this.m.loot.applyNet(m.lt); break;
       case 'end': this.game.endMatch(m.res); break;
