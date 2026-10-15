@@ -301,3 +301,8 @@
 - Corps de skins (`eve`, `maria`) téléchargés à la demande seulement : skin sélectionné dans la boutique, équipé, ou porté par un joueur de la partie (`Game.bodiesFor`, attendu au lancement avec progression). Au démarrage seuls swat + gasmask sont téléchargés (−1,4 Mo).
 - Menu principal : fusil invisible corrigé (la distance de caméra de la partie précédente — 1e6 par défaut — masquait l'arme et ralentissait l'animation des personnages des menus).
 - Testé : ouverture 2 ms, 23 cartes sans image, téléchargement de eve.glb au clic, arme visible dans le hall (capture). Non testé : réseau lent, GPU réel.
+
+### Téléchargement allégé, 2e passe (2026-10-14)
+- Modèles : compression meshopt + textures WebP 512 px utiles seulement (couleur + normale), clips inutilisés retirés (`tools/pack_glb.mjs`), publiés en `models/*.glb.json` pour que le serveur les compresse (gzip) : swat 2,4 Mo → ~0,47 Mo transférés, gasmask 0,7 → 0,26, eve 0,64 → 0,16, maria 0,76 → 0,20. Chargeur : `MeshoptDecoder`, gestionnaire de chargement à part (n'allonge plus l'attente des textures au lancement). `preload` du personnage dans index.html.
+- Textures : couleur 768 px, normale 512 px (5,8 Mo → 2,5 Mo). La construction de la carte d'avance (hall) attend que le personnage soit chargé.
+- Test : rendu du personnage dans le hall, boutique + skin Maria à la demande, lancement de partie (navigateur, sans GPU réel). Si le rendu des personnages semble différent (matières un peu plus mates : textures rugosité/spéculaire retirées), à signaler.

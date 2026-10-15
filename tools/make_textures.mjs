@@ -14,7 +14,7 @@ const LIST = {
   gunmetal: 'Metal038', rubber: 'Rubber004', moss: 'Ground037', soil: 'Ground048',
   asphalt: 'Asphalt031', grass: 'Grass004', dirt: 'Ground054', gravel: 'Gravel023', bark: 'Bark007',
 };
-const SIZE = 1024;
+const SIZE = 1024; // source ; fichiers du jeu ensuite réduits (couleur 768 px, normale 512 px) pour le temps de chargement
 fs.mkdirSync(OUT, { recursive: true });
 const file = (id, kind) => path.join(SRC, id, `${id}_1K-JPG_${kind}.jpg`);
 

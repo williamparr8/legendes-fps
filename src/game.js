@@ -52,7 +52,7 @@ export class Game {
     bakeSky(this.renderer, new THREE.Vector3(60, 100, 30).normalize());
     this.post = new Post(this.renderer);
     this.post.setQuality(settings.quality);
-    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb', [import.meta.env.BASE_URL + 'models/gasmask.glb']); // personnage animé ; en attendant, silhouette procédurale
+    loadHuman(import.meta.env.BASE_URL + 'models/swat.glb.json', [import.meta.env.BASE_URL + 'models/gasmask.glb.json']); // personnage animé ; en attendant, silhouette procédurale
     // téléchargement de fond : pastille discrète tant que modèles et textures arrivent
     this._chipT = setInterval(() => {
       const hp = humanProgress(), tf = assets.total ? assets.loaded / assets.total : 1;
@@ -229,7 +229,9 @@ export class Game {
 
   // ---------- parties ----------
   // Construit le monde d'avance (salon / préparation) : le lancement ne coûte plus la génération.
-  prewarm(seed, evIn) {
+  prewarm(seed, evIn, force = false) {
+    // le personnage (petit) passe avant les textures de la carte : on attend qu'il soit là (sauf lancement de partie)
+    if (!force && !human.ready && performance.now() < 40000) { clearTimeout(this._pw); this._pw = setTimeout(() => this.prewarm(seed, evIn), 250); return; }
     const sh = settings.shadows, ev = evIn !== undefined ? evIn : currentEvent(), key = ev ? ev.id : '';
     if (this.pre && this.pre.seed === seed && this.pre.sh === sh && this.pre.ev === key) return;
     const scene = new THREE.Scene();
@@ -273,7 +275,7 @@ export class Game {
       await this.waitModels(this.bodiesFor(net), 0.02, 0.4);
       if (!training) {
         Loader.set(0.42, 'Génération de la carte'); await nextFrame();
-        this.prewarm(cfg.seed, eventById(cfg.event));
+        this.prewarm(cfg.seed, eventById(cfg.event), true);
         Loader.set(0.55, 'Chargement des textures'); await nextFrame();
         await whenIdle((f, l, t) => Loader.set(0.55 + f * 0.38, 'Textures : ' + l + ' / ' + t));
       }
@@ -292,7 +294,7 @@ export class Game {
       Loader.set(0.02, 'Chargement des personnages');
       await this.waitModels(this.bodiesFor(net), 0.02, 0.4);
       Loader.set(0.42, 'Génération de la carte'); await nextFrame();
-      this.prewarm(msg.cfg.seed, eventById(msg.cfg.event));
+      this.prewarm(msg.cfg.seed, eventById(msg.cfg.event), true);
       Loader.set(0.55, 'Chargement des textures'); await nextFrame();
       await whenIdle((f, l, t) => Loader.set(0.55 + f * 0.38, 'Textures : ' + l + ' / ' + t));
       Loader.set(0.95, 'Préparation de la partie'); await nextFrame();

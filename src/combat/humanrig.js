@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { skinnedWeapon, mergedWeapon } from './models.js';
 import { weaponDetail } from '../world/pbr.js';
@@ -14,8 +15,12 @@ import legends from '../legends/legends.json';
 const LEGS = Object.keys(legends), WIDS = Object.keys(wdefs);
 export const human = { ready: false, scene: null, variants: [], bodies: {}, next: 0, clips: {}, cam: new THREE.Vector3(1e6, 0, 1e6) };
 
-// Tailles (octets) des modèles : sert au calcul de progression tant que le serveur n'a pas annoncé la taille.
-const EST = { 'swat.glb': 2401544, 'gasmask.glb': 702944, 'eve.glb': 641392, 'maria.glb': 764504 };
+// Modèles compressés (meshopt, textures WebP) publiés en « .glb.json » pour que le serveur les compresse aussi (gzip, voir tools/pack_glb.mjs).
+// Tailles décodées (octets) : la progression = octets reçus / taille (la longueur annoncée par le serveur est celle du fichier compressé).
+const EST = { 'swat.glb.json': 1104192, 'gasmask.glb.json': 284256, 'eve.glb.json': 184936, 'maria.glb.json': 230388 };
+// gestionnaire à part : le chargement de fond des modèles ne bloque pas l'attente des textures au lancement d'une partie
+const mgr = new THREE.LoadingManager();
+const gltf = () => new GLTFLoader(mgr).setMeshoptDecoder(MeshoptDecoder);
 human.prog = {}; human.extrasLeft = 0; human.failed = {}; human.loading = {};
 
 // Progression globale du chargement de fond (0..1) : ready = modèle principal prêt (suffit pour afficher les personnages), all = variantes chargées.
@@ -43,16 +48,16 @@ const prep = (scene) => scene.traverse((o) => { // pas d'environnement propre : 
   if (m) { m.metalness = 0.05; m.roughness = 0.85; if (m.map) m.map.anisotropy = 4; }
 });
 const fname = (u) => u.split('/').pop();
-const track = (u) => (e) => { const p = human.prog[u]; if (p && e && e.loaded) { p.l = e.loaded; if (e.lengthComputable && e.total) p.t = e.total; } };
+const track = (u) => (e) => { const p = human.prog[u]; if (p && e && e.loaded) p.l = e.loaded; };
 const done = (u) => { const p = human.prog[u]; if (p) p.l = p.t; };
 
 // Corps de skin (eve, maria) : téléchargé seulement quand un skin qui l'utilise est affiché (boutique, équipé, joueur de la partie).
 export function loadBody(name) {
-  if (human.bodies[name] || human.loading[name] || human.failed[name] || !EST[name + '.glb']) return;
-  const u = import.meta.env.BASE_URL + 'models/' + name + '.glb';
-  human.prog[u] = { l: 0, t: EST[name + '.glb'] }; human.loading[name] = u;
+  if (human.bodies[name] || human.loading[name] || human.failed[name] || !EST[name + '.glb.json']) return;
+  const u = import.meta.env.BASE_URL + 'models/' + name + '.glb.json';
+  human.prog[u] = { l: 0, t: EST[name + '.glb.json'] }; human.loading[name] = u;
   const fin = () => { done(u); delete human.loading[name]; };
-  new GLTFLoader().load(u, (g) => { prep(g.scene); human.bodies[name] = g.scene; fin(); }, track(u), () => { human.failed[name] = true; fin(); });
+  gltf().load(u, (g) => { prep(g.scene); human.bodies[name] = g.scene; fin(); }, track(u), () => { human.failed[name] = true; fin(); });
 }
 
 // url : premier modèle (avec les clips), chargé en premier ; extras : variantes (même squelette, sans clips) chargées ensuite une par une
@@ -63,10 +68,10 @@ export function loadHuman(url, extras = []) {
   const loadExtras = (list) => {
     if (!list.length) return;
     const u = list[0], next = () => { done(u); human.extrasLeft--; loadExtras(list.slice(1)); };
-    new GLTFLoader().load(u, (g) => { prep(g.scene); human.variants.push(g.scene); next(); }, track(u), next);
+    gltf().load(u, (g) => { prep(g.scene); human.variants.push(g.scene); next(); }, track(u), next);
   };
   return new Promise((res) => {
-    new GLTFLoader().load(url, (g) => {
+    gltf().load(url, (g) => {
       human.scene = g.scene;
       human.variants.unshift(g.scene);
       for (const c of g.animations) human.clips[c.name] = c;
